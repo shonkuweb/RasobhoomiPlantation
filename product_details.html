@@ -5,19 +5,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Contact Us - Mobile E-commerce</title>
+    <title>Product Details - Mobile E-commerce</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <nav class="navbar">
-        <button id="menu-btn" class="nav-icon">
+        <button id="back-btn" class="nav-icon" onclick="history.back()">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
         </button>
         <div style="flex:1;"></div>
@@ -31,42 +30,15 @@
         </button>
     </nav>
 
+    <!-- Sidebar & Overlay (Optional if you want menu here too, but Back button is key) -->
     <div id="overlay" class="overlay"></div>
-    <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header"><span class="sidebar-title">MENU</span>
-            <button id="close-sidebar" class="sidebar-close">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="sidebar-menu">
-            <a href="categories.html" class="menu-item">Categories</a>
-            <a href="about.html" class="menu-item">About Us</a>
-            <a href="contact.html" class="menu-item">Contact Us</a>
-            <a href="refund.html" class="menu-item">Refund & Return</a>
-            <a href="track-order.html" class="menu-item">Track Your Order</a>
-            <a href="index.html" class="menu-item">Home</a>
-        </div>
-        <div class="admin-link-container">
-            <a href="admin.html" class="admin-link">
-                Admin Panel
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="7" y1="17" x2="17" y2="7"></line>
-                    <polyline points="7 7 17 7 17 17"></polyline>
-                </svg>
-            </a>
-        </div>
-    </aside>
 
     <main style="padding: 1rem;">
-        <h1 class="text-red">Contact Us</h1>
-        <p>Get in touch with us.</p>
+        <div id="product-detail-container">
+            <!-- Rendered via JS -->
+            <p style="text-align: center;">Loading product...</p>
+        </div>
     </main>
-
 
     <!-- Footer -->
     <footer>
@@ -106,6 +78,14 @@
     </footer>
 
     <script type="module" src="/main.js"></script>
+    <script>
+        // Simple inline script to render product details or delegate to main.js if structured that way.
+        // For simplicity, let's look for URL param here or letting main.js handle if it checks location.
+        // But main.js is currently designed for index grid mainly.
+        // Let's rely on main.js to have a detail renderer function or add it here.
+        // Actually, better to add logic in local script or extend main.js.
+        // I'll extend main.js to handle this page if detected.
+    </script>
 </body>
 
 </html>
