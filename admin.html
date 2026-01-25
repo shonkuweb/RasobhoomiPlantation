@@ -140,10 +140,19 @@
                 <h2 id="modal-title">ADD PRODUCT</h2>
                 <form id="product-form" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <div style="text-align: center; margin-bottom: 1rem;">
-                        <label for="product-images" class="btn-upload-modern">
-                            + UPLOAD IMAGES (MAX 3)
-                        </label>
+                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
+                            <label for="product-images" class="btn-upload-modern" style="margin:0; flex:1;">
+                                + UPLOAD IMAGES
+                            </label>
+                            <button type="button" id="btn-camera" class="btn-upload-modern"
+                                style="margin:0; flex:1; background: #2C1B10; color: white;">
+                                📷 TAKE PHOTO
+                            </button>
+                        </div>
                         <input type="file" id="product-images" accept="image/*" multiple style="display: none;">
+                        <input type="file" id="camera-input" accept="image/*" capture="environment"
+                            style="display: none;">
+
                         <div id="image-preview-container"
                             style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;"></div>
                         <p style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">Recommended 1:1 Aspect Ratio</p>

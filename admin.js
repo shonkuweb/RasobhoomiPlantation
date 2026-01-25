@@ -131,8 +131,17 @@ function setupListeners() {
     const productImagesInput = document.getElementById('product-images');
     if (productImagesInput) {
         productImagesInput.addEventListener('change', handleImageUpload);
-    } else {
-        console.error('Product images input not found');
+    }
+
+    // Camera Upload
+    const cameraBtn = document.getElementById('btn-camera');
+    const cameraInput = document.getElementById('camera-input');
+
+    if (cameraBtn && cameraInput) {
+        cameraBtn.addEventListener('click', () => {
+            cameraInput.click();
+        });
+        cameraInput.addEventListener('change', handleImageUpload);
     }
 
 
