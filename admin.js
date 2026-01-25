@@ -41,12 +41,7 @@ function checkAuth() {
 // State
 let products = JSON.parse(localStorage.getItem('products')) || [];
 
-let orders = JSON.parse(localStorage.getItem('orders')) || [
-    { id: 'ORD-001', name: 'Customer A', image: '', qty: 2, status: 'new' },
-    { id: 'ORD-002', name: 'Customer B', image: '', qty: 1, status: 'in-process' },
-    { id: 'ORD-003', name: 'Customer C', image: '', qty: 5, status: 'completed' },
-    { id: 'ORD-004', name: 'Customer D', image: '', qty: 1, status: 'new' },
-];
+let orders = JSON.parse(localStorage.getItem('orders')) || [];
 
 let currentView = 'products';
 let currentFilter = 'new';
@@ -75,13 +70,9 @@ function init() {
     checkAuth();
 
     // Save initial default products if nothing in storage (first run)
-    if (!localStorage.getItem('products')) {
-        saveProductsToStorage();
-    }
-    // Save initial default orders if nothing in storage
-    if (!localStorage.getItem('orders')) {
-        saveOrdersToStorage();
-    }
+    // Initial seeded data check removed.
+    // if (!localStorage.getItem('products')) { ... }
+    // if (!localStorage.getItem('orders')) { ... }
 
     render();
     setupListeners();
@@ -133,11 +124,13 @@ function setupListeners() {
     const resetBtn = document.getElementById('reset-db-btn');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            showConfirm('WARNING: This will delete ALL products permanently. Are you sure?', () => {
+            showConfirm('WARNING: This will delete ALL products and orders permanently. Are you sure?', () => {
                 products = [];
+                orders = [];
                 saveProductsToStorage();
+                saveOrdersToStorage();
                 render();
-                alert('All products deleted.');
+                alert('All data deleted (Products & Orders).');
             });
         });
     }
@@ -417,5 +410,15 @@ function render() {
         listContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">No items found.</p>';
     }
 }
+
+// Real-time updates
+window.addEventListener('storage', (e) => {
+    if (e.key === 'orders' || e.key === 'products') {
+        console.log('Storage changed: refreshing view');
+        products = JSON.parse(localStorage.getItem('products')) || [];
+        orders = JSON.parse(localStorage.getItem('orders')) || [];
+        render();
+    }
+});
 
 init();

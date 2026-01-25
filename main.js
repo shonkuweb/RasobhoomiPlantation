@@ -1,506 +1,203 @@
 import './style.css'
 
-// Sidebar Logic
-const menuBtn = document.getElementById('menu-btn');
-const closeSidebarBtn = document.getElementById('close-sidebar');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
+// =========================================
+// 1. DATA STATE MANAGEMENT
+// =========================================
+let products = [];
+let cart = [];
 
-function closeAllMenus() {
-  sidebar.classList.remove('active');
-  const cartSidebar = document.getElementById('cart-sidebar');
-  if (cartSidebar) cartSidebar.classList.remove('active');
-  overlay.classList.remove('active');
-}
+function initData() {
+  try {
+    // Products
+    products = JSON.parse(localStorage.getItem('products')) || [];
+    // Data seeding removed per user request
 
-function toggleSidebar() {
-  // If cart is open, close it first
-  const cartSidebar = document.getElementById('cart-sidebar');
-  if (cartSidebar && cartSidebar.classList.contains('active')) {
-    cartSidebar.classList.remove('active');
+    // Quantity Check normalize
+    products = products.map(p => ({
+      ...p,
+      qty: p.qty !== undefined ? p.qty : 100
+    }));
+
+    // Cart
+    cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+    console.log('[DATA] Loaded', products.length, 'products and', cart.length, 'cart items.');
+  } catch (e) {
+    console.error('[DATA] Init Error:', e);
   }
-
-  const isActive = sidebar.classList.toggle('active');
-  overlay.classList.toggle('active', isActive);
 }
 
-menuBtn.addEventListener('click', toggleSidebar);
-closeSidebarBtn.addEventListener('click', closeAllMenus);
-overlay.addEventListener('click', closeAllMenus);
-
-// Mock Product Data
-// Product Data Logic
-// Try to load from localStorage, otherwise fallback to defaults
-let products = JSON.parse(localStorage.getItem('products')) || [
-  // Default empty as per requirement
-];
-
-// If we used fallback defaults and nothing was in storage, we could opt to *not* save them 
-// to avoid overwriting what Admin might Init, but Admin Init handles "if empty".
-// Ideally, Admin is the source of truth. Main.js just reads.
-
-// Context: Render Products into Grid
-const grid = document.getElementById('product-grid');
-
-// Filter State
-let filterState = {
-  sortPrice: 'default',
-  categories: [],
-  stockOnly: false
-};
-
-function getCategory(p) {
-  // Infer category or default
-  return p.category || 'Uncategorized';
-}
-
+// Helpers
+function getCategory(p) { return p.category || 'Uncategorized'; }
 function getPrice(p) {
-  const str = String(p.price || 0).replace(/[^0-9.]/g, '');
+  const val = p.price || 0;
+  if (typeof val === 'number') return val;
+  const str = String(val).replace(/[^0-9.]/g, '');
   return parseFloat(str) || 0;
 }
+function saveCart() { localStorage.setItem('cart', JSON.stringify(cart)); }
 
-function renderProductGrid() {
-  if (!grid) return;
-  grid.innerHTML = '';
 
-  let displayProducts = products.filter(p => {
-    // 1. Availability
-    if (filterState.stockOnly && (p.qty || 0) <= 0) return false;
+// =========================================
+// 2. GLOBAL UI LOGIC (Sidebar, Footer, Cart)
+// =========================================
+function updateCartBadge() {
+  const btn = document.getElementById('cart-btn');
+  if (!btn) return;
 
-    // 2. Categories
-    if (filterState.categories.length > 0) {
-      const cat = getCategory(p);
-      if (!filterState.categories.includes(cat)) return false;
-    }
+  // Remove existing badge
+  const existing = btn.querySelector('.cart-badge');
+  if (existing) existing.remove();
 
-    return true;
-  });
+  const count = cart.reduce((acc, item) => acc + item.qty, 0);
 
-  // 3. Sorting
-  if (filterState.sortPrice === 'lowHigh') {
-    displayProducts.sort((a, b) => getPrice(a) - getPrice(b));
-  } else if (filterState.sortPrice === 'highLow') {
-    displayProducts.sort((a, b) => getPrice(b) - getPrice(a));
+  if (count > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'cart-badge';
+    badge.textContent = count > 99 ? '99+' : count;
+    btn.appendChild(badge);
+  }
+}
+
+function initGlobalUI() {
+  console.log('Init Global UI');
+  updateCartBadge(); // Initial render
+
+  // Sidebar
+  // --- Sidebar Logic ---
+  const menuBtn = document.getElementById('menu-btn');
+  const closeSidebarBtn = document.getElementById('close-sidebar');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+
+  if (menuBtn && sidebar && overlay) {
+    menuBtn.addEventListener('click', () => {
+      sidebar.classList.add('active');
+      overlay.classList.add('active');
+    });
   }
 
-  if (displayProducts.length === 0) {
-    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No products found.</p>';
-  } else {
-    displayProducts.forEach(product => {
-      const card = document.createElement('div');
-      card.className = 'product-card';
+  if (closeSidebarBtn) {
+    closeSidebarBtn.addEventListener('click', () => {
+      if (sidebar) sidebar.classList.remove('active');
+      if (overlay) overlay.classList.remove('active');
+    });
+  }
 
-      let imageContent = `<div style="width: 80px; height: 80px; background-color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">${product.id}</div>`;
+  // Global Overlay Close
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      if (sidebar) sidebar.classList.remove('active');
+      const cartSidebar = document.getElementById('cart-sidebar');
+      if (cartSidebar) cartSidebar.classList.remove('active');
+      const filterModal = document.getElementById('filter-modal');
+      if (filterModal) filterModal.classList.remove('active');
+      overlay.classList.remove('active');
+    });
+  }
 
-      if (product.image) {
-        imageContent = `<img src="${product.image}" style="width: 100%; height: 100%; object-fit: cover;">`;
-      }
+  // Filter Modal Logic
+  const filterBtn = document.getElementById('filter-btn');
+  const filterModal = document.getElementById('filter-modal');
+  const closeFilter = document.getElementById('close-filter');
+  const applyFilter = document.getElementById('apply-filter');
+  const resetFilter = document.getElementById('reset-filter');
 
-      // Ensure Price Display is Consistent
-      const rawPrice = getPrice(product);
+  if (filterBtn && filterModal) {
+    filterBtn.onclick = () => {
+      filterModal.classList.add('active');
+      overlay.classList.add('active');
+      populateFilterCategories();
+    };
+  }
 
-      card.innerHTML = `
-          <div class="product-image-placeholder view-details-btn" data-id="${product.id}" style="cursor: pointer;">
-             ${imageContent}
-          </div>
-          <div class="product-info">
-            <h3>${product.name}</h3>
-            <div class="product-row">
-                <span class="product-price">₹${rawPrice}</span>
-                <button class="add-cart-pill" data-id="${product.id}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                    ADD CART
-                </button>
+  if (closeFilter) {
+    closeFilter.onclick = () => {
+      filterModal.classList.remove('active');
+      overlay.classList.remove('active');
+    };
+  }
+
+  if (resetFilter) {
+    resetFilter.onclick = () => {
+      document.querySelector('input[name="sortPrice"][value="default"]').checked = true;
+      document.querySelectorAll('#filter-categories input').forEach(c => c.checked = false);
+      if (document.getElementById('filter-stock')) document.getElementById('filter-stock').checked = false;
+    };
+  }
+
+  if (applyFilter) {
+    applyFilter.onclick = () => {
+      const sortVal = document.querySelector('input[name="sortPrice"]:checked').value;
+      const catChecks = Array.from(document.querySelectorAll('#filter-categories input:checked')).map(c => c.value);
+      const stockCheck = document.getElementById('filter-stock') ? document.getElementById('filter-stock').checked : false;
+
+      filterModal.classList.remove('active');
+      overlay.classList.remove('active');
+
+      initProductGrid({ sort: sortVal, categories: catChecks, stock: stockCheck });
+    };
+  }
+
+  function populateFilterCategories() {
+    const container = document.getElementById('filter-categories');
+    if (!container || container.children.length > 0) return;
+
+    // Extract unique categories
+    const cats = [...new Set(products.map(p => p.category || 'Uncategorized'))];
+    container.innerHTML = cats.map(c => `
+             <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" value="${c}">
+                ${c}
+             </label>
+        `).join('');
+  }
+
+  // Inject Footer (if missing)
+  if (!document.querySelector('footer') && !window.location.pathname.includes('admin.html') && !window.location.pathname.includes('checkout.html') && !window.location.pathname.includes('product_details.html')) {
+    const footerCallback = () => {
+      const footer = document.createElement('footer');
+      footer.innerHTML = `
+            <div class="footer-links">
+            <a href="#" class="footer-link">terms & condition</a>
+            <a href="https://wa.me/918972076182?text=Hi" target="_blank" class="footer-link">contact no.</a>
+            <a href="#" class="footer-link">location by maps</a>
             </div>
-          </div>
-        `;
-      grid.appendChild(card);
-    });
+            <div class="copyright">Maa Handloom. All rights reserved.</div>
+           `;
+      document.body.appendChild(footer);
+    };
+    // Simple append if body ready
+    if (document.body) footerCallback();
   }
-}
-
-// Initial Render
-renderProductGrid();
-
-// Grid Event Delegation
-if (grid) {
-  grid.addEventListener('click', (e) => {
-    if (e.target.classList.contains('view-details-btn')) {
-      const id = e.target.dataset.id;
-      window.location.href = `product_details.html?id=${id}`;
-    }
-  });
-}
-
-// Filter Logic Initialization
-function initFilters() {
-  const filterBtn = document.querySelector('.filter-btn');
-  const modal = document.getElementById('filter-modal');
-  const closeBtn = document.getElementById('close-filter');
-  const applyBtn = document.getElementById('apply-filter');
-  const resetBtn = document.getElementById('reset-filter');
-  const catContainer = document.getElementById('filter-categories');
-
-  if (!filterBtn || !modal) return;
-
-  // Open Modal
-  filterBtn.addEventListener('click', () => {
-    // Populate Categories (Dynamic)
-    if (catContainer) {
-      const allCats = [...new Set(products.map(p => getCategory(p)))];
-      catContainer.innerHTML = allCats.map(cat => `
-                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                    <input type="checkbox" value="${cat}" ${filterState.categories.includes(cat) ? 'checked' : ''}>
-                    ${cat}
-                </label>
-            `).join('');
-    }
-
-    // Sync Sort Radio
-    const radios = document.getElementsByName('sortPrice');
-    radios.forEach(r => {
-      r.checked = (r.value === filterState.sortPrice);
-    });
-
-    // Sync Stock Checkbox
-    const stockChk = document.getElementById('filter-stock');
-    if (stockChk) stockChk.checked = filterState.stockOnly;
-
-    modal.classList.add('active');
-  });
-
-  // Close Modal
-  const closeModal = () => modal.classList.remove('active');
-  if (closeBtn) closeBtn.addEventListener('click', closeModal);
-
-  // Apply
-  if (applyBtn) {
-    applyBtn.addEventListener('click', () => {
-      // Read Sort
-      const selectedSort = document.querySelector('input[name="sortPrice"]:checked');
-      filterState.sortPrice = selectedSort ? selectedSort.value : 'default';
-
-      // Read Categories
-      const checkedCats = Array.from(catContainer.querySelectorAll('input:checked')).map(cb => cb.value);
-      filterState.categories = checkedCats;
-
-      // Read Stock
-      const stockChk = document.getElementById('filter-stock');
-      filterState.stockOnly = stockChk ? stockChk.checked : false;
-
-      renderProductGrid();
-      closeModal();
-    });
-  }
-
-  // Reset
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      filterState = {
-        sortPrice: 'default',
-        categories: [],
-        stockOnly: false
-      };
-      renderProductGrid();
-      closeModal();
-    });
-  }
-}
-
-initFilters();
-
-// Context: Category Page Logic
-const categoryGrid = document.getElementById('category-grid');
-const selectedCatTitle = document.getElementById('selected-cat-title');
-
-if (categoryGrid) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const catParam = urlParams.get('cat');
-
-  if (catParam) {
-    if (selectedCatTitle) selectedCatTitle.textContent = catParam;
-
-    const catProducts = products.filter(p => {
-      // Exact match on category field or loose match for legacy/imported data
-      return (p.category === catParam) || (p.category && p.category.includes(catParam));
-    });
-
-    if (catProducts.length === 0) {
-      categoryGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 2rem;">No products found in this category.</p>';
-    } else {
-      categoryGrid.innerHTML = ''; // Clear previous
-      catProducts.forEach(product => {
-        const card = document.createElement('div');
-        card.className = 'product-card';
-
-        let imageContent = product.image
-          ? `<img src="${product.image}" style="width: 100%; height: 100%; object-fit: cover;">`
-          : `<div style="width: 100%; height: 100%; background-color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; font-weight: bold;">${product.id}</div>`;
-
-        const rawPrice = getPrice(product.price);
-
-        card.innerHTML = `
-                  <div class="product-image-placeholder view-details-btn" data-id="${product.id}" style="cursor: pointer;">
-                     ${imageContent}
-                  </div>
-                  <div class="product-info">
-                    <h3>${product.name}</h3>
-                    <div class="product-row">
-                        <span class="product-price">₹${rawPrice}</span>
-                        <button class="add-cart-pill" data-id="${product.id}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                            ADD CART
-                        </button>
-                    </div>
-                  </div>
-                `;
-        categoryGrid.appendChild(card);
-      });
-
-      // Event Delegation for this grid
-      categoryGrid.addEventListener('click', (e) => {
-        // Handle View Details
-        if (e.target.classList.contains('view-details-btn') || e.target.closest('.view-details-btn')) {
-          const target = e.target.classList.contains('view-details-btn') ? e.target : e.target.closest('.view-details-btn');
-          const id = target.dataset.id;
-          window.location.href = `product_details.html?id=${id}`;
-        }
-        // Handle Add to Cart (since we added buttons here too)
-        if (e.target.closest('.add-cart-pill')) {
-          const btn = e.target.closest('.add-cart-pill');
-          const id = btn.dataset.id;
-          addToCart(id);
-        }
-      });
-    }
-  } else {
-    // If no category selected, maybe show all or hide
-    if (selectedCatTitle) selectedCatTitle.textContent = 'SELECT A CATEGORY ABOVE';
-    categoryGrid.innerHTML = '';
-  }
-}
-// Context: Render Product Details (Detail Page)
-const detailContainer = document.getElementById('product-detail-container');
-if (detailContainer) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const productId = urlParams.get('id');
-  const product = products.find(p => p.id == productId);
-
-  if (product) {
-    // Prepare Images
-    let images = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
-    // Fallback for placeholder
-    if (images.length === 0) images = [null];
-
-    let currentSlide = 0;
-
-    // HTML Structure
-    detailContainer.innerHTML = `
-        <div style="display: flex; flex-direction: column; min-height: 80vh;">
-            <div class="detail-image-container" id="detail-slider">
-                <!-- Images injected here -->
-                <div class="pagination-dots" id="dots-container"></div>
-            </div>
-            
-            <div class="detail-title">${product.name}</div>
-            <div class="detail-desc">${product.description || 'No description available'}</div>
-            <div class="detail-price">₹${product.price}</div>
-            
-            <div class="action-buttons">
-                <button id="add-to-cart-detail-btn" class="btn-add-cart-large">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                    ADD TO CART
-                </button>
-                <button id="buy-now-btn" class="btn-buy-now-large">BUY NOW</button>
-            </div>
-        </div>
-        `;
-
-    // Render Slider
-    const sliderContainer = document.getElementById('detail-slider');
-    const dotsContainer = document.getElementById('dots-container');
-
-    // Function to render slide
-    function showSlide(index) {
-      currentSlide = index;
-      // Clear existing images (except dots which are absolute) - actually easier to rebuild
-      // Let's just set the background or img tag of the container
-      // Better: Create img element
-      const existingImg = sliderContainer.querySelector('img') || sliderContainer.querySelector('.detail-img-placeholder');
-      if (existingImg) existingImg.remove();
-
-      const imgSrc = images[currentSlide];
-      if (imgSrc) {
-        const img = document.createElement('img');
-        img.src = imgSrc;
-        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 16px;';
-        sliderContainer.insertBefore(img, dotsContainer);
-      } else {
-        const placeholder = document.createElement('div');
-        placeholder.className = 'detail-img-placeholder';
-        placeholder.textContent = product.id;
-        placeholder.style.cssText = 'width: 100%; height: 100%; background: #ccc; display:flex; align-items:center; justify-content:center; border-radius:16px;';
-        sliderContainer.insertBefore(placeholder, dotsContainer);
-      }
-
-      // Update Dots
-      dotsContainer.innerHTML = '';
-      if (images.length > 1) {
-        images.forEach((_, idx) => {
-          const dot = document.createElement('div');
-          dot.className = `dot ${idx === currentSlide ? 'active' : ''}`;
-          dot.onclick = () => showSlide(idx);
-          dotsContainer.appendChild(dot);
-        });
-      }
-    }
-
-    // Init Slide
-    showSlide(0);
-
-    // Events
-    document.getElementById('add-to-cart-detail-btn').addEventListener('click', () => {
-      addToCart(product.id);
-    });
-
-    document.getElementById('buy-now-btn').addEventListener('click', () => {
-      addToCart(product.id);
-      window.location.href = 'checkout.html';
-    });
-
-  } else {
-    detailContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">Product not found.</p>';
-  }
-}
-// Footer Injection
-function injectFooter() {
-  // Don't inject on Admin Panel if not desired, but user didn't specify exclusion. 
-  // Let's assume global footer for now.
-
-  if (document.querySelector('footer')) return; // Prevent duplicate
-  if (window.location.pathname.includes('admin.html')) return; // No footer on admin
-
-  const footer = document.createElement('footer');
-  footer.innerHTML = `
-    <div class="footer-links">
-      <a href="#" class="footer-link">terms & condition</a>
-      <a href="#" class="footer-link">contact no.</a>
-      <a href="#" class="footer-link">location by maps</a>
-    </div>
-    <div class="social-icons">
-      <a href="#" class="social-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-      </a>
-      <a href="#" class="social-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-      </a>
-      <a href="#" class="social-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-      </a>
-    </div>
-    <div class="copyright">
-      Maa Handloom. All rights reserved.
-    </div>
-  `;
-  document.body.appendChild(footer);
-}
-
-// Initialize Cart
-// Cart State
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-function saveCart() {
-  localStorage.setItem('cart', JSON.stringify(cart));
 }
 
 function addToCart(productId) {
-  const product = products.find(p => p.id == productId); // Use == for loose comparison as IDs might be string/number
-  if (!product) return;
+  console.log('[CART] Add:', productId);
+  const product = products.find(p => p.id == productId);
+  if (!product) return alert('Product not found');
+  if (product.qty <= 0) return alert('Out of stock');
 
-  // Check stock
-  if (product.qty <= 0) {
-    alert('Out of stock!');
-    return;
-  }
-
-  const existing = cart.find(item => item.id == productId);
+  const existing = cart.find(i => i.id == productId);
   if (existing) {
-    if (existing.qty < product.qty) {
-      existing.qty++;
-    } else {
-      alert('Max quantity reached');
-    }
+    if (existing.qty < product.qty) existing.qty++;
+    else alert('Max stock reached');
   } else {
     cart.push({ ...product, qty: 1, maxQty: product.qty });
   }
   saveCart();
-  renderCartItems();
-  openCart();
-}
-
-function openCart() {
-  const cartSidebar = document.getElementById('cart-sidebar');
-  const overlay = document.getElementById('overlay');
-  if (cartSidebar) cartSidebar.classList.add('active');
-  if (overlay) overlay.classList.add('active');
-}
-
-function injectCart() {
-  if (document.getElementById('cart-sidebar')) return;
-
-  const cartHTML = `
-    <aside id="cart-sidebar" class="cart-sidebar">
-      <div class="cart-header">
-        <button id="cart-close-btn" class="cart-close-btn">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-        CART
-        <svg style="margin-left: 0.5rem;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-      </div>
-      <div class="cart-items">
-        <!-- Rendered via JS -->
-      </div>
-      <div class="cart-footer" style="padding: 1rem; border-top: 1px solid #ddd;">
-        <button id="checkout-btn" class="btn-buy-now-large" style="width: 100%;">CHECKOUT</button>
-      </div>
-    </aside>
-  `;
-  document.body.insertAdjacentHTML('beforeend', cartHTML);
-
+  // Refresh Cart UI if open or injected
   renderCartItems();
 
-  // Logic
-  const cartBtn = document.getElementById('cart-btn');
+  // Auto open cart if sidebar exists
   const cartSidebar = document.getElementById('cart-sidebar');
   const overlay = document.getElementById('overlay');
-  const checkoutBtn = document.getElementById('checkout-btn');
-
-  if (cartBtn) {
-    cartBtn.addEventListener('click', () => {
-      cartSidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
-      const sidebar = document.getElementById('sidebar');
-      if (sidebar.classList.contains('active')) {
-        sidebar.classList.remove('active');
-      }
-    });
-  }
-
-  const cartCloseBtn = document.getElementById('cart-close-btn');
-  if (cartCloseBtn) {
-    cartCloseBtn.addEventListener('click', closeAllMenus);
-  }
-
-  // Close on overlay click listener is handled globally
-  overlay.addEventListener('click', () => {
-    if (cartSidebar.classList.contains('active')) {
-      cartSidebar.classList.remove('active');
-    }
-  });
-
-  // Checkout Listener
-  if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', checkout);
+  if (cartSidebar && overlay) {
+    cartSidebar.classList.add('active');
+    overlay.classList.add('active');
+  } else if (!window.location.pathname.includes('checkout.html')) {
+    // If cart sidebar not injected yet, maybe we interpret this as "Go to cart"
+    // But usually we inject cart.
   }
 }
 
@@ -513,344 +210,446 @@ function renderCartItems() {
     return;
   }
 
-  const html = cart.map(item => {
-    // Look up latest product info
-    const product = products.find(p => p.id == item.id);
-
-    // If product deleted, we might want to flag it or handle gracefully. 
-    // For now, use item data as fallback but prefer product data.
-    const displayItem = product || item;
-
-    // Ensure we handle image display correctly (base64 or placeholder)
-    let imgHtml = displayItem.image
-      ? `<img src="${displayItem.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`
-      : `<span class="text-red" style="font-size: 0.5rem; display: flex; justify-content: center; align-items: center; height: 100%;">#IMAGE</span>`;
-
-    // Check if we have valid price/stock info, otherwise fallback (fixes UNDEFINED)
-    const price = displayItem.price || '0';
-    const stock = displayItem.qty !== undefined ? displayItem.qty : (displayItem.maxQty || 100);
+  container.innerHTML = cart.map(item => {
+    const product = products.find(p => p.id == item.id) || item;
+    const price = getPrice(product);
+    const img = product.image ? `<img src="${product.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : `<div style="background:#eee;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;">NO IMG</div>`;
 
     return `
-          <div class="cart-item">
-            <div class="cart-item-img">
-                ${imgHtml}
-            </div>
+        <div class="cart-item">
+            <div class="cart-item-img">${img}</div>
             <div class="cart-item-details">
-              <span class="cart-item-title">${displayItem.name}</span>
-              <span class="cart-item-text">PRICE : ${price}</span>
-              <span class="cart-item-text">STOCK : ${stock}</span>
+                <span class="cart-item-title">${product.name}</span>
+                <span class="cart-item-text">₹${price}</span>
             </div>
             <div class="qty-selector">
-              <button class="qty-btn" onclick="updateCartQty('${item.id}', -1)">-</button>
-              <span>${item.qty}</span>
-              <button class="qty-btn" onclick="updateCartQty('${item.id}', 1)">+</button>
+                <button class="qty-btn" onclick="updateCartQty('${item.id}', -1)">-</button>
+                <span>${item.qty}</span>
+                <button class="qty-btn" onclick="updateCartQty('${item.id}', 1)">+</button>
             </div>
-          </div>
-        `;
+        </div>`;
   }).join('');
-
-  container.innerHTML = html;
 }
 
-// Global scope for onclick handlers in HTML string
 window.updateCartQty = function (id, change) {
-  const item = cart.find(i => i.id == id); // Use == for loose comparison
+  const item = cart.find(i => i.id == id);
   if (!item) return;
-
   const product = products.find(p => p.id == id) || item;
 
   const newQty = item.qty + change;
-  if (newQty < 1) {
-    // Remove item
-    cart = cart.filter(i => i.id != id); // Use != for loose comparison
-  } else if (newQty > (product.qty || 100)) {
-    // Use product.qty for check
-    alert('Max stock reached');
-    return;
-  } else {
-    item.qty = newQty;
-  }
+  if (newQty < 1) cart = cart.filter(i => i.id != id);
+  else if (newQty > (product.qty || 100)) return alert('Max limit');
+  else item.qty = newQty;
+
   saveCart();
   renderCartItems();
+
+  // Live update total if on checkout page
+  if (window.location.pathname.includes('checkout.html')) initCheckoutPage();
 };
 
+function injectCart() {
+  if (document.getElementById('cart-sidebar')) return;
+  const html = `
+    <aside id="cart-sidebar" class="cart-sidebar">
+      <div class="cart-header">
+        CART
+        <button id="cart-close-btn" style="position:absolute;right:1rem;background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;">&times;</button>
+      </div>
+      <div class="cart-items"></div>
+      <div class="cart-footer" style="padding:1rem;border-top:1px solid #ddd;">
+        <button id="checkout-btn" class="btn-buy-now-large" style="width:100%;">CHECKOUT</button>
+      </div>
+    </aside>
+    `;
+  document.body.insertAdjacentHTML('beforeend', html);
+  renderCartItems();
 
-function checkout() {
-  if (cart.length === 0) {
-    alert('Your cart is empty.');
-    return;
-  }
-  // Redirect to checkout page
-  window.location.href = 'checkout.html';
+  // Bind Events
+  const closeBtn = document.getElementById('cart-close-btn');
+  if (closeBtn) closeBtn.onclick = () => {
+    document.getElementById('cart-sidebar').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+  };
+
+  const checkoutBtn = document.getElementById('checkout-btn');
+  if (checkoutBtn) checkoutBtn.onclick = () => window.location.href = 'checkout.html';
+
+  const cartIconBtn = document.getElementById('cart-btn');
+  if (cartIconBtn) cartIconBtn.onclick = () => {
+    document.getElementById('cart-sidebar').classList.add('active');
+    document.getElementById('overlay').classList.add('active');
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('active');
+  };
 }
 
-// Checkout Page Logic
-// Checkout Page Logic
-function initCheckoutPage() {
-  try {
-    const list = document.getElementById('checkout-items');
-    const form = document.getElementById('checkout-form');
 
-    if (!list) console.error('Element #checkout-items not found');
-    if (!form) console.error('Element #checkout-form not found');
+// =========================================
+// 3. PAGE SPECIFIC LOGIC
+// =========================================
 
-    if (list && form) {
-      if (!Array.isArray(cart) || cart.length === 0) {
-        // Only alert if we think we should be here (user might just be browsing)
-        // But for checkout page, empty cart redirect is valid
-        alert('Cart is empty. Redirecting to home.');
-        window.location.href = 'index.html';
-        return;
-      }
+// --- HOME PAGE & CATEGORY (Grid) ---
+function initProductGrid(filters = {}) {
+  const grid = document.getElementById('product-grid');
+  const catContainer = document.getElementById('category-grid'); // Category page
+  const targetGrid = grid || catContainer;
 
-      // Helper to parse price
-      const getPrice = (p) => {
-        if (p === undefined || p === null) return 0;
-        if (typeof p === 'number') return p;
-        const str = String(p).replace(/[^0-9.]/g, '');
-        const val = parseFloat(str);
-        if (isNaN(val)) return 0;
-        return val;
-      };
+  if (!targetGrid) return;
 
-      // Render Items
-      console.log('Cart Items for Checkout:', cart);
+  // Filter Logic
+  let displayProducts = [...products];
 
-      const total = cart.reduce((acc, item) => {
-        const price = getPrice(item.price);
-        return acc + (price * item.qty);
-      }, 0);
-
-      list.innerHTML = cart.map(item => {
-        const product = products.find(p => p.id == item.id) || item;
-        const itemPrice = getPrice(product.price);
-        return `
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div style="display:flex; gap:0.5rem; align-items:center;">
-                      <span style="font-weight:bold; font-size:0.8rem; background:#fff; padding:2px 6px; border-radius:4px;">x${item.qty}</span>
-                      <span style="font-size:0.9rem; font-weight:600;">${product.name || 'Unknown Item'}</span>
-                  </div>
-                  <span style="font-weight:bold;">₹${itemPrice * item.qty}</span>
-              </div>
-          `;
-      }).join('');
-
-      console.log('Calculated Total:', total);
-
-      const totalEl = document.getElementById('checkout-total');
-      const btnTotalEl = document.getElementById('btn-total');
-
-      if (totalEl) totalEl.textContent = '₹' + total;
-      else console.error('Element #checkout-total not found');
-
-      if (btnTotalEl) btnTotalEl.textContent = '₹' + total;
-      else console.error('Element #btn-total not found');
-
-      // Handle Submit Logic (Simulation)
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        // Safe Element Access
-        const safeVal = (id) => document.getElementById(id) ? document.getElementById(id).value : '';
-
-        const name = safeVal('name');
-        const phone = safeVal('phone');
-        const address = safeVal('address');
-        const city = safeVal('city');
-        const zip = safeVal('zip');
-
-        // Show Processing Overlay
-        const processingOverlay = document.getElementById('processing-overlay');
-        if (processingOverlay) processingOverlay.style.display = 'flex';
-
-        // Simulate Payment Delay
-        setTimeout(() => {
-          // Create Order
-          const orderId = 'ORD-' + String(Date.now()).slice(-6);
-          const order = {
-            id: orderId,
-            name: name,
-            phone: phone,
-            address: `${address}, ${city} - ${zip}`,
-            qty: cart.reduce((acc, item) => acc + item.qty, 0),
-            total: total,
-            status: 'new',
-            items: cart
-          };
-
-          // Save Order
-          let currentOrders = [];
-          try {
-            currentOrders = JSON.parse(localStorage.getItem('orders')) || [];
-          } catch (err) {
-            currentOrders = [];
-          }
-          currentOrders.unshift(order);
-          localStorage.setItem('orders', JSON.stringify(currentOrders));
-
-          // Update Stock
-          let allProducts = [];
-          try {
-            allProducts = JSON.parse(localStorage.getItem('products')) || [];
-          } catch (err) {
-            console.error("Product parse error during checkout", err);
-          }
-
-          cart.forEach(cartItem => {
-            const productIndex = allProducts.findIndex(p => p.id == cartItem.id);
-            if (productIndex !== -1) {
-              allProducts[productIndex].qty -= cartItem.qty;
-              if (allProducts[productIndex].qty < 0) allProducts[productIndex].qty = 0;
-            }
-          });
-          localStorage.setItem('products', JSON.stringify(allProducts));
-
-          // Clear Cart
-          cart = [];
-          saveCart();
-
-          // Check for success modal elements
-          if (processingOverlay) processingOverlay.style.display = 'none';
-
-          const successModal = document.getElementById('success-modal');
-          const orderIdSpan = document.getElementById('success-order-id');
-          const continueBtn = document.getElementById('success-continue-btn');
-
-          if (successModal) {
-            if (orderIdSpan) orderIdSpan.textContent = orderId;
-            successModal.style.display = 'flex';
-
-            if (continueBtn) {
-              continueBtn.onclick = () => {
-                window.location.href = 'index.html';
-              }
-            }
-          } else {
-            // Fallback if modal missing
-            alert(`Order Placed Successfully! Order ID: ${orderId}`);
-            window.location.href = 'index.html';
-          }
-
-        }, 3000); // 3 Seconds Delay
-      });
-    } else {
-      alert("CRITICAL ERROR: Checkout form elements not found. Please refresh.");
+  // If Category Page
+  if (catContainer) {
+    const urlParams = new URLSearchParams(window.location.search);
+    let catParam = urlParams.get('cat');
+    const path = window.location.pathname;
+    if (!catParam) {
+      if (path.includes('surat-silk.html')) catParam = 'Surat Silk Special';
+      else if (path.includes('handloom-special.html')) catParam = 'Handloom Special';
+      else if (path.includes('shantipuri-special.html')) catParam = 'Shantipuri Special';
+      else if (path.includes('cotton-varieties.html')) catParam = 'Cotton Varieties';
     }
-  } catch (error) {
-    alert("Javascript Error in Checkout: " + error.message);
-    console.error(error);
+
+    if (catParam) {
+      displayProducts = displayProducts.filter(p => p.category === catParam || (p.category && p.category.includes(catParam)));
+      const titleEl = document.getElementById('selected-cat-title');
+      if (titleEl) titleEl.textContent = catParam;
+    }
   }
+
+  // Custom Filters (Modal)
+  if (filters.stock) {
+    displayProducts = displayProducts.filter(p => p.qty > 0);
+  }
+  if (filters.categories && filters.categories.length > 0) {
+    displayProducts = displayProducts.filter(p => filters.categories.includes(p.category));
+  }
+  if (filters.sort) {
+    if (filters.sort === 'lowHigh') displayProducts.sort((a, b) => getPrice(a) - getPrice(b));
+    else if (filters.sort === 'highLow') displayProducts.sort((a, b) => getPrice(b) - getPrice(a));
+  }
+
+  // Render
+  if (displayProducts.length === 0) {
+    targetGrid.innerHTML = '<p style="text-align:center;grid-column:1/-1;">No products found.</p>';
+  } else {
+    targetGrid.innerHTML = displayProducts.map(p => {
+      const price = getPrice(p);
+      const img = p.image ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="background:#ef4444;height:100%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:2rem;">${p.id}</div>`;
+      return `
+             <div class="product-card">
+                <div class="product-image-placeholder view-details-btn" data-id="${p.id}" style="cursor:pointer;flex:1;">
+                    ${img}
+                </div>
+                <div class="product-info">
+                    <h3>${p.name}</h3>
+                    <div class="product-row">
+                        <span class="product-price">₹${price}</span>
+                        <button class="add-cart-pill" data-id="${p.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            ADD CART
+                        </button>
+                    </div>
+                </div>
+             </div>
+             `;
+    }).join('');
+  }
+
+  // Events delegation
+  targetGrid.addEventListener('click', (e) => {
+    const detailsBtn = e.target.closest('.view-details-btn');
+    if (detailsBtn) window.location.href = `product_details.html?id=${detailsBtn.dataset.id}`;
+
+    const addBtn = e.target.closest('.add-cart-pill');
+    if (addBtn) addToCart(addBtn.dataset.id);
+  });
 }
 
-// Tracking Page Logic (New Premium Timeline)
-function initTrackingPage() {
-  const trackBtn = document.getElementById('track-btn');
-  const input = document.getElementById('track-id');
-  const resultContainer = document.getElementById('tracking-result');
 
-  if (!trackBtn || !input) return;
+// --- PRODUCT DETAILS PAGE ---
+function initProductDetails() {
+  const container = document.getElementById('product-detail-container');
+  if (!container) return;
 
-  // Helper to Set Timeline State
-  function setTimeline(stepIndex) {
-    // Steps 1 to 4
-    const steps = [1, 2, 3, 4];
+  // 1. Loading Skeleton
+  container.innerHTML = `
+        <div class="product-detail-wrapper" style="padding:0;">
+             <div class="skeleton sk-img"></div>
+             <div class="detail-content">
+                  <div class="skeleton sk-text sk-short"></div>
+                  <div class="skeleton sk-title"></div>
+                  <div class="skeleton sk-text sk-med"></div>
+                  <div class="skeleton sk-text sk-long" style="height:100px;margin-top:1rem;"></div>
+             </div>
+        </div>`;
 
-    steps.forEach(i => {
-      const stepEl = document.getElementById(`step-${i}`);
-      const lineEl = document.getElementById(`line-${i - 1}`); // Line before step
+  const urlParams = new URLSearchParams(window.location.search);
+  const id = urlParams.get('id');
 
-      if (i <= stepIndex) {
-        stepEl.classList.add('active');
-        if (lineEl) lineEl.classList.add('active');
-      } else {
-        stepEl.classList.remove('active');
-        if (lineEl) lineEl.classList.remove('active');
-      }
-    });
-  }
+  // Simulate Fetch
+  setTimeout(() => {
+    const product = products.find(p => p.id == id);
 
-  function searchOrder() {
-    const id = input.value.trim();
-    if (!id) {
-      alert('Please enter an Order ID');
+    if (!product) {
+      container.innerHTML = '<p style="text-align:center;padding:2rem;">Product not found.</p>';
       return;
     }
 
-    const orders = JSON.parse(localStorage.getItem('orders')) || [];
-    const order = orders.find(o => o.id === id);
+    const images = (product.images && product.images.length) ? product.images : [product.image || null];
+    const price = getPrice(product);
+    const mrp = Math.round(price * 1.4);
 
-    if (order) {
-      // Show Result
-      resultContainer.style.display = 'block';
+    container.innerHTML = `
+            <div class="product-detail-wrapper">
+                <div class="detail-gallery" id="detail-slider" style="position:relative;">
+                    <div class="pagination-dots" id="dots-container" style="position:absolute;bottom:1rem;width:100%;display:flex;justify-content:center;gap:0.5rem;z-index:10;"></div>
+                    <button onclick="history.back()" style="position:absolute;top:1rem;left:1rem;z-index:10;background:rgba(255,255,255,0.8);border:none;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                    <!-- Img injected via JS -->
+                </div>
 
-      // Fill Details
-      document.getElementById('display-order-id').textContent = '#' + order.id;
-      document.getElementById('display-status').textContent = order.status;
-      document.getElementById('display-total').textContent = '₹' + order.total;
-      // Use current date if not saved, mostly for demo
-      document.getElementById('display-date').textContent = new Date().toLocaleDateString();
+                <div class="detail-content">
+                    <span class="detail-category-tag">${product.category || 'Handloom'}</span>
+                    <h1 class="detail-title">${product.name}</h1>
+                    <div class="detail-price-row">
+                        <span class="detail-price">₹${price}</span>
+                        <span class="detail-price-mrp">₹${mrp}</span>
+                        <span class="detail-discount">40% OFF</span>
+                    </div>
+                    <p class="detail-desc">${product.description || 'Authentic handloom product.'}</p>
+                    
+                     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2rem;">
+                         <div style="background:#F5F5F5;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;">
+                            <span>Authentic</span>
+                         </div>
+                         <div style="background:#F5F5F5;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;">
+                            <span>Fast Delivery</span>
+                         </div>
+                    </div>
+                </div>
 
-      // Map Status to Steps
-      // new -> 1 (Placed)
-      // in-process -> 2 (Processing)
-      // completed -> 4 (Delivered) - Skipping 3 for simple mapping or map randomly
+                <div class="sticky-action-bar">
+                    <button id="detail-add-btn" class="btn-action btn-secondary">Add to Cart</button>
+                    <button id="detail-buy-btn" class="btn-action btn-primary">Buy Now</button>
+                </div>
+            </div>
+        `;
 
-      let step = 1;
-      if (order.status === 'in-process') step = 2;
-      if (order.status === 'completed') step = 4;
+    // Image Slider logic
+    const slider = document.getElementById('detail-slider');
+    const dotsCtx = document.getElementById('dots-container');
+    let curSlide = 0;
 
-      // Animate Steps
-      // Reset first
-      setTimeline(0);
+    function renderSlide(idx) {
+      curSlide = idx;
+      const existing = slider.querySelector('img.slide-img');
+      if (existing) existing.remove();
 
-      // Progressive Animation
-      let current = 1;
-      const interval = setInterval(() => {
-        setTimeline(current);
-        if (current >= step) clearInterval(interval);
-        current++;
-      }, 500); // 0.5s delay per step for effect
+      const src = images[idx];
+      if (src) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'slide-img';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:1;';
+        slider.prepend(img);
+      } else {
+        const d = document.createElement('div');
+        d.className = 'slide-img';
+        d.style.cssText = 'width:100%;height:100%;background:#ddd;position:absolute;top:0;left:0;z-index:1;display:flex;align-items:center;justify-content:center;';
+        d.textContent = 'NO IMAGE';
+        slider.prepend(d);
+      }
 
-    } else {
-      alert('Order not found. Please check the ID.');
-      resultContainer.style.display = 'none';
+      dotsCtx.innerHTML = images.map((_, i) => `
+                <div style="width:8px;height:8px;border-radius:50%;background:${i === curSlide ? '#2C1B10' : '#ccc'};cursor:pointer;"></div>
+            `).join('');
+
+      Array.from(dotsCtx.children).forEach((d, i) => d.onclick = () => renderSlide(i));
     }
-  }
+    renderSlide(0);
 
-  trackBtn.addEventListener('click', searchOrder);
+    // Bind Events
+    document.getElementById('detail-add-btn').onclick = () => {
+      addToCart(product.id);
+      updateCartBadge();
+      const btn = document.getElementById('detail-add-btn');
+      btn.textContent = 'Added!';
+      btn.style.background = '#22c55e';
+      setTimeout(() => {
+        btn.textContent = 'Add to Cart';
+        btn.style.background = '';
+      }, 2000);
+    };
+    document.getElementById('detail-buy-btn').onclick = () => {
+      addToCart(product.id);
+      window.location.href = 'checkout.html';
+    };
+
+  }, 800);
 }
 
-// Init
-if (window.location.pathname.includes('track-order.html')) {
-  initTrackingPage();
-}
-// Update Add to Cart Buttons to use new logic
-document.addEventListener('click', (e) => {
-  // Main Grid Add Button (looks for .add-cart-pill)
-  if (e.target.closest('.add-cart-pill')) {
-    const btn = e.target.closest('.add-cart-pill');
-    const id = btn.dataset.id;
-    addToCart(id);
+
+// --- CHECKOUT PAGE ---
+function initCheckout() {
+  console.log('Init Checkout Page');
+  const list = document.getElementById('checkout-items');
+  const form = document.getElementById('checkout-form');
+  if (!list) console.error('Checkout items list not found');
+  if (!form) console.error('Checkout form not found');
+
+  if (!list || !form) return;
+
+  function renderCheckoutList() {
+    if (cart.length === 0) {
+      list.innerHTML = '<p>Cart is Empty</p>';
+      const tEl = document.getElementById('checkout-total');
+      const btEl = document.getElementById('btn-total');
+      if (tEl) tEl.textContent = '0';
+      if (btEl) btEl.textContent = '0';
+      return;
+    }
+
+    const total = cart.reduce((acc, item) => {
+      const product = products.find(p => p.id == item.id) || item;
+      return acc + (getPrice(product) * item.qty);
+    }, 0);
+
+    list.innerHTML = cart.map(item => {
+      const product = products.find(p => p.id == item.id) || item;
+      return `
+             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:0.5rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                   <span style="background:#eee;padding:2px 6px;border-radius:4px;font-size:0.8rem;font-weight:bold;">x${item.qty}</span>
+                   <span>${product.name}</span>
+                </div>
+                <strong>₹${getPrice(product) * item.qty}</strong>
+             </div>
+             `;
+    }).join('');
+
+    const totalRow = document.getElementById('checkout-total');
+    const btnTotal = document.getElementById('btn-total');
+    if (totalRow) totalRow.textContent = '₹' + total;
+    if (btnTotal) btnTotal.textContent = '₹' + total;
   }
-  // Detail Page Add Button
-  if (e.target.id === 'add-to-cart-detail-btn') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('id');
-    addToCart(id);
+
+  renderCheckoutList();
+
+  form.onsubmit = (e) => {
+    console.log('Checkout Form Submitting...');
+    e.preventDefault();
+
+    if (cart.length === 0) {
+      alert('Cart is empty');
+      return;
+    }
+
+    // Deduct Stock Logic Check
+    const stockIssues = cart.filter(item => {
+      const product = products.find(p => p.id === item.id);
+      return !product || product.qty < item.qty;
+    });
+
+    if (stockIssues.length > 0) {
+      alert('Some items are out of stock. Please update cart.');
+      return;
+    }
+
+    const overlay = document.getElementById('processing-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    // Prepare Order Data
+    const name = document.getElementById('name') ? document.getElementById('name').value : 'Guest';
+    // Add other fields if needed, simplified for now
+
+    setTimeout(() => {
+      // 1. Create Order
+      const orderId = 'ORD-' + Date.now().toString().slice(-6);
+      const newOrder = {
+        id: orderId,
+        name: name,
+        items: [...cart], // clone
+        total: cart.reduce((acc, item) => {
+          const product = products.find(p => p.id == item.id) || item;
+          return acc + (getPrice(product) * item.qty);
+        }, 0),
+        status: 'new',
+        date: new Date().toISOString()
+      };
+
+      // 2. Save Order
+      let currentOrders = JSON.parse(localStorage.getItem('orders')) || [];
+      currentOrders.unshift(newOrder);
+      localStorage.setItem('orders', JSON.stringify(currentOrders));
+
+      // 3. Update Stock
+      cart.forEach(item => {
+        const pIdx = products.findIndex(p => p.id === item.id);
+        if (pIdx !== -1) {
+          products[pIdx].qty -= item.qty;
+        }
+      });
+      localStorage.setItem('products', JSON.stringify(products));
+
+      // 4. Clear Cart
+      cart = [];
+      saveCart();
+
+      console.log('Order Placed:', orderId);
+
+      if (overlay) overlay.style.display = 'none';
+
+      const successModal = document.getElementById('success-modal');
+      if (successModal) {
+        const idSpan = document.getElementById('success-order-id');
+        if (idSpan) idSpan.textContent = orderId;
+        successModal.style.display = 'flex';
+        successModal.style.opacity = '1'; // Force visibility
+
+        // Copy Logic
+        const copyBtn = document.getElementById('btn-copy-id');
+        if (copyBtn) {
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(orderId).then(() => {
+              alert('Order ID Copied!');
+            }).catch(err => {
+              console.error('Failed to copy', err);
+              // Fallback
+              prompt("Copy Order ID:", orderId);
+            });
+          };
+        }
+
+        const contBtn = document.getElementById('success-continue-btn');
+        if (contBtn) contBtn.onclick = () => window.location.href = 'index.html';
+      } else {
+        alert('Order Placed: ' + orderId);
+        window.location.href = 'index.html';
+      }
+    }, 2000);
+  };
+}
+
+
+// --- MAIN ENTRY POINT ---
+document.addEventListener('DOMContentLoaded', () => {
+  initData();
+  initGlobalUI();
+
+  const path = window.location.pathname;
+
+  if (path.includes('product_details.html')) {
+    initProductDetails();
+  } else if (path.includes('checkout.html')) {
+    initCheckout();
+  } else if (path.includes('index.html') || path.includes('categories') || path.includes('special') || path.includes('varieties') || path === '/') {
+    initProductGrid();
+    injectCart(); // Only inject cart on browsing pages
+  } else {
+    injectCart();
   }
 });
-
-// Run Init
-if (window.location.pathname.includes('checkout.html')) {
-  initCheckoutPage();
-} else {
-  injectCart();
-}
-
-// Update existing products to have default stock if missing
-products = products.map(p => ({
-  ...p,
-  qty: p.qty !== undefined ? p.qty : 100
-}));
-localStorage.setItem('products', JSON.stringify(products));
-

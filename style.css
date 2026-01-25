@@ -714,16 +714,17 @@ footer {
 
 /* Detail Page Specifics */
 .detail-image-container {
-  width: 100%;
-  height: 350px;
+  width: calc(100% - 2rem);
+  height: 320px;
   background-color: #a3a3a3;
-  border-radius: 16px;
+  border-radius: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
-  border: 1px solid black;
-  margin-bottom: 1.5rem;
+  border: 2px solid black;
+  margin: 1rem;
+  margin-bottom: 1rem;
 }
 
 /* Modern Modal Styles */
@@ -802,13 +803,222 @@ footer {
   right: 1rem;
   background: none;
   border: none;
-  font-size: 2rem;
-  line-height: 1;
+  font-size: 1.5rem;
   cursor: pointer;
-  color: #000;
+}
+
+/* --- PRODUCT DETAIL PREMIUM DESIGN --- */
+
+.product-detail-wrapper {
+  padding-bottom: 80px;
+  /* Space for sticky footer */
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detail-gallery {
+  width: 100%;
+  height: 400px;
+  background: #f5f5f5;
+  border-radius: 0 0 24px 24px;
+  /* Rounded bottom corners only for mobile feeling */
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.detail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.detail-content {
+  padding: 1.5rem;
+}
+
+.detail-category-tag {
+  display: inline-block;
+  background: #F4EBD0;
+  /* Soft gold/beige */
+  color: #8B6F47;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.detail-title {
+  font-family: 'Inter', sans-serif;
+  /* Modern clean font */
+  font-size: 1.75rem;
+  font-weight: 800;
+  /* Extra bold */
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.detail-price-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2C1B10;
+}
+
+.detail-price-mrp {
+  font-size: 1rem;
+  color: #999;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.detail-discount {
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.detail-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 2rem;
+}
+
+.sticky-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 1rem;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  gap: 1rem;
+  z-index: 900;
+}
+
+.btn-action {
+  flex: 1;
+  height: 50px;
+  border-radius: 25px;
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.btn-action:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: #F4F4F4;
+  color: #333;
+}
+
+.btn-primary {
+  background: #2C1B10;
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(44, 27, 16, 0.3);
+}
+
+/* Skeleton Loader */
+.skeleton {
+  background: #e0e0e0;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 100%;
+  /* Start outside */
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -150%;
+  }
+
+  100% {
+    left: 150%;
+  }
+}
+
+.sk-img {
+  width: 100%;
+  height: 400px;
+  border-radius: 0 0 24px 24px;
+}
+
+.sk-text {
+  height: 20px;
+  margin-bottom: 1rem;
+}
+
+.sk-short {
+  width: 40%;
+}
+
+.sk-med {
+  width: 70%;
+}
+
+.sk-long {
+  width: 100%;
+}
+
+.sk-title {
+  height: 40px;
+  margin-bottom: 1rem;
 }
 
 /* Checkout Page */
+.checkout-page-body {
+  padding-top: 0 !important;
+}
+
 .checkout-container {
   padding: 1.5rem;
   max-width: 600px;
@@ -900,62 +1110,80 @@ footer {
 }
 
 .detail-title {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 800;
-  /* Extra bold */
   text-transform: uppercase;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   color: black;
+  padding: 0 1rem;
 }
 
 .detail-desc {
   font-size: 1rem;
   color: black;
-  margin-bottom: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0 1rem;
+  font-weight: 400;
 }
 
 .detail-price {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 900;
   color: black;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
+  padding: 0 1rem;
 }
 
 .action-buttons {
   display: flex;
   gap: 1rem;
   margin-top: auto;
+  padding: 0 1rem;
+  padding-bottom: 2rem;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-white);
 }
 
 .btn-add-cart-large {
   flex: 1;
   background-color: white;
   color: black;
-  border: 2px solid black;
-  border-radius: 12px;
-  /* Smooth rounded corners */
-  padding: 1rem;
-  font-weight: bold;
+  border: 3px solid black;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  font-weight: 700;
   text-transform: uppercase;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-add-cart-large:hover {
+  background-color: #f5f5f5;
 }
 
 .btn-buy-now-large {
   flex: 1;
   background-color: #2C1B10;
   color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 1rem;
-  font-weight: bold;
+  border: 3px solid #2C1B10;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-buy-now-large:hover {
+  background-color: #1a0f08;
+  border-color: #1a0f08;
 }
 
 /* Auth Modal */
@@ -1281,6 +1509,36 @@ footer {
   color: white;
   transform: scale(1.1);
   box-shadow: 0 0 0 5px rgba(44, 27, 16, 0.1);
+}
+
+.nav-icon {
+  background: none;
+  border: none;
+  color: var(--color-white);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  /* For badge positioning */
+}
+
+.cart-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: var(--color-red-text);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .timeline-icon {
