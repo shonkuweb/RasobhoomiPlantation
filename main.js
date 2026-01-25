@@ -664,9 +664,11 @@ function initCheckout() {
     const overlay = document.getElementById('processing-overlay');
     if (overlay) overlay.style.display = 'flex';
 
-    // Prepare Order Data
     const name = document.getElementById('name') ? document.getElementById('name').value : 'Guest';
-    // Add other fields if needed, simplified for now
+    const phone = document.getElementById('phone') ? document.getElementById('phone').value : '';
+    const address = document.getElementById('address') ? document.getElementById('address').value : '';
+    const city = document.getElementById('city') ? document.getElementById('city').value : '';
+    const zip = document.getElementById('zip') ? document.getElementById('zip').value : '';
 
     setTimeout(() => {
       // 1. Create Order
@@ -674,6 +676,10 @@ function initCheckout() {
       const newOrder = {
         id: orderId,
         name: name,
+        phone: phone,
+        address: address,
+        city: city,
+        zip: zip,
         items: [...cart], // clone
         total: cart.reduce((acc, item) => {
           const product = products.find(p => p.id == item.id) || item;

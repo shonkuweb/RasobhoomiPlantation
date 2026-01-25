@@ -145,6 +145,71 @@
         </div>
     </main>
 
+    <!-- Order Details Modal -->
+    <div id="order-modal" class="overlay modal-overlay"
+        style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-modern" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+            <button id="close-order-modal" class="close-modal-modern">&times;</button>
+            <h2 style="margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">ORDER DETAILS</h2>
+
+            <div style="font-size: 0.9rem; margin-bottom: 1.5rem;">
+                <!-- Header Info -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong>Order ID:</strong>
+                    <span id="view-order-id" style="color: var(--color-primary); font-weight: bold;"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong>Date:</strong>
+                    <span id="view-order-date"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <strong>Status:</strong>
+                    <span id="view-order-status" style="text-transform: uppercase; font-weight: bold;"></span>
+                </div>
+
+                <!-- Customer Info -->
+                <div style="background: #f9f9f9; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem;">
+                    <p style="margin-bottom: 0.3rem;"><strong style="display:inline-block; width: 70px;">Name:</strong>
+                        <span id="view-customer-name"></span></p>
+                    <p style="margin-bottom: 0.3rem;"><strong style="display:inline-block; width: 70px;">Phone:</strong>
+                        <span id="view-customer-phone"></span></p>
+                    <p style="margin-bottom: 0.3rem;"><strong
+                            style="display:inline-block; width: 70px;">Location:</strong> <span
+                            id="view-customer-location"></span></p>
+                </div>
+
+                <!-- Products -->
+                <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Items</h3>
+                <div id="view-order-items" style="border-top: 1px solid #ddd; margin-bottom: 1rem;">
+                    <!-- Items populated by JS -->
+                </div>
+
+                <!-- Total -->
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold; border-top: 2px solid #333; padding-top: 0.5rem;">
+                    <span>Total:</span>
+                    <span id="view-order-total"></span>
+                </div>
+            </div>
+
+            <!-- Action: Change Status -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: #666;">UPDATE
+                    STATUS</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="modal-status-select" class="modern-input"
+                        style="flex: 1; margin: 0; background: white;">
+                        <option value="new">NEW</option>
+                        <option value="in-process">IN-PROCESS</option>
+                        <option value="completed">COMPLETED</option>
+                    </select>
+                    <button id="modal-update-status-btn" class="btn-save-modern"
+                        style="width: auto; margin: 0; padding: 0 1.5rem;">UPDATE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
 
 
@@ -163,7 +228,8 @@
             <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">Please enter your passcode to continue</p>
             <form id="auth-form" style="width: 100%;">
                 <div class="input-group">
-                    <input type="password" id="auth-pass" placeholder="Enter Passcode" required>
+                    <input type="password" id="auth-pass" placeholder="Enter Passcode" required inputmode="numeric"
+                        pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                 </div>
                 <button type="submit" class="auth-btn">UNLOCK ACCESS</button>
             </form>

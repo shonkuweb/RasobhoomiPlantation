@@ -61,6 +61,10 @@ const productForm = document.getElementById('product-form');
 const modalTitle = document.getElementById('modal-title');
 const productImagesInput = document.getElementById('product-images');
 const imagePreviewContainer = document.getElementById('image-preview-container');
+// Order Modal Elements
+const orderModal = document.getElementById('order-modal');
+const closeOrderModalBtn = document.getElementById('close-order-modal');
+const modalUpdateStatusBtn = document.getElementById('modal-update-status-btn');
 
 // State for image handling
 let currentImages = [];
@@ -135,7 +139,7 @@ function setupListeners() {
         });
     }
 
-    // Event Delegation for List Actions (Edit, Delete, Cycle Status)
+    // Event Delegation for List Actions (Edit, Delete, View Order)
     listContainer.addEventListener('click', (e) => {
         const target = e.target;
 
@@ -149,12 +153,25 @@ function setupListeners() {
             const id = target.closest('.edit-btn').dataset.id;
             openModal(id);
         }
-        // Cycle Order Status
-        else if (target.closest('.status-btn')) { // Reusing edit/view btn for status
-            const id = target.closest('.status-btn').dataset.id;
-            cycleOrderStatus(id);
+        // View Order Details
+        else if (target.closest('.view-order-btn')) {
+            const id = target.closest('.view-order-btn').dataset.id;
+            openOrderModal(id);
         }
     });
+
+    // Order Modal Listeners
+    if (closeOrderModalBtn) {
+        closeOrderModalBtn.addEventListener('click', closeOrderModal);
+    }
+    if (orderModal) {
+        orderModal.addEventListener('click', (e) => {
+            if (e.target === orderModal) closeOrderModal();
+        });
+    }
+    if (modalUpdateStatusBtn) {
+        modalUpdateStatusBtn.addEventListener('click', updateOrderStatus);
+    }
 }
 
 // Confirmation helper
@@ -338,15 +355,91 @@ function saveProduct() {
     render();
 }
 
-function cycleOrderStatus(id) {
+// Order Modal Functions
+function openOrderModal(id) {
     const order = orders.find(o => o.id === id);
-    if (order) {
-        const statuses = ['new', 'in-process', 'completed'];
-        let nextIndex = (statuses.indexOf(order.status) + 1) % statuses.length;
-        // If filters are active, item might disappear from view. That's expected behavior.
-        order.status = statuses[nextIndex];
+    if (!order) return;
+
+    editingId = id; // reuse this variable to track which order is being viewed
+    orderModal.style.display = 'flex';
+    orderModal.classList.add('active');
+
+    // Populate Data
+    document.getElementById('view-order-id').textContent = order.id;
+    document.getElementById('view-order-date').textContent = new Date(order.date).toLocaleString();
+
+    // Status Badge Color
+    const statusEl = document.getElementById('view-order-status');
+    statusEl.textContent = order.status;
+    statusEl.className = ''; // reset
+    if (order.status === 'new') statusEl.style.color = 'blue';
+    else if (order.status === 'in-process') statusEl.style.color = 'orange';
+    else if (order.status === 'completed') statusEl.style.color = 'green';
+
+    // Customer Info (Handle missing data gracefully)
+    document.getElementById('view-customer-name').textContent = order.name || 'Guest';
+    document.getElementById('view-customer-phone').textContent = order.phone || 'N/A';
+    const loc = [order.address, order.city, order.zip].filter(Boolean).join(', ');
+    document.getElementById('view-customer-location').textContent = loc || 'N/A';
+
+    // Items
+    const itemsContainer = document.getElementById('view-order-items');
+    itemsContainer.innerHTML = (order.items || []).map(item => {
+        // Find product details if possible, or use item data
+        // item usually has name, qty, id. 
+        // We can look up current product description if needed, but item snapshot is safer if product changed.
+        // For "About product", we'll check the product list for match.
+        const productRef = products.find(p => p.id == item.id);
+        const description = productRef ? (productRef.description || '') : '';
+        const category = productRef ? (productRef.category || '') : '';
+
+        return `
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; background: white; padding: 0.5rem; border-radius: 4px; border: 1px solid #eee;">
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; font-size: 0.9rem;">${item.name}</div>
+                    <div style="font-size: 0.8rem; color: #666;">Qty: ${item.qty}</div>
+                    ${category ? `<div style="font-size: 0.75rem; color: #888;">${category}</div>` : ''}
+                    ${description ? `<div style="font-size: 0.75rem; color: #555; margin-top:0.2rem;">${description.substring(0, 50)}${description.length > 50 ? '...' : ''}</div>` : ''}
+                </div>
+                <div style="font-weight: bold;">₹${item.price || 0}</div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('view-order-total').textContent = '₹' + (order.total || 0);
+
+    // Set Status Dropdown
+    document.getElementById('modal-status-select').value = order.status;
+}
+
+function closeOrderModal() {
+    orderModal.style.display = 'none';
+    orderModal.classList.remove('active');
+    editingId = null;
+}
+
+function updateOrderStatus() {
+    if (!editingId) return;
+
+    const newStatus = document.getElementById('modal-status-select').value;
+    const orderIndex = orders.findIndex(o => o.id === editingId);
+
+    if (orderIndex !== -1) {
+        orders[orderIndex].status = newStatus;
         saveOrdersToStorage();
+
+        // Reflect change in modal UI instantly?
+        const statusEl = document.getElementById('view-order-status');
+        statusEl.textContent = newStatus;
+        if (newStatus === 'new') statusEl.style.color = 'blue';
+        else if (newStatus === 'in-process') statusEl.style.color = 'orange';
+        else if (newStatus === 'completed') statusEl.style.color = 'green';
+
+        // Also re-render background list (it might disappear if filtered)
         render();
+
+        // Optional: Alert or small feedback
+        alert('Order status updated');
     }
 }
 
@@ -386,11 +479,10 @@ function render() {
             </div>
         `;
         } else {
-            // Loop through statuses logic for button text? Or just "Change Status"
-            // Let's make the View button "Cycle Status" for now as 'CRUD' on orders usually implies status updates.
+            // View Button replacement
             actionButtons = `
             <div class="view-btn-container">
-                <button class="view-btn status-btn" data-id="${item.id}">NEXT STATUS</button>
+                <button class="view-btn view-order-btn" data-id="${item.id}" style="background: #2C1B10;">VIEW</button>
             </div>
          `;
         }
