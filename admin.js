@@ -44,14 +44,17 @@ let products = JSON.parse(localStorage.getItem('products')) || [];
 let orders = JSON.parse(localStorage.getItem('orders')) || [];
 
 let currentView = 'products';
-let currentFilter = 'new';
+let currentOrderFilter = 'new';
+let currentProductFilter = 'all';
 let editingId = null;
 
 // Elements
 const viewToggle = document.getElementById('view-toggle');
 const productsBtn = document.getElementById('btn-products');
 const ordersBtn = document.getElementById('btn-orders');
-const filterSection = document.getElementById('admin-filters');
+// Filter Containers
+const productFilterSection = document.getElementById('product-filters');
+const orderFilterSection = document.getElementById('order-filters');
 const listContainer = document.getElementById('admin-list');
 const filterBtns = document.querySelectorAll('.filter-chip');
 const addProductBtn = document.getElementById('add-product-btn');
@@ -89,7 +92,15 @@ function setupListeners() {
 
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            currentFilter = e.target.dataset.filter;
+            const filterType = e.target.dataset.type; // 'product' or 'order'
+            const filterValue = e.target.dataset.filter;
+
+            if (filterType === 'product') {
+                currentProductFilter = filterValue;
+            } else {
+                currentOrderFilter = filterValue;
+            }
+
             updateFilterUI();
             render();
         });
@@ -124,20 +135,7 @@ function setupListeners() {
         console.error('Product images input not found');
     }
 
-    // Reset DB
-    const resetBtn = document.getElementById('reset-db-btn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            showConfirm('WARNING: This will delete ALL products and orders permanently. Are you sure?', () => {
-                products = [];
-                orders = [];
-                saveProductsToStorage();
-                saveOrdersToStorage();
-                render();
-                alert('All data deleted (Products & Orders).');
-            });
-        });
-    }
+
 
     // Event Delegation for List Actions (Edit, Delete, View Order)
     listContainer.addEventListener('click', (e) => {
@@ -253,11 +251,13 @@ function switchView(view) {
     if (view === 'products') {
         productsBtn.classList.add('active');
         ordersBtn.classList.remove('active');
-        filterSection.style.display = 'none';
+        productFilterSection.style.display = 'flex';
+        orderFilterSection.style.display = 'none';
     } else {
         productsBtn.classList.remove('active');
         ordersBtn.classList.add('active');
-        filterSection.style.display = 'flex';
+        productFilterSection.style.display = 'none';
+        orderFilterSection.style.display = 'flex';
     }
 
     checkAddButtonVisibility();
@@ -270,7 +270,12 @@ function checkAddButtonVisibility() {
 
 function updateFilterUI() {
     filterBtns.forEach(btn => {
-        if (btn.dataset.filter === currentFilter) {
+        const type = btn.dataset.type;
+        const val = btn.dataset.filter;
+
+        // Check if this button matches the current state for its type
+        if ((type === 'product' && val === currentProductFilter) ||
+            (type === 'order' && val === currentOrderFilter)) {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
@@ -374,6 +379,7 @@ function openOrderModal(id) {
     statusEl.className = ''; // reset
     if (order.status === 'new') statusEl.style.color = 'blue';
     else if (order.status === 'in-process') statusEl.style.color = 'orange';
+    else if (order.status === 'in-transit') statusEl.style.color = '#8B4513'; // SaddleBrown
     else if (order.status === 'completed') statusEl.style.color = 'green';
 
     // Customer Info (Handle missing data gracefully)
@@ -394,14 +400,13 @@ function openOrderModal(id) {
         const category = productRef ? (productRef.category || '') : '';
 
         return `
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; background: white; padding: 0.5rem; border-radius: 4px; border: 1px solid #eee;">
+            <div class="order-item-row">
                 <div style="flex: 1;">
-                    <div style="font-weight: bold; font-size: 0.9rem;">${item.name}</div>
-                    <div style="font-size: 0.8rem; color: #666;">Qty: ${item.qty}</div>
-                    ${category ? `<div style="font-size: 0.75rem; color: #888;">${category}</div>` : ''}
-                    ${description ? `<div style="font-size: 0.75rem; color: #555; margin-top:0.2rem;">${description.substring(0, 50)}${description.length > 50 ? '...' : ''}</div>` : ''}
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #2C1B10; margin-bottom: 0.2rem;">${item.name}</div>
+                    <div style="font-size: 0.8rem; color: #666; font-weight: 600;">Qty: ${item.qty}</div>
+                    ${category ? `<div style="font-size: 0.75rem; color: #888; text-transform:uppercase; letter-spacing:0.5px; margin-top:0.2rem;">${category}</div>` : ''}
                 </div>
-                <div style="font-weight: bold;">₹${item.price || 0}</div>
+                <div style="font-weight: 800; color: #2C1B10;">₹${item.price || 0}</div>
             </div>
         `;
     }).join('');
@@ -433,6 +438,7 @@ function updateOrderStatus() {
         statusEl.textContent = newStatus;
         if (newStatus === 'new') statusEl.style.color = 'blue';
         else if (newStatus === 'in-process') statusEl.style.color = 'orange';
+        else if (newStatus === 'in-transit') statusEl.style.color = '#8B4513';
         else if (newStatus === 'completed') statusEl.style.color = 'green';
 
         // Also re-render background list (it might disappear if filtered)
@@ -460,10 +466,20 @@ function render() {
     let itemsToRender = [];
 
     if (currentView === 'products') {
-        itemsToRender = products;
+        if (currentProductFilter === 'all') {
+            itemsToRender = [...products];
+        } else if (currentProductFilter === 'out-of-stock') {
+            itemsToRender = products.filter(p => Number(p.qty) <= 0);
+        } else {
+            // Category Match (Partial include match to be safe)
+            itemsToRender = products.filter(p => (p.category || '').includes(currentProductFilter));
+        }
     } else {
-        itemsToRender = orders.filter(o => o.status === currentFilter);
+        itemsToRender = orders.filter(o => o.status === currentOrderFilter);
     }
+
+    // LIFO (Last In First Out) - Newest First
+    itemsToRender.reverse();
 
     itemsToRender.forEach(item => {
         const el = document.createElement('div');

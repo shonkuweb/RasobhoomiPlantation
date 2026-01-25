@@ -176,12 +176,18 @@ function addToCart(productId) {
   console.log('[CART] Add:', productId);
   const product = products.find(p => p.id == productId);
   if (!product) return alert('Product not found');
-  if (product.qty <= 0) return alert('Out of stock');
+  if (product.qty <= 0) {
+    alert('Out of stock');
+    return false;
+  }
 
   const existing = cart.find(i => i.id == productId);
   if (existing) {
     if (existing.qty < product.qty) existing.qty++;
-    else alert('Max stock reached');
+    else {
+      alert('Max stock reached');
+      return false;
+    }
   } else {
     cart.push({ ...product, qty: 1, maxQty: product.qty });
   }
@@ -196,10 +202,8 @@ function addToCart(productId) {
   if (cartSidebar && overlay) {
     cartSidebar.classList.add('active');
     overlay.classList.add('active');
-  } else if (!window.location.pathname.includes('checkout.html')) {
-    // If cart sidebar not injected yet, maybe we interpret this as "Go to cart"
-    // But usually we inject cart.
   }
+  return true;
 }
 
 function renderCartItems() {
@@ -214,7 +218,7 @@ function renderCartItems() {
   container.innerHTML = cart.map(item => {
     const product = products.find(p => p.id == item.id) || item;
     const price = getPrice(product);
-    const img = product.image ? `<img src="${product.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : `<div style="background:#eee;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;">NO IMG</div>`;
+    const img = product.image ? `<img src="${product.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : `<div style="background:#f3f4f6;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.5rem;text-align:center;color:#666;border-radius:8px;">NO IMAGE</div>`;
 
     return `
         <div class="cart-item">
@@ -368,10 +372,10 @@ function renderSearchResults(items, container) {
     card.className = 'search-card';
     card.onclick = () => window.location.href = `product_details.html?id=${p.id}`;
 
-    const img = (p.images && p.images.length) ? p.images[0] : (p.image || 'https://via.placeholder.com/200');
+    const img = (p.images && p.images.length) ? `<img src="${p.images[0]}" class="search-card-img" alt="${p.name}">` : (p.image ? `<img src="${p.image}" class="search-card-img" alt="${p.name}">` : `<div class="search-card-img" style="background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:#666;text-align:center;">NO IMAGE</div>`);
 
     card.innerHTML = `
-      <img src="${img}" class="search-card-img" alt="${p.name}">
+      ${img}
       <div class="search-card-info">
         <div class="search-card-title">${p.name}</div>
         <div class="search-card-price">₹${getPrice(p)}</div>
@@ -436,7 +440,7 @@ function initProductGrid(filters = {}) {
   } else {
     targetGrid.innerHTML = displayProducts.map(p => {
       const price = getPrice(p);
-      const img = p.image ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="background:#ef4444;height:100%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:2rem;">${p.id}</div>`;
+      const img = p.image ? `<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="background:#f3f4f6;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-weight:bold;font-size:0.8rem;text-align:center;padding:0.5rem;">NO IMAGE FOUND</div>`;
       return `
              <div class="product-card">
                 <div class="product-image-placeholder view-details-btn" data-id="${p.id}" style="cursor:pointer;flex:1;">
@@ -446,10 +450,14 @@ function initProductGrid(filters = {}) {
                     <h3>${p.name}</h3>
                     <div class="product-row">
                         <span class="product-price">₹${price}</span>
+                        ${p.qty > 0 ? `
                         <button class="add-cart-pill" data-id="${p.id}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                             ADD CART
-                        </button>
+                        </button>` : `
+                        <button class="add-cart-pill" style="background:#ccc; cursor:not-allowed;" disabled>
+                            OUT OF STOCK
+                        </button>`}
                     </div>
                 </div>
              </div>
@@ -521,22 +529,22 @@ function initProductDetails() {
                     </div>
                     <p class="detail-desc">${product.description || 'Authentic handloom product.'}</p>
                     
-                     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2rem;">
-                         <div style="background:#F5F5F5;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;">
-                            <span>Authentic</span>
-                         </div>
-                         <div style="background:#F5F5F5;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;display:flex;align-items:center;gap:0.5rem;">
-                            <span>Fast Delivery</span>
-                         </div>
-                    </div>
+
                 </div>
 
                 <div class="sticky-action-bar">
-                    <button id="detail-add-btn" class="btn-action btn-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                        ADD TO CART
-                    </button>
-                    <button id="detail-buy-btn" class="btn-action btn-primary">Buy Now</button>
+                    ${product.qty <= 0 ? `
+                        <button id="detail-add-btn" class="btn-action btn-secondary" style="background:#e5e7eb; color:#9ca3af; cursor:not-allowed;" disabled>
+                            OUT OF STOCK
+                        </button>
+                        <button id="detail-buy-btn" class="btn-action btn-primary" style="background:#9ca3af; cursor:not-allowed;" disabled>OUT OF STOCK</button>
+                    ` : `
+                        <button id="detail-add-btn" class="btn-action btn-secondary">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                             ADD TO CART
+                        </button>
+                        <button id="detail-buy-btn" class="btn-action btn-primary">Buy Now</button>
+                    `}
                 </div>
             </div>
         `;
@@ -575,21 +583,31 @@ function initProductDetails() {
     renderSlide(0);
 
     // Bind Events
-    document.getElementById('detail-add-btn').onclick = () => {
-      addToCart(product.id);
-      updateCartBadge();
-      const btn = document.getElementById('detail-add-btn');
-      btn.textContent = 'Added!';
-      btn.style.background = '#22c55e';
-      setTimeout(() => {
-        btn.textContent = 'Add to Cart';
-        btn.style.background = '';
-      }, 2000);
-    };
-    document.getElementById('detail-buy-btn').onclick = () => {
-      addToCart(product.id);
-      window.location.href = 'checkout.html';
-    };
+    // Bind Events
+    const addBtn = document.getElementById('detail-add-btn');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        if (addToCart(product.id)) {
+          updateCartBadge();
+          const btn = document.getElementById('detail-add-btn');
+          btn.textContent = 'Added!';
+          btn.style.background = '#22c55e';
+          setTimeout(() => {
+            btn.textContent = 'Add to Cart';
+            btn.style.background = '';
+          }, 2000);
+        }
+      };
+    }
+
+    const buyBtn = document.getElementById('detail-buy-btn');
+    if (buyBtn) {
+      buyBtn.onclick = () => {
+        if (addToCart(product.id)) {
+          window.location.href = 'checkout.html';
+        }
+      };
+    }
 
   }, 800);
 }
@@ -781,11 +799,44 @@ function initTrackOrder() {
       document.getElementById(l).classList.remove('active');
     });
 
-    // Simple Status Logic (Mockup)
-    // For now, freshly placed orders are just "Placed" -> "Processing"
-    document.getElementById('step-1').classList.add('active');
-    document.getElementById('step-2').classList.add('active'); // Assume processing immediately
-    document.getElementById('line-1').classList.add('active');
+    // Dynamic Status Logic
+    const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
+    const lines = ['line-1', 'line-2', 'line-3'];
+
+    let activeIndex = 0;
+    let statusText = 'ORDER PLACED';
+
+    if (order.status === 'new') {
+      activeIndex = 0;
+      statusText = 'ORDER PLACED';
+      document.getElementById('display-status').style.background = 'blue';
+      document.getElementById('display-status').style.color = 'white';
+    } else if (order.status === 'in-process') {
+      activeIndex = 1;
+      statusText = 'PROCESSING';
+      document.getElementById('display-status').style.background = 'orange';
+      document.getElementById('display-status').style.color = 'white';
+    } else if (order.status === 'in-transit') {
+      activeIndex = 2;
+      statusText = 'IN TRANSIT';
+      document.getElementById('display-status').style.background = '#8B4513';
+      document.getElementById('display-status').style.color = 'white';
+    } else if (order.status === 'completed') {
+      activeIndex = 3;
+      statusText = 'DELIVERED';
+      document.getElementById('display-status').style.background = 'green';
+      document.getElementById('display-status').style.color = 'white';
+    }
+
+    document.getElementById('display-status').textContent = statusText;
+
+    // Activate Steps
+    for (let i = 0; i <= activeIndex; i++) {
+      document.getElementById(steps[i]).classList.add('active');
+      if (i < activeIndex) {
+        document.getElementById(lines[i]).classList.add('active');
+      }
+    }
   };
 }
 
