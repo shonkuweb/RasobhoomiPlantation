@@ -188,6 +188,7 @@ function addToCart(productId) {
   saveCart();
   // Refresh Cart UI if open or injected
   renderCartItems();
+  updateCartBadge(); // Ensure header badge updates immediately
 
   // Auto open cart if sidebar exists
   const cartSidebar = document.getElementById('cart-sidebar');
@@ -790,10 +791,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (path.includes('product_details.html')) {
     initProductDetails();
+    injectCart(); // Ensure cart sidebar exists
   } else if (path.includes('checkout.html')) {
     initCheckout();
   } else if (path.includes('track-order.html')) {
     initTrackOrder();
+    injectCart();
   } else if (path.includes('index.html') || path.includes('categories') || path.includes('special') || path.includes('varieties') || path.includes('silk') || path === '/') {
     initProductGrid();
     initSearch(); // Initialize Search on Home/Browsing pages

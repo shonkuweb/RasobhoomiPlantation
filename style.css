@@ -431,6 +431,8 @@ main {
   display: flex;
   justify-content: center;
   margin-bottom: 2rem;
+  margin-top: 2rem;
+  /* Added gap */
 }
 
 .toggle-wrapper {
