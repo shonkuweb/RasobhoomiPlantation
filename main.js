@@ -696,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCheckout();
   } else if (path.includes('track-order.html')) {
     initTrackOrder();
-  } else if (path.includes('index.html') || path.includes('categories') || path.includes('special') || path.includes('varieties') || path === '/') {
+  } else if (path.includes('index.html') || path.includes('categories') || path.includes('special') || path.includes('varieties') || path.includes('silk') || path === '/') {
     initProductGrid();
     injectCart(); // Only inject cart on browsing pages
   } else {
