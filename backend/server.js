@@ -64,6 +64,11 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Note: Vite build will put them in dist, but for dev or direct access:
 app.use(express.static(path.join(__dirname, '../pages')));
 
+// Explicitly route /admin to the legacy admin.html
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, '../pages/admin.html'));
+});
+
 
 // --- PAYMENT CONFIGURATION ---
 const PHONEPE_HOST_URL = process.env.PHONEPE_HOST_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
