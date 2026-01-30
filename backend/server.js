@@ -22,6 +22,7 @@ if (process.env.DB_TYPE === 'postgres') {
     const { default: sqliteDb } = await import('./database.js');
     db = sqliteDb;
 }
+console.log(`[INFO] Server starting with DB_TYPE: ${process.env.DB_TYPE || 'sqlite'}`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,12 +90,23 @@ function generatePhonePeChecksum(payloadBase64, endpoint) {
 // PRODUCTS
 app.get('/api/products', (req, res) => {
     db.all("SELECT * FROM products", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const products = rows.map(p => ({
-            ...p,
-            images: p.images ? JSON.parse(p.images) : []
-        }));
-        res.json(products);
+        if (err) {
+            console.error("Fetch Products Error:", err);
+            return res.status(500).json({ error: err.message });
+        }
+
+        try {
+            const products = rows.map(p => ({
+                ...p,
+                images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+            }));
+            console.log(`Fetched ${products.length} products`);
+            res.json(products);
+        } catch (parseErr) {
+            console.error("Product Parse Error:", parseErr);
+            console.error("Raw Rows:", rows);
+            res.status(500).json({ error: "Failed to parse product data" });
+        }
     });
 });
 
