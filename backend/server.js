@@ -347,7 +347,7 @@ app.post('/api/auth/login', (req, res) => {
         const token = jwt.sign(
             { role: 'admin', loginTime: Date.now() },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '2h' }
         );
         res.json({ success: true, token });
     } else {
