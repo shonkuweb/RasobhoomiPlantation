@@ -13,6 +13,7 @@ export const ShopProvider = ({ children }) => {
             return [];
         }
     });
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchProducts();

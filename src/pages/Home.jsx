@@ -5,36 +5,44 @@ import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 
 const Home = () => {
-    const { products } = useShop();
+    const { products, searchQuery } = useShop();
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [activeFilters, setActiveFilters] = useState({});
 
-    // Default show all
     useEffect(() => {
-        setFilteredProducts(products);
-    }, [products]);
-
-    const handleApplyFilter = (filters) => {
         let result = [...products];
 
-        // Stock
-        if (filters.stock) {
+        // 1. Search Query
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(query) ||
+                (p.description && p.description.toLowerCase().includes(query))
+            );
+        }
+
+        // 2. Active Filters
+        if (activeFilters.stock) {
             result = result.filter(p => p.qty > 0);
         }
 
-        // Categories
-        if (filters.categories && filters.categories.length > 0) {
-            result = result.filter(p => filters.categories.includes(p.category));
+        if (activeFilters.categories && activeFilters.categories.length > 0) {
+            result = result.filter(p => activeFilters.categories.includes(p.category));
         }
 
-        // Sort
-        if (filters.sort === 'lowHigh') {
+        if (activeFilters.sort === 'lowHigh') {
             result.sort((a, b) => a.price - b.price);
-        } else if (filters.sort === 'highLow') {
+        } else if (activeFilters.sort === 'highLow') {
             result.sort((a, b) => b.price - a.price);
         }
 
         setFilteredProducts(result);
+    }, [products, searchQuery, activeFilters]);
+
+    const handleApplyFilter = (filters) => {
+        setActiveFilters(filters);
+        setIsFilterOpen(false);
     };
 
     return (
