@@ -483,17 +483,24 @@ function closeModal() {
 }
 
 async function saveProduct() {
-    const name = document.getElementById('product-name').value;
-    const description = document.getElementById('product-desc').value;
-    const price = document.getElementById('product-price').value;
-    const category = document.getElementById('product-category').value;
-    const qty = document.getElementById('product-qty').value;
-    const image = currentImages.length > 0 ? currentImages[0] : '';
-    const images = currentImages;
-
-    const payload = { name, description, price, category, qty, image, images };
+    const saveBtn = document.querySelector('#product-form button[type="submit"]');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING...';
+    }
 
     try {
+        const name = document.getElementById('product-name').value;
+        const description = document.getElementById('product-desc').value;
+        const price = parseFloat(document.getElementById('product-price').value) || 0;
+        const category = document.getElementById('product-category').value;
+        const qty = parseInt(document.getElementById('product-qty').value) || 0;
+        const image = currentImages.length > 0 ? currentImages[0] : '';
+        const images = currentImages;
+
+        const payload = { name, description, price, category, qty, image, images };
+        console.log('Sending Payload:', payload);
+
         let res;
         if (editingId) {
             // Update
@@ -511,16 +518,25 @@ async function saveProduct() {
             });
         }
 
+        const data = await res.json();
+
         if (res.ok) {
+            console.log('Save Success:', data);
             closeModal();
             fetchData();
+            window.showToast('Product Saved Successfully!', 'success');
         } else {
-            const data = await res.json();
+            console.error('Save Failed:', data);
             window.showToast(data.error || 'Failed to save', 'error');
         }
     } catch (e) {
-        console.error(e);
-        window.showToast('Error saving product', 'error');
+        console.error('Save Exception:', e);
+        window.showToast('Error saving product: ' + e.message, 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'SAVE';
+        }
     }
 }
 
