@@ -32,6 +32,7 @@ async function checkAuth() {
 // State
 let products = [];
 let orders = [];
+let categories = [];
 
 // Helper function to get auth headers
 function getAuthHeaders() {
@@ -44,9 +45,10 @@ function getAuthHeaders() {
 
 async function fetchData() {
     try {
-        const [pRes, oRes] = await Promise.all([
+        const [pRes, oRes, cRes] = await Promise.all([
             fetch('/api/products'),
-            fetch('/api/orders')
+            fetch('/api/orders'),
+            fetch('/api/categories')
         ]);
 
         // Safe Parsing
@@ -60,6 +62,11 @@ async function fetchData() {
             console.error('Products API Error:', pData);
             window.showToast('Error loading Products', 'error');
             products = [];
+        }
+
+        if (cRes.ok) {
+            categories = await cRes.json();
+            renderCategories();
         }
 
         if (Array.isArray(oData)) {
@@ -410,6 +417,43 @@ function switchView(view) {
 
 function checkAddButtonVisibility() {
     addProductBtn.style.display = currentView === 'products' ? 'block' : 'none';
+}
+
+function renderCategories() {
+    // 1. Populate Filter Chips
+    const filterContainer = document.querySelector('#product-filters div[style*="flex-wrap"]');
+    if (filterContainer) {
+        // Keep the "ALL" button
+        const allBtn = filterContainer.querySelector('[data-filter="all"]');
+        filterContainer.innerHTML = '';
+        if (allBtn) filterContainer.appendChild(allBtn);
+
+        categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = `filter-chip ${currentProductFilter === cat.name ? 'active' : ''}`;
+            btn.dataset.type = 'product';
+            btn.dataset.filter = cat.name;
+            btn.textContent = cat.name.toUpperCase();
+            btn.addEventListener('click', (e) => {
+                currentProductFilter = cat.name;
+                updateFilterUI();
+                render();
+            });
+            filterContainer.appendChild(btn);
+        });
+    }
+
+    // 2. Populate Modal Dropdown
+    const categorySelect = document.getElementById('product-category');
+    if (categorySelect) {
+        categorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = cat.name;
+            categorySelect.appendChild(option);
+        });
+    }
 }
 
 function updateFilterUI() {

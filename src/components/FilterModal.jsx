@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { categories } from '../utils/categories';
 
 const FilterModal = ({ isOpen, onClose, onApply }) => {
     const [sort, setSort] = useState('default');
@@ -24,12 +25,8 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
         setStock(false);
     };
 
-    const categoryOptions = [
-        'Surat Silk Special',
-        'Handloom Special',
-        'Shantipuri Special',
-        'Cotton Varieties'
-    ];
+    const categoryOptions = categories.map(cat => cat.name);
+
 
     return (
         <div style={{

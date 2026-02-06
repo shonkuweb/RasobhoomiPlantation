@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "(node backend/server.js) & (vite)",
+    "dev:all": "concurrently \"node backend/server.js\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node backend/server.js"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "vite": "^7.2.4"
   },
   "dependencies": {

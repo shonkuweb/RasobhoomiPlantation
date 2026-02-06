@@ -9,33 +9,30 @@ const About = () => {
             </h1>
 
             <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                At <strong>Indrita Fabrics</strong>, we celebrate the timeless beauty of handloom and the artisans who bring it
-                to life. Rooted in tradition and driven by quality, our journey began with a simple vision — to preserve
-                India’s rich weaving heritage while making authentic handcrafted textiles accessible to today’s world.
+                At <strong>Rasobhoomi</strong>, we believe in the magic of nature and the peace it brings to our lives.
+                Rooted in a passion for greenery, our mission is to bring the finest collection of fruit plants, exotic trees,
+                and gardening essentials directly to your doorstep.
             </p>
 
             <p style={{ marginBottom: '1.5rem' }}>
-                Each piece in our collection is thoughtfully created using traditional techniques passed down through
-                generations. From the careful selection of yarns to the intricate weaving process, every product reflects
-                patience, skill, and artistry. No two creations are exactly alike — and that uniqueness is what makes
-                handloom truly special.
+                Each plant in our nursery is nurtured with care and expertise. From the sweetest <strong>Indian Mangoes</strong> to
+                rare <strong>Foreigner varieties</strong>, every sapling reflects our commitment to quality and growth.
+                We ensure that what you receive is healthy, vibrant, and ready to thrive in your garden.
             </p>
 
             <p style={{ marginBottom: '1.5rem' }}>
-                We work closely with skilled weavers and artisan communities, ensuring ethical practices, fair wages, and
-                sustainable craftsmanship. By choosing our products, you are not just purchasing a textile — you are
-                supporting livelihoods, culture, and centuries-old traditions.
+                We work closely with expert horticulturists to maintain a diverse and sustainable collection.
+                By choosing Rasobhoomi, you are not just buying a plant — you are inviting nature into your home,
+                supporting a greener planet, and cultivating a legacy of growth.
             </p>
 
             <p style={{ marginBottom: '1.5rem' }}>
-                Blending heritage with contemporary design, <strong>Indrita Fabrics</strong> offers creations that are
-                elegant,
-                durable, and meaningful. Whether it’s for everyday wear or special occasions, our handloom products are
-                designed to be cherished for years to come.
+                Whether you are a seasoned gardener or just starting your green journey, <strong>Rasobhoomi</strong> is here to grow with you.
+                Our plants are more than just products; they are living companions that bring joy and fresh air to your life.
             </p>
 
             <p style={{ textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold', marginTop: '3rem', color: '#2C1B10' }}>
-                Thank you for being part of our story and for supporting handmade.
+                Cultivating nature, delivering joy.
             </p>
         </main>
     );

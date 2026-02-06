@@ -16,3 +16,11 @@
     - [x] Fix `PUT` routes in `server.js`
     - [x] Update `Checkout.jsx` to show notification instead of mock payment
     - [x] Verify Admin CRUD operations
+- [x] Start Project
+    - [x] Install dependencies
+    - [x] Run `npm run dev:all`
+    - [x] Configure server port to 8080
+- [x] Fix Hero Image visibility
+- [x] Update Navbar Name to "Rasobhoomi"
+- [x] Update Website Color Scheme to #c1ff72 (Accents only)
+- [x] Update Hero Image to Rasobhoomi Nursery (Placeholder used)

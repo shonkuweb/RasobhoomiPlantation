@@ -3,12 +3,21 @@ import { useShop } from '../context/ShopContext';
 import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
+// import { categories } from '../utils/categories';
 
 const Home = () => {
     const { products, searchQuery } = useShop();
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState({});
+    const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        fetch('/api/categories')
+            .then(res => res.json())
+            .then(data => setCategories(data))
+            .catch(err => console.error("Failed to fetch categories", err));
+    }, []);
 
     useEffect(() => {
         let result = [...products];
@@ -51,9 +60,8 @@ const Home = () => {
             <section className="hero-carousel">
                 <div className="carousel-track">
                     {/* Assuming images are in public/hero/ */}
-                    <img src="/hero/slide1.jpg" alt="Handloom Heritage" className="hero-slide" />
-                    <img src="/hero/slide2.jpg" alt="Handloom Collection" className="hero-slide" />
-                    <img src="/hero/slide3.jpg" alt="Timeless Weaves" className="hero-slide" />
+                    {/* Assuming images are in public/hero/ */}
+                    <img src="/hero/rasobhoomi_nursery_hero.jpg" alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
                 </div>
             </section>
 
@@ -77,35 +85,17 @@ const Home = () => {
             </section>
 
             {/* Categories */}
+            {/* Categories */}
             <section className="category-list">
-                <Link to="/category/surat-silk" className="category-item" style={{ textDecoration: 'none' }}>
-                    <div className="cat-circle">
-                        <img src="/categories/surat-silk.jpg" alt="Surat Silk"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    </div>
-                    <span className="cat-label">Surat Silk<br />Special</span>
-                </Link>
-                <Link to="/category/handloom" className="category-item" style={{ textDecoration: 'none' }}>
-                    <div className="cat-circle">
-                        <img src="/categories/handloom-special.png" alt="Handloom Special"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    </div>
-                    <span className="cat-label">Handloom<br />Special</span>
-                </Link>
-                <Link to="/category/shantipuri" className="category-item" style={{ textDecoration: 'none' }}>
-                    <div className="cat-circle">
-                        <img src="/categories/shantipuri-special.png" alt="Shantipuri Special"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    </div>
-                    <span className="cat-label">Shantipuri<br />Special</span>
-                </Link>
-                <Link to="/category/cotton" className="category-item" style={{ textDecoration: 'none' }}>
-                    <div className="cat-circle">
-                        <img src="/categories/cotton-varieties.png" alt="Cotton Varieties"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    </div>
-                    <span className="cat-label">Cotton<br />Varieties</span>
-                </Link>
+                {categories.map(cat => (
+                    <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
+                        <div className="cat-circle">
+                            <img src={cat.image} alt={cat.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                        </div>
+                        <span className="cat-label">{cat.name}</span>
+                    </Link>
+                ))}
             </section>
 
             {/* Product Grid */}

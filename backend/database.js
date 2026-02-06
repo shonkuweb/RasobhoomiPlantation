@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import fs from 'fs';
+import { categories } from '../src/utils/categories.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dbPath = resolve(__dirname, 'ecommerce.db');
@@ -48,6 +49,31 @@ function initDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating orders table:", err);
+        });
+
+        // Categories Table
+        db.run(`CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE,
+            image TEXT
+        )`, (err) => {
+            if (err) {
+                console.error("Error creating categories table:", err);
+            } else {
+                // Seed if empty
+                db.get("SELECT count(*) as count FROM categories", (err, row) => {
+                    if (row && row.count === 0) {
+                        console.log("Seeding categories...");
+                        const insert = db.prepare("INSERT INTO categories (id, name, slug, image) VALUES (?, ?, ?, ?)");
+                        categories.forEach(cat => {
+                            insert.run(cat.id, cat.name, cat.slug, cat.image);
+                        });
+                        insert.finalize();
+                        console.log("Categories seeded.");
+                    }
+                });
+            }
         });
 
         console.log('Database tables initialized.');

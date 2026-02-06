@@ -176,6 +176,14 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
     });
 });
 
+// CATEGORIES
+app.get('/api/categories', (req, res) => {
+    db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
 // ORDERS & PAYMENT
 app.post('/api/orders', async (req, res) => {
     const { name, phone, address, city, zip, items, total, forcedMock } = req.body;

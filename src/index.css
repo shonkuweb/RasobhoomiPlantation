@@ -1,10 +1,15 @@
 :root {
   --color-black: #2C1B10;
   --color-white: #FFFAF0;
+  --color-primary: #c1ff72;
+  --color-text-on-primary: #2C1B10;
   --color-grey: #e5e7eb;
   --color-light-grey: #f3f4f6;
   --color-red-text: #ef4444;
-  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family: 'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   --header-height: clamp(60px, 8vh, 80px);
   --container-max-width: 1440px;
   --spacing-base: clamp(1rem, 2vw, 1.5rem);
@@ -55,8 +60,8 @@ main.home-main {
   left: 0;
   width: 100%;
   height: var(--header-height);
-  background-color: var(--color-black);
-  color: var(--color-white);
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -103,12 +108,12 @@ main.home-main {
 
 .sidebar-header {
   height: var(--header-height);
-  background-color: var(--color-black);
+  background-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 1rem;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   position: relative;
 }
 
@@ -121,7 +126,7 @@ main.home-main {
 .sidebar-close {
   background: none;
   border: none;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   font-size: 1.5rem;
   cursor: pointer;
   position: absolute;
@@ -153,12 +158,12 @@ main.home-main {
 /* Admin Panel Link */
 .admin-link-container {
   padding: 1rem;
-  background-color: var(--color-black);
+  background-color: var(--color-primary);
   margin-top: auto;
 }
 
 .admin-link {
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   text-decoration: none;
   display: flex;
   justify-content: center;
@@ -210,8 +215,8 @@ main.home-main {
   position: absolute;
   top: 0;
   left: 0;
-  opacity: 0;
-  animation: fadeLoop 15s infinite ease-in-out;
+  opacity: 1;
+  /* animation: fadeLoop 15s infinite ease-in-out; */
 }
 
 .hero-slide:nth-child(1) {
@@ -260,10 +265,10 @@ main.home-main {
 
 .filter-btn {
   width: 100%;
-  background-color: #2C1B10;
+  background-color: var(--color-primary);
   /* Force dark brown */
-  color: #fff;
-  border: none;
+  color: var(--color-text-on-primary);
+  border: 1px solid var(--color-text-on-primary);
   padding: 1rem;
   border-radius: 4px;
   /* Slightly rounded for modern feel, though wireframe is sharp */
@@ -279,9 +284,9 @@ main.home-main {
 /* Modern Add Product Button */
 .btn-add-product-modern {
   width: 100%;
-  background-color: #2C1B10;
-  color: #fff;
-  border: none;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border: 1px solid var(--color-text-on-primary);
   padding: 1rem;
   border-radius: 6px;
   font-weight: 800;
@@ -438,9 +443,9 @@ main.home-main {
 }
 
 .add-cart-pill {
-  background-color: #2C1B10;
-  color: white;
-  border: none;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border: 1px solid var(--color-text-on-primary);
   border-radius: 20px;
   padding: 0.25rem 0.75rem;
   font-size: 0.7rem;
@@ -596,9 +601,9 @@ main.home-main {
 }
 
 .view-btn {
-  background-color: var(--color-black);
-  color: var(--color-white);
-  border: none;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border: 1px solid var(--color-text-on-primary);
   padding: 0.5rem 1.5rem;
   border-radius: 20px;
   font-weight: bold;
@@ -609,46 +614,141 @@ main.home-main {
 
 /* Footer */
 footer {
-  background-color: var(--color-black);
-  color: var(--color-white);
-  padding: 3rem 1rem;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  padding: 4rem 1.5rem 2rem;
+  /* More top padding */
   margin-top: auto;
-  /* Push to bottom if content is short */
   width: 100%;
 }
 
-.footer-links {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  margin-bottom: 3rem;
 }
 
-.footer-link {
-  color: var(--color-white);
-  text-decoration: none;
-  font-weight: bold;
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.brand-col {
+  max-width: 300px;
+}
+
+.footer-logo {
+  font-family: 'Great Vibes', cursive;
+  font-size: 2.5rem;
+  color: var(--color-text-on-primary);
+  /* Ensure contrast */
+}
+
+.footer-tagline {
   font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.footer-heading {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-on-primary);
+}
+
+.footer-links-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.footer-link-item {
+  text-decoration: none;
+  color: var(--color-text-on-primary);
+  opacity: 0.8;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.footer-link-item:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .social-icons {
   display: flex;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 1rem;
+  justify-content: flex-start;
+  /* Left align in col */
 }
 
 .social-icon {
-  width: 32px;
-  height: 32px;
-  background-color: var(--color-white);
+  width: 40px;
+  height: 40px;
+  background-color: rgba(44, 27, 16, 0.08);
+  /* Dark subtle bg for contrast on light primary */
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: var(--color-black);
-  /* Icon color */
+  color: var(--color-text-on-primary);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.social-icon:hover {
+  background-color: rgba(44, 27, 16, 0.15);
+  transform: translateY(-3px);
+}
+
+.newsletter-mockup {
+  margin-top: 1rem;
+}
+
+.newsletter-text {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.newsletter-input-group {
+  display: flex;
+  background: rgba(44, 27, 16, 0.05);
+  border: 1px solid rgba(44, 27, 16, 0.1);
+  border-radius: 4px;
+  padding: 0.25rem;
+}
+
+.newsletter-input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-on-primary);
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.newsletter-input-group input::placeholder {
+  color: rgba(44, 27, 16, 0.5);
+}
+
+.newsletter-input-group button {
+  background: var(--color-text-on-primary);
+  color: white;
+  /* Text on dark button */
+  border: none;
+  width: 30px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 /* Cart Sidebar */
@@ -676,11 +776,11 @@ footer {
 
 .cart-header {
   height: var(--header-height);
-  background-color: var(--color-black);
+  background-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   font-weight: bold;
   font-size: 1.2rem;
   letter-spacing: 1px;
@@ -1539,15 +1639,16 @@ footer {
 
 /* Tracking Page Premium Redesign */
 .tracking-hero {
-  background: linear-gradient(135deg, #2C1B10 0%, #4A3b32 100%);
-  padding: 3rem 1.5rem;
+  background-color: var(--color-primary);
+  /* Use solid primary color */
   padding: 4rem 1.5rem;
   /* Standard padding */
   text-align: center;
-  color: white;
+  color: var(--color-text-on-primary);
+  /* Dark text */
   margin-bottom: 2rem;
   border-radius: 0 0 30px 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   /* Center Content */
   display: flex;
   flex-direction: column;
@@ -2399,5 +2500,115 @@ footer {
   .toast {
     min-width: auto;
     width: 100%;
+  }
+}
+
+/* Logo Styles */
+.logo-img {
+  height: 40px;
+  /* Adjust based on navbar height */
+  width: auto;
+  object-fit: contain;
+  display: block;
+  /* Removes bottom spacing/gap */
+}
+
+/* Adjust nav-logo container if necessary */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  /* Left section takes available space */
+  justify-content: flex-start;
+  /* Align left */
+  min-width: 0;
+  /* Prevent overflow */
+}
+
+
+/* Font Face for Britanny */
+@font-face {
+  font-family: 'Britanny';
+  src: url('/assets/fonts/BritannySignature.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.logo-text {
+  font-family: 'Britanny', 'Great Vibes', cursive;
+  font-size: 2rem;
+  color: var(--color-white);
+  margin-left: 0.5rem;
+  font-weight: normal;
+}
+
+/* Ensure Logo and Text align */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  /* Remove underline from link */
+}
+
+
+/* Brand Text (Left Aligned next to logo) */
+.navbar-brand-text {
+  font-family: 'Britanny', 'Great Vibes', cursive;
+  font-size: 2.5rem;
+  color: var(--color-white);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Right Actions Container */
+.nav-actions {
+  /* No flex: 1 needed if we just want it to take space, 
+       but keeping flex: 1 pushes it to right if logo is flex: 1? 
+       Actually, if logo is flex: 1, it grows. 
+       Let's stick to space-between on navbar. */
+  /* flex: 1;  <-- removing this so logo area can take natural width or space-between handles it */
+  display: flex;
+  justify-content: flex-end;
+  /* Align right */
+  gap: 1.5rem;
+  align-items: center;
+}
+
+/* Navbar Layout Update */
+.navbar {
+  /* ... existing props ... */
+  justify-content: space-between;
+  /* Ensures Logo (Left) and Actions (Right) are apart */
+}
+
+/* Logo Area */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  /* Remove flex: 1 so it doesn't push actions if not needed, 
+       but if we want actions strictly right, justify-content: space-between on parent is best. */
+}
+
+/* Adjustments for responsiveness */
+@media (max-width: 768px) {
+  .navbar-brand-text {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-img {
+    height: 30px;
+  }
+
+  .navbar-brand-text {
+    font-size: 1.5rem;
+  }
+
+  .nav-actions {
+    gap: 0.8rem !important;
   }
 }
