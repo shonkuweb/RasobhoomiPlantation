@@ -61,7 +61,7 @@ const Home = () => {
                 <div className="carousel-track">
                     {/* Assuming images are in public/hero/ */}
                     {/* Assuming images are in public/hero/ */}
-                    <img src="/hero/rasobhoomi_nursery_hero.jpg" alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
+                    <img src="/hero/Gemini_Generated_Image_ufccdnufccdnufcc.png" alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
                 </div>
             </section>
 

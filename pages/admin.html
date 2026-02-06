@@ -188,22 +188,131 @@
             background: #2C1B10;
             color: white;
         }
+
+        /* Admin Navbar Overrides */
+        .admin-navbar {
+            background-color: #2C1B10 !important;
+            /* Dark Brown */
+            color: #FFFAF0 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .admin-navbar .nav-icon {
+            color: #FFFAF0 !important;
+        }
+
+        .admin-navbar .nav-logo {
+            color: #FFFAF0 !important;
+        }
+
+        .admin-logo {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 800;
+            font-size: 1.2rem !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #FFFAF0;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #FFFAF0;
+        }
+
+        /* Filter Dropdown Styles */
+        .btn-icon-modern {
+            background: white;
+            border: 2px solid #2C1B10;
+            color: #2C1B10;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .btn-icon-modern:hover {
+            background: #2C1B10;
+            color: white;
+        }
+
+        .filter-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 220px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+        }
+
+        .filter-dropdown.active {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #2C1B10;
+        }
+
+        .dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-item.active {
+            background: #2C1B10;
+            color: white;
+        }
     </style>
 </head>
 
 <body>
     <!-- Setup a simpler navbar for Admin or keep same? User asked for "Admin Panel" link,
         implies separate area But often on mobile it shares the shell. I'll keep the shell for consistency. -->
-    <nav class="navbar"><button id="menu-btn" class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24"
-                height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
+    <!-- Admin Navbar -->
+    <nav class="navbar admin-navbar">
+        <button id="menu-btn" class="nav-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg></button>
-        <div class="nav-logo">Rasobhoomi</div>
-        <!-- No Cart in Admin usually -->
-        <div class="nav-icon" style="opacity: 0; pointer-events: none;"></div>
+            </svg>
+        </button>
+        <div class="nav-logo admin-logo">
+            <span style="opacity:0.7; font-weight:400;">RASOBHOOMI</span> PANEL
+        </div>
+        <button id="logout-btn" class="logout-btn">LOGOUT</button>
     </nav>
     <div id="overlay" class="overlay"></div>
     <aside id="sidebar" class="sidebar">
@@ -230,17 +339,25 @@
             <div class="toggle-wrapper"><button id="btn-products" class="toggle-btn active">products</button><button
                     id="btn-orders" class="toggle-btn">orders</button></div>
         </div>
-        <!-- Add Product Button --><button id="add-product-btn" class="btn-add-product-modern">+ADD PRODUCT
-        </button>
-        <!-- Product Filters -->
-        <div id="product-filters" class="admin-filters" style="display: none;">
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; width: 100%;">
-                <button class="filter-chip active" data-type="product" data-filter="all">ALL</button>
+        <!-- Toolbar (Products View) -->
+        <div id="product-toolbar" style="display: none; gap: 1rem; margin-bottom: 2rem; align-items: center;">
+            <button id="add-product-btn" class="btn-add-product-modern" style="margin-bottom: 0; flex: 1;">+ ADD
+                PRODUCT</button>
+
+            <div style="position: relative;">
+                <button id="filter-toggle-btn" class="btn-icon-modern">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span id="active-filter-label" style="margin-left: 0.5rem; display: none;">ALL</span>
+                </button>
+                <div id="filter-dropdown" class="filter-dropdown">
+                    <!-- Populated by JS -->
+                </div>
             </div>
-            <div style="width: 100%; display: flex; justify-content: center; margin-top: 0.5rem;"><button
-                    class="filter-chip" data-type="product" data-filter="out-of-stock"
-                    style="border-color: red; color: red;">OUT OF STOCK</button></div>
         </div>
+
         <!-- Order Filters -->
         <div id="order-filters" class="admin-filters" style="display: none;"><button class="filter-chip active"
                 data-type="order" data-filter="new">NEW</button><button class="filter-chip" data-type="order"

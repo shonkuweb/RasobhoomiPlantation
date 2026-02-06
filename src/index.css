@@ -75,7 +75,7 @@ main.home-main {
   text-align: center;
   font-family: 'Great Vibes', cursive;
   font-size: 2rem;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
 }
 
 .nav-icon {
@@ -83,7 +83,7 @@ main.home-main {
   cursor: pointer;
   background: none;
   border: none;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
 }
 
 /* Sidebar */
@@ -1435,18 +1435,24 @@ footer {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(44, 27, 16, 0.4);
-  /* Lighter backdrop for more modern feel */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: var(--color-black);
+  /* Fallback */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/hero/Gemini_Generated_Image_ufccdnufccdnufcc.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   z-index: 9999;
   display: none;
   justify-content: center;
   align-items: center;
   padding: 1rem;
   opacity: 0;
+  backdrop-filter: blur(5px);
+  /* Blur everything behind overlay if transparent, but here it's full cover */
   transition: opacity 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
+
+/* Removed ::before as it's handled by linear-gradient */
 
 .auth-overlay.active {
   display: flex;
@@ -1454,15 +1460,19 @@ footer {
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2.5rem;
-  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.85);
+  /* More transparent */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 3rem;
+  border-radius: 20px;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   text-align: center;
   transform: scale(0.95) translateY(20px);
   transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
@@ -1506,12 +1516,13 @@ footer {
 }
 
 .auth-card h2 {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #2C1B10;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .input-group {
@@ -1782,7 +1793,7 @@ footer {
 .nav-icon {
   background: none;
   border: none;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -2556,7 +2567,7 @@ footer {
 .navbar-brand-text {
   font-family: 'Britanny', 'Great Vibes', cursive;
   font-size: 2.5rem;
-  color: var(--color-white);
+  color: var(--color-text-on-primary);
   margin-left: 0.5rem;
   white-space: nowrap;
   line-height: 1;

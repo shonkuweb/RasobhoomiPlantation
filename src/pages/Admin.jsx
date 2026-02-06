@@ -259,6 +259,7 @@ const Admin = () => {
                         <button type="submit" className="auth-btn" style={{ marginTop: '1rem' }}>Unlock</button>
                     </form>
                     {authError && <p style={{ color: 'red', marginTop: '1rem' }}>{authError}</p>}
+                    <a href="/" style={{ marginTop: '1.5rem', color: '#2C1B10', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold' }}>&larr; Back to Home</a>
                 </div>
             </div>
         );

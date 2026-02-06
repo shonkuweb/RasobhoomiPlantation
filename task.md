@@ -24,3 +24,4 @@
 - [x] Update Navbar Name to "Rasobhoomi"
 - [x] Update Website Color Scheme to #c1ff72 (Accents only)
 - [x] Update Hero Image to Rasobhoomi Nursery (Placeholder used)
+- [x] Sync Navbar Font and Icon Colors with Footer

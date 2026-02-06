@@ -1,6 +1,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
+import { categories } from '../src/utils/categories.js';
 
 dotenv.config();
 
@@ -104,11 +105,37 @@ function initDb() {
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS categories (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE,
+            image TEXT
         )`
     ];
 
     queries.forEach(q => {
-        pool.query(q).catch(err => console.error('Table creation error:', err));
+        pool.query(q)
+            .then(() => {
+                // Check if categories need seeding
+                if (q.includes('CREATE TABLE IF NOT EXISTS categories')) {
+                    pool.query('SELECT count(*) as count FROM categories')
+                        .then(res => {
+                            if (res.rows[0].count === '0') {
+                                console.log("Seeding categories (Postgres)...");
+                                const insertQuery = "INSERT INTO categories (name, slug, image) VALUES ($1, $2, $3)";
+                                categories.forEach(cat => {
+                                    // Note: we let Postgres handle the ID with SERIAL
+                                    pool.query(insertQuery, [cat.name, cat.slug, cat.image])
+                                        .catch(e => console.error("Seed error:", e));
+                                });
+                                console.log("Categories seeded (Postgres).");
+                            }
+                        })
+                        .catch(err => console.error("Error checking categories count:", err));
+                }
+            })
+            .catch(err => console.error('Table creation error:', err));
     });
 }
 

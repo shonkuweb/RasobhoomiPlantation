@@ -104,9 +104,13 @@ const viewToggle = document.getElementById('view-toggle');
 const productsBtn = document.getElementById('btn-products');
 const ordersBtn = document.getElementById('btn-orders');
 // Filter Containers
-const productFilterSection = document.getElementById('product-filters');
+// Filter Containers
+const productToolbar = document.getElementById('product-toolbar');
 const orderFilterSection = document.getElementById('order-filters');
 const listContainer = document.getElementById('admin-list');
+const filterToggleBtn = document.getElementById('filter-toggle-btn');
+const filterDropdown = document.getElementById('filter-dropdown');
+const activeFilterLabel = document.getElementById('active-filter-label');
 const filterBtns = document.querySelectorAll('.filter-chip');
 const addProductBtn = document.getElementById('add-product-btn');
 const productModal = document.getElementById('product-modal');
@@ -162,17 +166,55 @@ function setupListeners() {
     productsBtn.addEventListener('click', () => switchView('products'));
     ordersBtn.addEventListener('click', () => switchView('orders'));
 
+    // Logout
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to logout?')) {
+                sessionStorage.removeItem('adminToken');
+                window.location.href = '/admin-login';
+            }
+        });
+    }
+
+    // Filter Toggle Logic
+    if (filterToggleBtn) {
+        filterToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterDropdown.classList.toggle('active');
+        });
+    }
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (filterDropdown && filterDropdown.classList.contains('active')) {
+            if (!filterDropdown.contains(e.target) && !filterToggleBtn.contains(e.target)) {
+                filterDropdown.classList.remove('active');
+            }
+        }
+    });
+
+    // Determine Filter Click (Delegation for Dropdown Items)
+    if (filterDropdown) {
+        filterDropdown.addEventListener('click', (e) => {
+            const target = e.target.closest('.dropdown-item');
+            if (target) {
+                currentProductFilter = target.dataset.filter;
+                updateFilterUI();
+                render();
+                filterDropdown.classList.remove('active');
+            }
+        });
+    }
+
+    // Existing Order Filters (Chips)
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const filterType = e.target.dataset.type; // 'product' or 'order'
+            const filterType = e.target.dataset.type; // 'order' only now
+            if (!filterType) return;
+
             const filterValue = e.target.dataset.filter;
-
-            if (filterType === 'product') {
-                currentProductFilter = filterValue;
-            } else {
-                currentOrderFilter = filterValue;
-            }
-
+            currentOrderFilter = filterValue;
             updateFilterUI();
             render();
         });
@@ -398,14 +440,16 @@ function switchView(view) {
     if (view === 'products') {
         productsBtn.classList.add('active');
         ordersBtn.classList.remove('active');
-        productFilterSection.style.display = 'flex';
+        productsBtn.classList.add('active');
+        ordersBtn.classList.remove('active');
+        if (productToolbar) productToolbar.style.display = 'flex';
         orderFilterSection.style.display = 'none';
         if (resetDbBtn) resetDbBtn.style.display = 'block';
         if (delCompletedBtn) delCompletedBtn.style.display = 'none';
     } else {
         productsBtn.classList.remove('active');
         ordersBtn.classList.add('active');
-        productFilterSection.style.display = 'none';
+        if (productToolbar) productToolbar.style.display = 'none';
         orderFilterSection.style.display = 'flex';
         if (resetDbBtn) resetDbBtn.style.display = 'none';
         if (delCompletedBtn) delCompletedBtn.style.display = 'block';
@@ -420,27 +464,33 @@ function checkAddButtonVisibility() {
 }
 
 function renderCategories() {
-    // 1. Populate Filter Chips
-    const filterContainer = document.querySelector('#product-filters div[style*="flex-wrap"]');
-    if (filterContainer) {
-        // Keep the "ALL" button
-        const allBtn = filterContainer.querySelector('[data-filter="all"]');
-        filterContainer.innerHTML = '';
-        if (allBtn) filterContainer.appendChild(allBtn);
+    // 1. Populate Dropdown
+    if (filterDropdown) {
+        filterDropdown.innerHTML = '';
 
+        // Add "All"
+        const allItem = document.createElement('div');
+        allItem.className = `dropdown-item ${currentProductFilter === 'all' ? 'active' : ''}`;
+        allItem.dataset.filter = 'all';
+        allItem.textContent = 'ALL';
+        filterDropdown.appendChild(allItem);
+
+        // Add Categories
         categories.forEach(cat => {
-            const btn = document.createElement('button');
-            btn.className = `filter-chip ${currentProductFilter === cat.name ? 'active' : ''}`;
-            btn.dataset.type = 'product';
-            btn.dataset.filter = cat.name;
-            btn.textContent = cat.name.toUpperCase();
-            btn.addEventListener('click', (e) => {
-                currentProductFilter = cat.name;
-                updateFilterUI();
-                render();
-            });
-            filterContainer.appendChild(btn);
+            const item = document.createElement('div');
+            item.className = `dropdown-item ${currentProductFilter === cat.name ? 'active' : ''}`;
+            item.dataset.filter = cat.name;
+            item.textContent = cat.name.toUpperCase();
+            filterDropdown.appendChild(item);
         });
+
+        // Add "Out of Stock"
+        const outItem = document.createElement('div');
+        outItem.className = `dropdown-item ${currentProductFilter === 'out-of-stock' ? 'active' : ''}`;
+        outItem.dataset.filter = 'out-of-stock';
+        outItem.textContent = 'OUT OF STOCK';
+        outItem.style.color = 'red';
+        filterDropdown.appendChild(outItem);
     }
 
     // 2. Populate Modal Dropdown
@@ -457,15 +507,31 @@ function renderCategories() {
 }
 
 function updateFilterUI() {
+    // Update Dropdown Items
+    if (filterDropdown) {
+        const items = filterDropdown.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            if (item.dataset.filter === currentProductFilter) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // Update Toggle Label
+    if (activeFilterLabel) {
+        activeFilterLabel.style.display = 'block';
+        activeFilterLabel.textContent = currentProductFilter === 'all' ? 'ALL' : currentProductFilter.toUpperCase();
+    }
+
+    // Update Order Chips
     filterBtns.forEach(btn => {
         const type = btn.dataset.type;
         const val = btn.dataset.filter;
-
-        // Check if this button matches the current state for its type
-        if ((type === 'product' && val === currentProductFilter) ||
-            (type === 'order' && val === currentOrderFilter)) {
+        if (type === 'order' && val === currentOrderFilter) {
             btn.classList.add('active');
-        } else {
+        } else if (type === 'order') {
             btn.classList.remove('active');
         }
     });
