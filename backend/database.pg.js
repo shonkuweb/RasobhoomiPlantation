@@ -1,7 +1,28 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import dotenv from 'dotenv';
-import { categories } from '../src/utils/categories.js';
+// Hardcoded categories to avoid dependency on 'src' in backend deployment
+const categories = [
+    { id: 1, name: 'Indian Mangoes', slug: 'indian-mangoes', image: 'https://placehold.co/150?text=Indian+Mangoes' },
+    { id: 2, name: 'Foreigner Mango', slug: 'foreigner-mango', image: 'https://placehold.co/150?text=Foreigner+Mango' },
+    { id: 3, name: 'Malta Orange', slug: 'malta-orange', image: 'https://placehold.co/150?text=Malta+Orange' },
+    { id: 4, name: 'Orange', slug: 'orange', image: 'https://placehold.co/150?text=Orange' },
+    { id: 5, name: 'Guava', slug: 'guava', image: 'https://placehold.co/150?text=Guava' },
+    { id: 6, name: 'Jackfruit', slug: 'jackfruit', image: 'https://placehold.co/150?text=Jackfruit' },
+    { id: 7, name: 'Jamun', slug: 'jamun', image: 'https://placehold.co/150?text=Jamun' },
+    { id: 8, name: 'Water Apple', slug: 'water-apple', image: 'https://placehold.co/150?text=Water+Apple' },
+    { id: 9, name: 'Chiku', slug: 'chiku', image: 'https://placehold.co/150?text=Chiku' },
+    { id: 10, name: 'Coconut', slug: 'coconut', image: 'https://placehold.co/150?text=Coconut' },
+    { id: 11, name: 'Betel Nut', slug: 'betel-nut', image: 'https://placehold.co/150?text=Betel+Nut' },
+    { id: 12, name: 'Lemon', slug: 'lemon', image: 'https://placehold.co/150?text=Lemon' },
+    { id: 13, name: 'Amloki', slug: 'amloki', image: 'https://placehold.co/150?text=Amloki' },
+    { id: 14, name: 'Logan', slug: 'logan', image: 'https://placehold.co/150?text=Logan' },
+    { id: 15, name: 'Litchi', slug: 'litchi', image: 'https://placehold.co/150?text=Litchi' },
+    { id: 16, name: 'Currant', slug: 'currant', image: 'https://placehold.co/150?text=Currant' },
+    { id: 17, name: 'Grape', slug: 'grape', image: 'https://placehold.co/150?text=Grape' },
+    { id: 18, name: 'Fruit Tree', slug: 'fruit-tree', image: 'https://placehold.co/150?text=Fruit+Tree' },
+    { id: 19, name: 'Others', slug: 'others', image: 'https://placehold.co/150?text=Others' },
+];
 
 dotenv.config();
 
