@@ -42,6 +42,21 @@ export default defineConfig({
                 changeOrigin: true,
                 secure: false,
             },
+            '/main.js': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/admin.js': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/style.css': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                secure: false,
+            },
         },
     },
 });
