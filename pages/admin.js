@@ -221,14 +221,12 @@ function setupListeners() {
     });
 
     // Danger Zone Listeners
+    // Danger Zone Listeners
     if (resetDbBtn) {
         resetDbBtn.addEventListener('click', () => {
-            showConfirm('WARNING: This will delete ALL products. Are you sure?', () => {
-                localStorage.removeItem('products');
-                products = [];
-                render();
-                window.showToast('Database Reset Complete', 'success');
-            });
+            // API based reset not implemented yet, or hazardous.
+            // For now, just show message or remove button.
+            window.showToast('Reset DB not available in API mode.', 'info');
         });
     }
 
@@ -539,9 +537,7 @@ function updateFilterUI() {
     });
 }
 
-// Persist Helper - API handles this now
-// function saveProductsToStorage() ... 
-// function saveOrdersToStorage() ...
+
 
 // CRUD Operations
 function deleteProduct(id) {
@@ -882,13 +878,7 @@ function render() {
 }
 
 // Real-time updates
-window.addEventListener('storage', (e) => {
-    if (e.key === 'orders' || e.key === 'products') {
-        console.log('Storage changed: refreshing view');
-        products = JSON.parse(localStorage.getItem('products')) || [];
-        orders = JSON.parse(localStorage.getItem('orders')) || [];
-        render();
-    }
-});
+// Real-time updates - Removed localStorage listener as we use API now
+// implementation detail: could use polling or websockets, but for now manual refresh or page reload is expected.
 
 init();

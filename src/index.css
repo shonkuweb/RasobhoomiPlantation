@@ -2538,16 +2538,18 @@ footer {
 
 
 /* Font Face for Britanny */
-@font-face {
+/* Font Face for Britanny - REMOVED due to missing file */
+/* @font-face {
   font-family: 'Britanny';
   src: url('/assets/fonts/BritannySignature.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
-}
+} */
+
 
 .logo-text {
-  font-family: 'Britanny', 'Great Vibes', cursive;
+  font-family: 'Great Vibes', cursive;
   font-size: 2rem;
   color: var(--color-white);
   margin-left: 0.5rem;
@@ -2565,7 +2567,7 @@ footer {
 
 /* Brand Text (Left Aligned next to logo) */
 .navbar-brand-text {
-  font-family: 'Britanny', 'Great Vibes', cursive;
+  font-family: 'Great Vibes', cursive;
   font-size: 2.5rem;
   color: var(--color-text-on-primary);
   margin-left: 0.5rem;

@@ -185,10 +185,52 @@ app.get('/api/categories', (req, res) => {
 });
 
 // ORDERS & PAYMENT
+// Helper to get product from DB
+function getProductFromDb(id) {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT * FROM products WHERE id = ?", [id], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
+// ORDERS & PAYMENT
 app.post('/api/orders', async (req, res) => {
-    const { name, phone, address, city, zip, items, total, forcedMock } = req.body;
+    const { name, phone, address, city, zip, items, forcedMock } = req.body;
     const orderId = 'ORD-' + Date.now();
-    const itemsStr = JSON.stringify(items);
+
+
+    // Server-Side Calculation & Verification
+    let calculatedTotal = 0;
+    const verifiedItems = [];
+
+    try {
+        for (const item of items) {
+            const product = await getProductFromDb(item.id);
+            if (!product) {
+                return res.status(400).json({ error: `Product not found: ${item.name}` });
+            }
+            if (product.qty < item.qty) {
+                return res.status(400).json({ error: `Insufficient stock for: ${product.name}` });
+            }
+            const itemTotal = product.price * item.qty;
+            calculatedTotal += itemTotal;
+
+            // Store verified price in the order item to prevent tampering in history
+            verifiedItems.push({
+                ...item,
+                price: product.price,
+                name: product.name // Ensure name is also from DB truth
+            });
+        }
+    } catch (err) {
+        console.error("Price Verification Error:", err);
+        return res.status(500).json({ error: 'Failed to verify product prices' });
+    }
+
+    const itemsStr = JSON.stringify(verifiedItems);
+    const total = calculatedTotal; // Override client total
 
     const useMock = forcedMock || (!process.env.PHONEPE_MERCHANT_ID && !process.env.PHONEPE_SALT_KEY);
 
@@ -201,7 +243,7 @@ app.post('/api/orders', async (req, res) => {
             if (err) return res.status(500).json({ error: err.message });
 
             // Deduct Stock
-            items.forEach(item => {
+            verifiedItems.forEach(item => {
                 db.run("UPDATE products SET qty = qty - ? WHERE id = ?", [item.qty, item.id], (err) => { });
             });
 
@@ -390,6 +432,40 @@ app.get(/.*/, (req, res) => {
         }
     });
 });
+
+// --- AUTO-CLEANUP TASK ---
+function cleanupOldOrders() {
+    console.log('[CLEANUP] Starting cleanup of old completed orders...');
+    const isPostgres = process.env.DB_TYPE === 'postgres';
+
+    let sql;
+    if (isPostgres) {
+        sql = "DELETE FROM orders WHERE status = 'completed' AND created_at < NOW() - INTERVAL '7 days'";
+    } else {
+        // SQLite
+        sql = "DELETE FROM orders WHERE status = 'completed' AND created_at < datetime('now', '-7 days')";
+    }
+
+    db.run(sql, [], function (err) {
+        if (err) {
+            console.error('[CLEANUP] Error deleting old orders:', err.message);
+        } else {
+            // Safe access to 'this.changes' depending on DB wrapper
+            const changes = this ? this.changes : 'unknown';
+            if (changes > 0 || changes === 'unknown') {
+                console.log(`[CLEANUP] Deleted old completed orders. Rows affected: ${changes}`);
+            } else {
+                console.log('[CLEANUP] No old orders to delete.');
+            }
+        }
+    });
+}
+
+// Run cleanup on startup
+cleanupOldOrders();
+
+// Schedule cleanup every 24 hours (24 * 60 * 60 * 1000 ms)
+setInterval(cleanupOldOrders, 24 * 60 * 60 * 1000);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

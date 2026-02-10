@@ -57,15 +57,12 @@ const db = {
 
         pool.query(pgSql, params)
             .then(res => {
-                // Mimic 'this' context of sqlite run (lastID, changes) if possible, 
-                // but commonly we just check err. 
-                // PG doesn't return lastID easily without RETURNING clause.
-                // We might need to adjust queries in server.js to use RETURNING id.
-                // For now, call callback with null.
-                callback.call({ changes: res.rowCount }, null);
+                // Ensure res exists before accessing rowCount
+                const changes = (res && res.rowCount) ? res.rowCount : 0;
+                callback.call({ changes: changes }, null);
             })
             .catch(err => {
-                console.error("DB Error:", err);
+                console.error("DB Error in run:", err);
                 callback(err);
             });
     },
