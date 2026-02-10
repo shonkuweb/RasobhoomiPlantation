@@ -1,8 +1,8 @@
 services:
   app:
     build: .
-    image: maahandloom-app
-    container_name: maahandloom_app
+    image: rasobhoomi-app
+    container_name: rasobhoomi_app
     restart: always
     ports:
       - "80:3000" # Expose on port 80 (HTTP)
@@ -22,7 +22,7 @@ services:
 
   db:
     image: postgres:15-alpine
-    container_name: maahandloom_db
+    container_name: rasobhoomi_db
     restart: always
     environment:
       - POSTGRES_USER=postgres
