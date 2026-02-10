@@ -5,7 +5,7 @@ services:
     container_name: rasobhoomi_app
     restart: always
     ports:
-      - "80:3000" # Expose on port 80 (HTTP)
+      - "8000:3000" # Expose on port 8000 (avoid conflict with existing Nginx on port 80)
     environment:
       - NODE_ENV=production
       - PORT=3000
