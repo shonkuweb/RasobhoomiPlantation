@@ -427,6 +427,8 @@ app.post('/api/auth/login', (req, res) => {
     // SECURE: Use Environment Variable
     const adminPass = process.env.ADMIN_PASSCODE || '1234';
 
+
+
     if (password === adminPass) {
         // Generate real JWT token
         const token = jwt.sign(

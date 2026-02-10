@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 // import { categories } from '../utils/categories';
 import ProductCard from '../components/ProductCard';
+import SEO from '../components/SEO';
 
 const CategoryPage = () => {
     const { slug } = useParams();
@@ -32,6 +33,11 @@ const CategoryPage = () => {
 
     return (
         <main style={{ padding: '1rem', maxWidth: '1440px', margin: '0 auto' }}>
+            <SEO
+                title={`${title} - Maa Handloom`}
+                description={`Explore our collection of ${title} at Maa Handloom.`}
+                keywords={`${title}, handloom sarees, buy ${title} online`}
+            />
             <div style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link to="/" style={{ textDecoration: 'none', color: '#2C1B10', fontWeight: 'bold' }}>← Back to Home</Link>
                 <h1 style={{ fontSize: '1.5rem', textTransform: 'uppercase' }}>{title}</h1>

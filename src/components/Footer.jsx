@@ -29,9 +29,11 @@ const Footer = () => {
                     <h3 className="footer-heading">Customer Care</h3>
                     <ul className="footer-links-list">
                         <li><Link to="/track-order" className="footer-link-item">Track Order</Link></li>
-                        <li><Link to="/refund" className="footer-link-item">Refund Policy</Link></li>
-                        <li><a href="#" className="footer-link-item">Terms & Conditions</a></li>
-                        <li><a href="#" className="footer-link-item">FAQs</a></li>
+                        <li><a href="/refund.html" className="footer-link-item">Refund Policy</a></li>
+                        <li><a href="/terms.html" className="footer-link-item">Terms & Conditions</a></li>
+                        <li><a href="/return.html" className="footer-link-item">Return Policy</a></li>
+                        <li><a href="/shipping.html" className="footer-link-item">Shipping Policy</a></li>
+                        <li><a href="/privacy.html" className="footer-link-item">Privacy Policy</a></li>
                     </ul>
                 </div>
 

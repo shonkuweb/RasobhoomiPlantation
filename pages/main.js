@@ -275,16 +275,20 @@ function populateFilterCategories() {
 }
 
 // Inject Footer (if missing)
-if (!document.querySelector('footer') && !window.location.pathname.includes('admin.html') && !window.location.pathname.includes('checkout.html') && !window.location.pathname.includes('product_details.html')) {
+if (!document.querySelector('footer') && !window.location.pathname.includes('admin') && !window.location.pathname.includes('checkout.html') && !window.location.pathname.includes('product_details.html')) {
   const footerCallback = () => {
     const footer = document.createElement('footer');
     footer.innerHTML = `
             <div class="footer-links">
-            <a href="#" class="footer-link">terms & condition</a>
-            <a href="https://wa.me/918972076182?text=Hi" target="_blank" class="footer-link">contact no.</a>
-            <a href="#" class="footer-link">location by maps</a>
+            <a href="terms.html" class="footer-link">Terms & Conditions</a>
+            <a href="refund.html" class="footer-link">Refund Policy</a>
+            <a href="return.html" class="footer-link">Return Policy</a>
+            <a href="shipping.html" class="footer-link">Shipping Policy</a>
+            <a href="privacy.html" class="footer-link">Privacy Policy</a>
+            <a href="https://wa.me/918972076182?text=Hi%20Rasobhoomi,%20I%20have%20a%20query%20regarding%20products" target="_blank" class="footer-link">Contact Us</a>
+            <a href="#" class="footer-link">Location by Maps</a>
             </div>
-            <div class="copyright">Indrita Fabrics. All rights reserved.</div>
+            <div class="copyright">Rasobhoomi. All rights reserved.</div>
            `;
     document.body.appendChild(footer);
   };

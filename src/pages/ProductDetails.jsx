@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
+import SEO from '../components/SEO';
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -42,6 +43,26 @@ const ProductDetails = () => {
 
     return (
         <main style={{ padding: '1rem', paddingBottom: '5rem' }}>
+            <SEO
+                title={product.name}
+                description={product.description && product.description.substring(0, 160)}
+                image={images[0]}
+                type="product"
+                structuredData={{
+                    "@context": "https://schema.org/",
+                    "@type": "Product",
+                    "name": product.name,
+                    "image": images,
+                    "description": product.description,
+                    "offers": {
+                        "@type": "Offer",
+                        "url": window.location.href,
+                        "priceCurrency": "INR",
+                        "price": product.price,
+                        "availability": product.qty > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                    }
+                }}
+            />
             <div className="product-detail-container">
                 {/* Image Gallery */}
                 <div className="detail-image-container">

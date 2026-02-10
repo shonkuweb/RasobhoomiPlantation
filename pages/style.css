@@ -153,12 +153,12 @@ main.home-main {
 /* Admin Panel Link */
 .admin-link-container {
   padding: 1rem;
-  background-color: var(--color-black);
+  background-color: #c1ff72;
   margin-top: auto;
 }
 
 .admin-link {
-  color: var(--color-white);
+  color: #2C1B10;
   text-decoration: none;
   display: flex;
   justify-content: center;
@@ -172,11 +172,18 @@ main.home-main {
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: transparent;
+  /* Removed fade */
   z-index: 900;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
+  display: none;
+  /* Hidden by default */
+  transition: none;
+  /* Removed transition */
+}
+
+.overlay.active {
+  display: block;
+  /* No opacity change needed if transparent */
 }
 
 .overlay.active {
@@ -260,10 +267,10 @@ main.home-main {
 
 .filter-btn {
   width: 100%;
-  background-color: #2C1B10;
-  /* Force dark brown */
-  color: #fff;
-  border: none;
+  background-color: #c1ff72;
+  /* Primary Green */
+  color: #2C1B10;
+  border: 1px solid #2C1B10;
   padding: 1rem;
   border-radius: 4px;
   /* Slightly rounded for modern feel, though wireframe is sharp */
@@ -279,9 +286,9 @@ main.home-main {
 /* Modern Add Product Button */
 .btn-add-product-modern {
   width: 100%;
-  background-color: #2C1B10;
-  color: #fff;
-  border: none;
+  background-color: #c1ff72;
+  color: #2C1B10;
+  border: 1px solid #2C1B10;
   padding: 1rem;
   border-radius: 6px;
   font-weight: 800;
@@ -511,8 +518,8 @@ main.home-main {
 }
 
 .toggle-btn.active {
-  background-color: var(--color-black);
-  color: var(--color-white);
+  background-color: #c1ff72;
+  color: #2C1B10;
 }
 
 /* Filters */
@@ -537,8 +544,8 @@ main.home-main {
 }
 
 .filter-chip.active {
-  background-color: var(--color-black);
-  color: var(--color-white);
+  background-color: #c1ff72;
+  color: #2C1B10;
 }
 
 /* List Items */
@@ -596,9 +603,9 @@ main.home-main {
 }
 
 .view-btn {
-  background-color: var(--color-black);
-  color: var(--color-white);
-  border: none;
+  background-color: #c1ff72;
+  color: #2C1B10;
+  border: 1px solid #2C1B10;
   padding: 0.5rem 1.5rem;
   border-radius: 20px;
   font-weight: bold;
@@ -676,11 +683,11 @@ footer {
 
 .cart-header {
   height: var(--header-height);
-  background-color: var(--color-black);
+  background-color: #c1ff72;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-white);
+  color: #2C1B10;
   font-weight: bold;
   font-size: 1.2rem;
   letter-spacing: 1px;
@@ -867,12 +874,12 @@ footer {
 
 .btn-save-modern {
   width: 100%;
-  background-color: #2C1B10;
-  color: white;
+  background-color: #c1ff72;
+  color: #2C1B10;
   padding: 1rem;
   font-weight: 800;
   text-transform: uppercase;
-  border: none;
+  border: 1px solid #2C1B10;
   cursor: pointer;
   font-size: 1.1rem;
   letter-spacing: 1px;
@@ -2399,5 +2406,55 @@ footer {
   .toast {
     min-width: auto;
     width: 100%;
+  }
+}
+
+/* Policy Content Styling */
+.policy-content {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  margin-top: 2rem;
+}
+
+.policy-content h3 {
+  color: #2C1B10;
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.policy-content p,
+.policy-content li {
+  font-size: 1rem;
+  color: #4a4a4a;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.policy-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.policy-content h3 {
+  font-weight: 700;
+}
+
+
+@media (max-width: 768px) {
+  .policy-content {
+    padding: 1.5rem;
+  }
+
+  .policy-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .policy-content p,
+  .policy-content li {
+    font-size: 0.95rem;
   }
 }

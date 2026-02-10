@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Track Order - Mobile E-commerce</title>
+    <title>Return Policy - Rasobhoomi</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Great+Vibes&display=swap"
         rel="stylesheet">
@@ -21,7 +21,7 @@
                 <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
         </button>
-        <div class="nav-logo">Indrita Fabrics</div>
+        <div class="nav-logo">Rasobhoomi</div>
 
         <!-- Search Bar (Hidden by default) -->
         <div class="search-bar-container">
@@ -99,118 +99,33 @@
         </div>
     </aside>
 
-    <main style="padding: 0; padding-bottom: 2rem;">
-        <!-- Hero Search Section -->
-        <div class="tracking-hero">
-            <h1 class="tracking-title">TRACK YOUR ODER</h1>
-            <p class="tracking-subtitle">Enter your Order ID to see the current status</p>
+    <main style="padding: 2rem 1.5rem; max-width: 800px; margin: 0 auto; line-height: 1.8; color: #333;">
+        <h1 class="text-red"
+            style="text-align: center; margin-bottom: 2rem; font-family: 'Great Vibes', cursive; font-size: 3rem;">
+            Return Policy</h1>
 
-            <div class="search-container">
-                <input type="text" id="track-id" class="tracking-input" placeholder="ORD-XXXXXX">
-                <button id="track-btn" class="tracking-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    TRACK
-                </button>
-            </div>
-        </div>
 
-        <!-- Result Container -->
-        <div id="tracking-result" class="tracking-result-container" style="display: none;">
+        <p style="margin-bottom: 1rem;">Rasobhoomi maintains a no-return policy for plants once they have been
+            delivered to the customer. Since plants are living organisms and highly sensitive to handling and
+            environmental changes, returned plants cannot be accepted back into the nursery.</p>
 
-            <!-- Order Details Card -->
-            <div class="order-summary-card">
-                <div class="order-header-row">
-                    <span style="font-weight: bold; font-size: 1.1rem;">ORDER <span
-                            id="display-order-id">#123</span></span>
-                    <span class="status-pill" id="display-status">IN TRANSIT</span>
-                </div>
-                <div class="order-info-row">
-                    <span id="display-date" style="color:#666; font-size: 0.85rem;">Oct 24, 2024</span>
-                    <span id="display-total" style="font-weight: bold;">₹2500</span>
-                </div>
-                <!-- Items Preview could go here -->
-            </div>
+        <p style="margin-bottom: 1rem;">Customers are requested to inspect their order at the time of delivery. If
+            the delivered plant matches the order placed, no return will be accepted under any condition. This
+            includes cases where the customer no longer wants the plant or feels dissatisfied after delivery.</p>
 
-            <!-- Timeline -->
-            <div class="timeline-wrapper">
-                <!-- Step 1 -->
-                <div class="timeline-step active" id="step-1">
-                    <div class="timeline-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                    </div>
-                    <div class="timeline-content">
-                        <h3>Order Placed</h3>
-                        <p>We have received your order.</p>
-                    </div>
-                </div>
+        <p style="margin-bottom: 1rem;">The only exception to this policy is when a wrong plant is delivered. If the
+            customer receives a plant that is different from what was ordered, Rasobhoomi will accept the return of
+            the incorrect plant. In such cases, the return applies strictly to the wrong plant only.</p>
 
-                <!-- Connector -->
-                <div class="timeline-line" id="line-1"></div>
+        <p style="margin-bottom: 1rem;">No returns are allowed for reasons such as plant size variation, natural
+            growth differences, color variation, or customer handling issues. Minor variations are natural and
+            expected in live plants.</p>
 
-                <!-- Step 2 -->
-                <div class="timeline-step" id="step-2">
-                    <div class="timeline-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                    </div>
-                    <div class="timeline-content">
-                        <h3>Processing</h3>
-                        <p>We are preparing your order.</p>
-                    </div>
-                </div>
+        <p style="margin-bottom: 1rem;">Returned plants must be reported promptly after delivery. Rasobhoomi
+            reserves the right to verify the claim before approving any return.</p>
 
-                <!-- Connector -->
-                <div class="timeline-line" id="line-2"></div>
-
-                <!-- Step 3 -->
-                <div class="timeline-step" id="step-3">
-                    <div class="timeline-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="1" y="3" width="15" height="13"></rect>
-                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                        </svg>
-                    </div>
-                    <div class="timeline-content">
-                        <h3>Shipped</h3>
-                        <p>Your order is on the way.</p>
-                    </div>
-                </div>
-
-                <!-- Connector -->
-                <div class="timeline-line" id="line-3"></div>
-
-                <!-- Step 4 -->
-                <div class="timeline-step" id="step-4">
-                    <div class="timeline-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                    </div>
-                    <div class="timeline-content">
-                        <h3>Delivered</h3>
-                        <p>Order has been delivered.</p>
-                    </div>
-                </div>
-            </div>
-
+        <p style="margin-bottom: 1rem;">By placing an order, the customer agrees that plant returns are generally
+            not possible and are allowed only in cases of wrong delivery.</p>
         </div>
     </main>
 
@@ -218,10 +133,12 @@
     <!-- Footer -->
     <footer>
         <div class="footer-links">
-            <a href="#" class="footer-link">terms & condition</a>
-            <a href="https://wa.me/918972076182?text=Hi%20Maa%20Handloom,%20I%20have%20a%20query%20regarding%20products"
-                target="_blank" class="footer-link">contact no.</a>
-            <a href="#" class="footer-link">location by maps</a>
+            <a href="terms.html" class="footer-link">Terms & Conditions</a>
+            <a href="refund.html" class="footer-link">Refund Policy</a>
+            <a href="return.html" class="footer-link">Return Policy</a>
+            <a href="https://wa.me/918972076182?text=Hi%20Rasobhoomi,%20I%20have%20a%20query%20regarding%20products"
+                target="_blank" class="footer-link">Contact Us</a>
+            <a href="#" class="footer-link">Location by Maps</a>
         </div>
         <div class="social-icons">
             <a href="#" class="social-icon">
@@ -249,7 +166,7 @@
             </a>
         </div>
         <div class="copyright">
-            Indrita Fabrics. All rights reserved.
+            Rasobhoomi. All rights reserved.
         </div>
     </footer>
 

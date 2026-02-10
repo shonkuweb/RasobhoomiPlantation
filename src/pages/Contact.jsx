@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SEO from '../components/SEO';
 
 const Contact = () => {
     const [status, setStatus] = useState('');
@@ -15,6 +16,10 @@ const Contact = () => {
 
     return (
         <main style={{ padding: '2rem 1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+            <SEO
+                title="Contact Us - Maa Handloom"
+                description="Get in touch with Maa Handloom. We'd love to hear from you."
+            />
             <h1 className="text-red"
                 style={{ textAlign: 'center', marginBottom: '0.5rem', fontFamily: 'Great Vibes, cursive', fontSize: '3rem' }}>
                 Contact Us
