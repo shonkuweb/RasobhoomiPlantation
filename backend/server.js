@@ -117,6 +117,41 @@ function generatePhonePeChecksum(payloadBase64, endpoint) {
     return `${sha256}###${PHONEPE_SALT_INDEX}`;
 }
 
+// --- VALIDATION MIDDLEWARE ---
+const validateProduct = (req, res, next) => {
+    const { name, price, qty, category } = req.body;
+    const errors = [];
+    if (!name || typeof name !== 'string' || name.trim() === '') errors.push('Name is required');
+    if (price === undefined || isNaN(parseFloat(price)) || parseFloat(price) < 0) errors.push('Valid price is required');
+    if (qty === undefined || isNaN(parseInt(qty)) || parseInt(qty) < 0) errors.push('Valid quantity is required');
+    // Category optional logic if needed, but assuming required
+    if (!category || typeof category !== 'string') errors.push('Category is required');
+
+    if (errors.length > 0) {
+        return res.status(400).json({ error: 'Validation Failed', details: errors });
+    }
+    next();
+};
+
+const validateOrder = (req, res, next) => {
+    const { name, phone, address, items } = req.body;
+    const errors = [];
+    if (!name || typeof name !== 'string') errors.push('Customer name is required');
+    if (!phone || !/^\d{10}$/.test(String(phone).trim())) errors.push('Valid 10-digit phone number is required');
+    if (!address || typeof address !== 'string') errors.push('Address is required');
+    if (!items || !Array.isArray(items) || items.length === 0) errors.push('Order must contain items');
+    else {
+        // Validate items structure
+        const invalidItems = items.filter(i => !i.id || !i.qty || i.qty <= 0);
+        if (invalidItems.length > 0) errors.push('Invalid items in order (missing ID or invalid Qty)');
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json({ error: 'Validation Failed', details: errors });
+    }
+    next();
+};
+
 // --- API ENDPOINTS ---
 
 // PRODUCTS
@@ -142,7 +177,7 @@ app.get('/api/products', (req, res) => {
     });
 });
 
-app.post('/api/products', requireAuth, (req, res) => {
+app.post('/api/products', requireAuth, validateProduct, (req, res) => {
     const { id, name, description, price, category, qty, image, images } = req.body;
     const finalId = id || 'P' + Date.now();
     const imagesStr = JSON.stringify(images || []);
@@ -164,7 +199,7 @@ app.post('/api/products', requireAuth, (req, res) => {
     });
 });
 
-app.put('/api/products/:id', requireAuth, (req, res) => {
+app.put('/api/products/:id', requireAuth, validateProduct, (req, res) => {
     const { name, description, price, category, qty, image, images } = req.body;
     const finalId = req.params.id;
     const imagesStr = JSON.stringify(images || []);
@@ -196,7 +231,7 @@ function getProductFromDb(id) {
 }
 
 // ORDERS & PAYMENT
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', validateOrder, async (req, res) => {
     const { name, phone, address, city, zip, items, forcedMock } = req.body;
     const orderId = 'ORD-' + Date.now();
 
@@ -355,7 +390,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
 // ORDERS LIST (ADMIN)
 app.get('/api/orders', (req, res) => {
-    db.all("SELECT * FROM orders ORDER BY created_at DESC", [], (err, rows) => {
+    db.all("SELECT * FROM orders WHERE status != 'pending_payment' ORDER BY created_at DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         const orders = rows.map(o => ({
             ...o,
@@ -466,6 +501,15 @@ cleanupOldOrders();
 
 // Schedule cleanup every 24 hours (24 * 60 * 60 * 1000 ms)
 setInterval(cleanupOldOrders, 24 * 60 * 60 * 1000);
+
+// --- CENTRALIZED ERROR HANDLING ---
+app.use((err, req, res, next) => {
+    console.error("[Global Error Handler]", err.stack);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong on the server.'
+    });
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
