@@ -29,11 +29,11 @@ const Footer = () => {
                     <h3 className="footer-heading">Customer Care</h3>
                     <ul className="footer-links-list">
                         <li><Link to="/track-order" className="footer-link-item">Track Order</Link></li>
-                        <li><a href="/refund.html" className="footer-link-item">Refund Policy</a></li>
-                        <li><a href="/terms.html" className="footer-link-item">Terms & Conditions</a></li>
-                        <li><a href="/return.html" className="footer-link-item">Return Policy</a></li>
-                        <li><a href="/shipping.html" className="footer-link-item">Shipping Policy</a></li>
-                        <li><a href="/privacy.html" className="footer-link-item">Privacy Policy</a></li>
+                        <li><Link to="/refund" className="footer-link-item">Refund Policy</Link></li>
+                        <li><Link to="/terms" className="footer-link-item">Terms & Conditions</Link></li>
+                        <li><Link to="/return" className="footer-link-item">Return Policy</Link></li>
+                        <li><Link to="/shipping" className="footer-link-item">Shipping Policy</Link></li>
+                        <li><Link to="/privacy" className="footer-link-item">Privacy Policy</Link></li>
                     </ul>
                 </div>
 
@@ -62,18 +62,18 @@ const Footer = () => {
                             </svg>
                         </a>
                     </div>
-                    <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#fff' }}>
+                    <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#000' }}>
                         <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.2rem' }}>📍</span>
-                            <strong style={{ color: '#c1ff72' }}>Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</strong>
+                            <strong style={{ color: '#000' }}>Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</strong>
                         </p>
                         <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.2rem' }}>📧</span>
-                            <a href="mailto:rasobhoomiplantation@gmail.com" style={{ color: '#c1ff72', textDecoration: 'none', fontWeight: 'bold' }}>rasobhoomiplantation@gmail.com</a>
+                            <a href="mailto:rasobhoomiplantation@gmail.com" style={{ color: '#000', textDecoration: 'none', fontWeight: 'bold' }}>rasobhoomiplantation@gmail.com</a>
                         </p>
                         <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.2rem' }}>📞</span>
-                            <a href="tel:+918972076182" style={{ color: '#c1ff72', textDecoration: 'none', fontWeight: 'bold' }}>+91 8972076182</a>
+                            <a href="tel:+918972076182" style={{ color: '#000', textDecoration: 'none', fontWeight: 'bold' }}>+91 8972076182</a>
                         </p>
                     </div>
                 </div>

@@ -710,7 +710,7 @@ footer {
 .footer-contact-info {
   margin-top: 1.5rem;
   font-size: 0.9rem;
-  color: #2C1B10;
+  color: #000;
 }
 
 .footer-contact-info p {
@@ -721,7 +721,7 @@ footer {
 }
 
 .footer-contact-info a {
-  color: #1a1a1a;
+  color: #000;
   text-decoration: none;
   font-weight: bold;
 }

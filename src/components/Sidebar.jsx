@@ -18,11 +18,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <Link to="/categories" className="menu-item" onClick={onClose}>Categories</Link>
                 <Link to="/about" className="menu-item" onClick={onClose}>About Us</Link>
                 <Link to="/contact" className="menu-item" onClick={onClose}>Contact Us</Link>
-                <a href="/terms.html" className="menu-item" onClick={onClose}>Terms & Conditions</a>
-                <a href="/refund.html" className="menu-item" onClick={onClose}>Refund Policy</a>
-                <a href="/return.html" className="menu-item" onClick={onClose}>Return Policy</a>
-                <a href="/shipping.html" className="menu-item" onClick={onClose}>Shipping Policy</a>
-                <a href="/privacy.html" className="menu-item" onClick={onClose}>Privacy Policy</a>
+                <Link to="/terms" className="menu-item" onClick={onClose}>Terms & Conditions</Link>
+                <Link to="/refund" className="menu-item" onClick={onClose}>Refund Policy</Link>
+                <Link to="/return" className="menu-item" onClick={onClose}>Return Policy</Link>
+                <Link to="/shipping" className="menu-item" onClick={onClose}>Shipping Policy</Link>
+                <Link to="/privacy" className="menu-item" onClick={onClose}>Privacy Policy</Link>
                 <Link to="/track-order" className="menu-item" onClick={onClose}>Track Your Order</Link>
                 <Link to="/" className="menu-item" onClick={onClose}>Home</Link>
             </div>
