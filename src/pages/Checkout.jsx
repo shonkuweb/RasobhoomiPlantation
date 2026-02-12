@@ -177,7 +177,7 @@ const Checkout = () => {
                         {isSubmitting ? 'Processing...' : `PAY ₹${total}`}
                     </button>
                     <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#666' }}>
-                        Secure Payment via Razorpay (Mock)
+                        Secure Payment via PhonePe
                     </p>
                 </form>
             </div>
