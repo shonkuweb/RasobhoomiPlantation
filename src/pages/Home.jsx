@@ -100,15 +100,17 @@ const Home = () => {
             {/* Categories */}
             {/* Categories */}
             <section className="category-list">
-                {categories.map(cat => (
-                    <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
-                        <div className="cat-circle">
-                            <img src={cat.image} alt={cat.name}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                        </div>
-                        <span className="cat-label">{cat.name}</span>
-                    </Link>
-                ))}
+                {categories
+                    .filter(cat => products.some(p => p.category === cat.name))
+                    .map(cat => (
+                        <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
+                            <div className="cat-circle">
+                                <img src={cat.image} alt={cat.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                            </div>
+                            <span className="cat-label">{cat.name}</span>
+                        </Link>
+                    ))}
             </section>
 
             {/* Product Grid */}
