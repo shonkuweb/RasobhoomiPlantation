@@ -90,20 +90,20 @@ main.home-main {
 .sidebar {
   position: fixed;
   top: 0;
-  left: -100%;
+  right: -100%;
   width: 100%;
   max-width: 350px;
   height: 100%;
   background-color: var(--color-white);
   z-index: 3000;
-  transition: left 0.3s ease;
+  transition: right 0.3s ease;
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar.active {
-  left: 0;
+  right: 0;
 }
 
 .sidebar-header {

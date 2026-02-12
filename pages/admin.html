@@ -346,17 +346,17 @@
         .sidebar {
             position: fixed;
             top: 0;
-            left: -280px;
+            right: -280px;
             width: 280px;
             height: 100%;
             background-color: #FFFAF0;
             z-index: 200;
-            transition: left 0.3s ease;
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar.open {
-            left: 0;
+            right: 0;
         }
 
         .sidebar-header {
@@ -451,7 +451,7 @@
                 class="menu-item">About Us</a><a href="/contact" class="menu-item">Contact Us</a><a href="/refund"
                 class="menu-item">Refund & Return</a><a href="/track-order" class="menu-item">Track Your Order</a><a
                 href="/" class="menu-item">Home</a></div>
-        <div class="admin-link-container"><a href="admin.html" class="admin-link">Admin Panel <svg
+        <div class="admin-link-container"><a href="/admin" class="admin-link">Admin Panel <svg
                     xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="7" y1="17" x2="17" y2="7"></line>
