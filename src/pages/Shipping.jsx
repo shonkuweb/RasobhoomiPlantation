@@ -21,6 +21,7 @@ const Shipping = () => {
                 </h3>
                 <p>Rasobhoomi charges a flat delivery fee of <strong>₹150</strong> on all orders. This fee is added to the
                     total amount during checkout.</p>
+                <p style={{ marginTop: '1rem', fontWeight: 'bold', color: '#B91C1C' }}>DELIVERY CAN TAKE UPTO 15 DAYS</p>
             </section>
 
             <section style={{ marginBottom: '2rem' }}>

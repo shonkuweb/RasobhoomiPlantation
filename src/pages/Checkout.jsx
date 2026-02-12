@@ -100,25 +100,38 @@ const Checkout = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {/* Order Summary */}
-                <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '8px' }}>
-                    <h3 style={{ marginBottom: '1rem', borderBottom: '1px solid #ddd', paddingBottom: '0.5rem' }}>Order Summary</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {cart.map(item => {
-                            const product = products.find(p => p.id === item.id);
-                            if (!product) return null;
-                            return (
-                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                                    <span>{product.name} x {item.qty}</span>
-                                </div>
-                            );
-                        })}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                            <span>Delivery Charges</span>
-                            <span>₹{shippingFee}</span>
+                <div style={{ border: '1px solid #e5e7eb', padding: '1.5rem', borderRadius: '12px', backgroundColor: '#f9fafb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.75rem', fontSize: '1.25rem', color: '#1f2937' }}>Order Summary</h3>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {/* Items List */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {cart.map(item => {
+                                const product = products.find(p => p.id === item.id);
+                                if (!product) return null;
+                                return (
+                                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#4b5563' }}>
+                                        <span>{product.name} <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>x {item.qty}</span></span>
+                                        <span style={{ fontWeight: '500' }}>₹{product.price * item.qty}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div style={{ borderTop: '1px solid #ddd', marginTop: '1rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                            <span>Total</span>
-                            <span>₹{total}</span>
+
+                        <div style={{ borderTop: '1px dashed #d1d5db', marginTop: '0.5rem', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#374151' }}>
+                                <span>Item Subtotal</span>
+                                <span>₹{subtotal}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#374151' }}>
+                                <span>Delivery Charges</span>
+                                <span style={{ color: '#059669' }}>+ ₹{shippingFee}</span>
+                            </div>
+                        </div>
+
+                        <div style={{ borderTop: '2px solid #e5e7eb', marginTop: '0.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>
+                            <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#2C1B10' }}>₹{total}</span>
                         </div>
                     </div>
                 </div>
