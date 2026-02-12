@@ -34,9 +34,8 @@ const CategoryPage = () => {
     return (
         <main style={{ padding: '1rem', maxWidth: '1440px', margin: '0 auto' }}>
             <SEO
-                title={`${title} - Maa Handloom`}
-                description={`Explore our collection of ${title} at Maa Handloom.`}
-                keywords={`${title}, handloom sarees, buy ${title} online`}
+                title={`${title} Collection`}
+                description={`Browse our exclusive collection of ${title} at Rasobhoomi Plantation.`}
             />
             <div style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link to="/" style={{ textDecoration: 'none', color: '#2C1B10', fontWeight: 'bold' }}>← Back to Home</Link>

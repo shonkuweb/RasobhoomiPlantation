@@ -9,9 +9,9 @@ const Refund = () => {
             </h1>
 
             <div className="policy-content" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.6', color: '#2C1B10' }}>
-                <p style={{ marginBottom: '1.5rem', fontStyle: 'italic' }}>At Indrita Fabrics, every product is carefully
-                    handcrafted by skilled artisans. Due to the nature of handloom and handmade products, slight variations
-                    in color, texture, and weave are natural and make each piece unique. These are not considered defects.
+                <p style={{ marginBottom: '1.5rem', fontStyle: 'italic' }}>At Rasobhoomi Plantation, every plant is carefully
+                    nurtured by expert horticulturists. Due to the nature of live plants, slight variations
+                    in size, color, and growth are natural and expected. These are not considered defects.
                 </p>
 
                 <h3 style={{ fontWeight: '700', marginTop: '2rem', marginBottom: '0.5rem' }}>1. Eligibility for Returns</h3>
@@ -21,7 +21,7 @@ const Refund = () => {
                     <li>The issue is reported within 48 hours of delivery</li>
                     <li>The product is unused, unwashed, and returned in its original condition with tags and packaging intact</li>
                 </ul>
-                <p>To initiate a return, please contact us at <strong>[your support email/phone]</strong> with:</p>
+                <p>To initiate a return, please contact us at <strong>rasobhoomiplantation@gmail.com / +91 8972076182</strong> with:</p>
                 <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '1rem' }}>
                     <li>Order ID</li>
                     <li>Clear photos or videos showing the issue</li>
@@ -33,7 +33,7 @@ const Refund = () => {
                     <li>Products purchased during sales, discounts, or clearance offers</li>
                     <li>Customized or made-to-order items</li>
                     <li>Products damaged due to improper use, washing, or storage</li>
-                    <li>Minor variations in color or weave inherent to handloom products</li>
+                    <li>Minor variations in growth or leaf pattern inherent to live plants</li>
                 </ul>
 
                 <h3 style={{ fontWeight: '700', marginTop: '2rem', marginBottom: '0.5rem' }}>3. Refund Policy</h3>
@@ -61,8 +61,8 @@ const Refund = () => {
                 </ul>
 
                 <h3 style={{ fontWeight: '700', marginTop: '2rem', marginBottom: '0.5rem' }}>7. Important Note</h3>
-                <p style={{ marginBottom: '1.5rem' }}>Handloom products are delicate and artisanal in nature. We encourage
-                    customers to read product descriptions carefully and review images before purchasing.</p>
+                <p style={{ marginBottom: '1.5rem' }}>Live plants are delicate and seasonal in nature. We encourage
+                    customers to read product care instructions carefully and review images before purchasing.</p>
 
                 <p style={{ fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '1rem', marginTop: '1rem' }}>
                     ALL THE APPROVED EXCHANGE AND REPLACEMENT WILL BE COMPLETED WITHIN 7 BUSINESS DAYS, REFUNDS WILL BE CREDITED BACK TO THE ORIGINAL PAYMENT METHOD IN 7 BUSINESS DAYS.

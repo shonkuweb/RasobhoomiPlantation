@@ -62,10 +62,19 @@ const Footer = () => {
                             </svg>
                         </a>
                     </div>
-                    <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#ccc' }}>
-                        <p style={{ marginBottom: '0.5rem' }}>📍 Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</p>
-                        <p style={{ marginBottom: '0.5rem' }}>📧 rasobhoomiplantation@gmail.com</p>
-                        <p>📞 +91 8972076182</p>
+                    <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#fff' }}>
+                        <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.2rem' }}>📍</span>
+                            <strong style={{ color: '#c1ff72' }}>Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</strong>
+                        </p>
+                        <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.2rem' }}>📧</span>
+                            <a href="mailto:rasobhoomiplantation@gmail.com" style={{ color: '#c1ff72', textDecoration: 'none', fontWeight: 'bold' }}>rasobhoomiplantation@gmail.com</a>
+                        </p>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.2rem' }}>📞</span>
+                            <a href="tel:+918972076182" style={{ color: '#c1ff72', textDecoration: 'none', fontWeight: 'bold' }}>+91 8972076182</a>
+                        </p>
                     </div>
                 </div>
             </div>

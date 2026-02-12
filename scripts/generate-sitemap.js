@@ -70,6 +70,7 @@ async function generateSitemap() {
         sitemap += `</urlset>`;
 
         fs.writeFileSync(SITEMAP_PATH, sitemap);
+        // Rasobhoomi Plantation Sitemap Generator
         console.log(`Sitemap generated at ${SITEMAP_PATH}`);
 
     } catch (error) {

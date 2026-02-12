@@ -1,6 +1,6 @@
-# Indrita Fabrics E-commerce Application
-
-A full-stack e-commerce application built with React (Frontend) and Node.js/Express (Backend). It supports PostgreSQL for production and SQLite for development.
+# Rasobhoomi Plantation
+An modern nursery and plant e-commerce application.
+built with React (Frontend) and Node.js/Express (Backend). It supports PostgreSQL for production and SQLite for development.
 
 ## 🚀 Features
 

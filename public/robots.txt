@@ -5,4 +5,4 @@ Disallow: /checkout
 Disallow: /track-order
 Disallow: /api/
 
-Sitemap: https://maahandloom.com/sitemap.xml
+Sitemap: https://rasobhoomiplantation.com/sitemap.xml

@@ -9,8 +9,8 @@ const SEO = ({ title, description, keywords, image, type = 'website', structured
     const currentUrl = `${siteUrl}${location.pathname}`;
     const defaultImage = `${siteUrl}/logo.png`; // Fallback image if none provided
 
-    const metaTitle = title ? `${title} | Maa Handloom` : 'Maa Handloom - Authentic Handloom Sarees';
-    const metaDescription = description || 'Discover the finest collection of authentic handloom sarees at Maa Handloom. Shop online for Tussar, Silk, and Cotton sarees.';
+    const metaTitle = title ? `${title} | Rasobhoomi Plantation` : 'Rasobhoomi Plantation - Authentic Plants & Greenery';
+    const metaDescription = description || 'Discover the finest collection of authentic plants and greenery at Rasobhoomi Plantation. Shop online for healthy, sustainably grown plants.';
     const metaImage = image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : defaultImage;
 
     return (

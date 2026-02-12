@@ -681,10 +681,10 @@ function initProductDetails() {
                     <p class="detail-desc">${product.description || 'Authentic handloom product.'}</p>
                     
 
-                    <div style="background:#fff8f0; border-left:4px solid #8B6F47; padding:1rem; margin:1.5rem 0; border-radius:4px;">
-                        <h4 style="color:#2C1B10; margin-bottom:0.5rem; font-size:0.9rem; text-transform:uppercase; letter-spacing:1px; font-weight:800;">INDRITA FABRICS</h4>
+                    <div style="background:#f0faf0; border-left:4px solid #c1ff72; padding:1rem; margin:1.5rem 0; border-radius:4px;">
+                        <h4 style="color:#2C1B10; margin-bottom:0.5rem; font-size:0.9rem; text-transform:uppercase; letter-spacing:1px; font-weight:800;">RASOBHOOMI PLANTATION</h4>
                         <p style="font-size:0.85rem; color:#555; line-height:1.6; font-style:italic;">
-                            "Experience the timeless elegance of authentic handloom craftsmanship. Each piece is woven with passion and heritage, bringing you the finest textures and traditional artistry directly from our weavers."
+                            "Experience the timeless beauty of nature. Each plant is nurtured with passion and care, bringing you the finest varieties and authentic greenery directly from our plantation."
                         </p>
                     </div>
 

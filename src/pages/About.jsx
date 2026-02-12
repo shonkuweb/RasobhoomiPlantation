@@ -5,8 +5,8 @@ const About = () => {
     return (
         <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.8', color: '#333' }}>
             <SEO
-                title="About Us - Maa Handloom"
-                description="Learn more about Maa Handloom, our mission, and our passion for bringing the finest nature to your doorstep."
+                title="About Us"
+                description="Learn about Rasobhoomi Plantation and our commitment to providing authentic plants."
             />
             <h1 className="text-red"
                 style={{ textAlign: 'center', marginBottom: '2rem', fontFamily: 'Great Vibes, cursive', fontSize: '3.5rem' }}>

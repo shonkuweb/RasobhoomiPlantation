@@ -58,20 +58,15 @@ const Home = () => {
     return (
         <main className="home-main">
             <SEO
-                title="Maa Handloom - Authentic Handloom Sarees"
+                title="Rasobhoomi Plantation - Authentic Handloom Sarees"
                 description="Explore our exclusive collection of handloom sarees including Tussar, Silk, and Cotton. Handcrafted with love."
                 keywords="handloom sarees, tussar silk, cotton sarees, indian traditional wear"
                 structuredData={{
                     "@context": "https://schema.org",
-                    "@type": "Organization",
-                    "name": "Maa Handloom",
+                    "name": "Rasobhoomi Plantation",
+                    "description": "Authentic plants and greenery nursery.",
                     "url": window.location.origin,
-                    "logo": `${window.location.origin}/logo.png`,
-                    "contactPoint": {
-                        "@type": "ContactPoint",
-                        "telephone": "+91-9876543210",
-                        "contactType": "Customer Service"
-                    }
+                    "logo": `${window.location.origin}/logo.png`
                 }}
             />
             {/* Hero Section */}
