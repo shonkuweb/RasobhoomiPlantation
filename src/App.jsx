@@ -18,6 +18,10 @@ import Contact from './pages/Contact';
 import Refund from './pages/Refund';
 import TrackOrder from './pages/TrackOrder';
 import Admin from './pages/Admin';
+import Terms from './pages/Terms';
+import Return from './pages/Return';
+import Shipping from './pages/Shipping';
+import Privacy from './pages/Privacy';
 
 
 
@@ -71,6 +75,10 @@ function AppContent() {
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/refund" element={<Refund />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/return" element={<Return />} />
+                <Route path="/shipping" element={<Shipping />} />
+                <Route path="/privacy" element={<Privacy />} />
             </Routes>
 
             {showFooter && <Footer />}
