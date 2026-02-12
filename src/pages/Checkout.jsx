@@ -14,7 +14,9 @@ const Checkout = () => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const total = getCartTotal();
+    const shippingFee = 150;
+    const subtotal = getCartTotal();
+    const total = subtotal + shippingFee;
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -107,10 +109,13 @@ const Checkout = () => {
                             return (
                                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                                     <span>{product.name} x {item.qty}</span>
-                                    <span>₹{product.price * item.qty}</span>
                                 </div>
                             );
                         })}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                            <span>Delivery Charges</span>
+                            <span>₹{shippingFee}</span>
+                        </div>
                         <div style={{ borderTop: '1px solid #ddd', marginTop: '1rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                             <span>Total</span>
                             <span>₹{total}</span>

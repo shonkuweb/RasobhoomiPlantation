@@ -264,8 +264,8 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         return res.status(500).json({ error: 'Failed to verify product prices' });
     }
 
-    const itemsStr = JSON.stringify(verifiedItems);
-    const total = calculatedTotal; // Override client total
+    const SHIPPING_FEE = 150;
+    const total = calculatedTotal + SHIPPING_FEE; // Include shipping fee in total
 
     const useMock = forcedMock || (!process.env.PHONEPE_MERCHANT_ID && !process.env.PHONEPE_SALT_KEY);
 

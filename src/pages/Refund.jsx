@@ -61,8 +61,12 @@ const Refund = () => {
                 </ul>
 
                 <h3 style={{ fontWeight: '700', marginTop: '2rem', marginBottom: '0.5rem' }}>7. Important Note</h3>
-                <p style={{ marginBottom: '2rem' }}>Handloom products are delicate and artisanal in nature. We encourage
+                <p style={{ marginBottom: '1.5rem' }}>Handloom products are delicate and artisanal in nature. We encourage
                     customers to read product descriptions carefully and review images before purchasing.</p>
+
+                <p style={{ fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '1rem', marginTop: '1rem' }}>
+                    ALL THE APPROVED EXCHANGE AND REPLACEMENT WILL BE COMPLETED WITHIN 7 BUSINESS DAYS, REFUNDS WILL BE CREDITED BACK TO THE ORIGINAL PAYMENT METHOD IN 7 BUSINESS DAYS.
+                </p>
             </div>
         </main>
     );

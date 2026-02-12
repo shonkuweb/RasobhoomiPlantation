@@ -9,7 +9,7 @@ const Footer = () => {
                 <div className="footer-col brand-col">
                     <h2 className="footer-logo">Rasobhoomi</h2>
                     <p className="footer-tagline">
-                        Celebrating the art of handloom. Sustainable, authentic, and timeless elegance for the modern home.
+                        Bringing nature to your doorstep. Authentic plants, sustainably grown for a greener home.
                     </p>
                 </div>
 
@@ -62,12 +62,10 @@ const Footer = () => {
                             </svg>
                         </a>
                     </div>
-                    <div className="newsletter-mockup">
-                        <p className="newsletter-text">Subscribe for updates & offers</p>
-                        <div className="newsletter-input-group">
-                            <input type="email" placeholder="Your Email" />
-                            <button>→</button>
-                        </div>
+                    <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#ccc' }}>
+                        <p style={{ marginBottom: '0.5rem' }}>📍 Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</p>
+                        <p style={{ marginBottom: '0.5rem' }}>📧 rasobhoomiplantation@gmail.com</p>
+                        <p>📞 +91 8972076182</p>
                     </div>
                 </div>
             </div>
