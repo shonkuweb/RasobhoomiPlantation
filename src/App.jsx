@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import CartSidebar from './components/CartSidebar';
 import Footer from './components/Footer';
+import WhatsAppButton from './components/WhatsAppButton';
 import Home from './pages/Home';
 
 import ProductDetails from './pages/ProductDetails';
@@ -81,7 +82,9 @@ function AppContent() {
                 <Route path="/privacy" element={<Privacy />} />
             </Routes>
 
+
             {showFooter && <Footer />}
+            <WhatsAppButton />
         </div>
     );
 }

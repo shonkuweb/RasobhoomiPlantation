@@ -6,11 +6,29 @@ const Contact = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // In a real app, send to backend. For demo, just show success.
+
+        // Get form values
+        const name = e.target[0].value;
+        const email = e.target[1].value;
+        const phone = e.target[2].value;
+        const message = e.target[3].value;
+
+        // Validations could be added here
+
+        // Format the message for WhatsApp
+        const whatsappMessage = `*New Contact Request*\n\n*Name:* ${name}\n*Email:* ${email}\n*Phone:* ${phone}\n*Message:* ${message}`;
+
+        // WhatsApp API URL
+        const phoneNumber = "918972076182";
+        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+
+        // Open WhatsApp in new tab
+        window.open(whatsappUrl, '_blank');
+
         setStatus('success');
         e.target.reset();
-        window.showToast('Message Sent Successfully!', 'success');
 
+        // Reset success message after 3 seconds
         setTimeout(() => setStatus(''), 3000);
     };
 
