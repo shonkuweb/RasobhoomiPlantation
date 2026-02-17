@@ -11,6 +11,9 @@ import Home from './pages/Home';
 import ProductDetails from './pages/ProductDetails';
 import CategoryPage from './pages/CategoryPage';
 import Checkout from './pages/Checkout';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
+import PaymentPending from './pages/PaymentPending';
 
 // New Pages
 import Categories from './pages/Categories';
@@ -71,6 +74,9 @@ function AppContent() {
                 <Route path="/category/:slug" element={<CategoryPage />} />
                 <Route path="/product/:id" element={<ProductDetails />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/payment/success" element={<PaymentSuccess />} />
+                <Route path="/payment/failure" element={<PaymentFailure />} />
+                <Route path="/payment/pending" element={<PaymentPending />} />
                 <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/about" element={<About />} />

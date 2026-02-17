@@ -410,10 +410,14 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
             // For Browser Redirect, we TRUST the 'code' implies success (or should ideally check Status API)
             // Redirect user to Success Page immediately.
+            const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080'; // Frontend URL
+
             if (code === 'PAYMENT_SUCCESS') {
-                return res.redirect(`/?payment=success&order=${transactionId}`);
+                return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
+            } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
+                return res.redirect(`${baseUrl}/payment/pending?orderId=${transactionId}`);
             } else {
-                return res.redirect(`/?payment=failure&order=${transactionId}`);
+                return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
             }
         }
 
