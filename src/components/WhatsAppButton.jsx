@@ -13,27 +13,7 @@ const WhatsAppButton = () => {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="whatsapp-float"
-            style={{
-                position: 'fixed',
-                width: '60px',
-                height: '60px',
-                bottom: '80px', // Adjusted to be above footer or other potential sticky elements
-                right: '20px',
-                backgroundColor: '#25d366',
-                color: '#FFF',
-                borderRadius: '50px',
-                textAlign: 'center',
-                fontSize: '30px',
-                boxShadow: '2px 2px 3px #999',
-                zIndex: 1000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            className="whatsapp-modern"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

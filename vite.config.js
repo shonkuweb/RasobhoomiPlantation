@@ -8,7 +8,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: resolve(__dirname, 'index.html'),
-                admin: resolve(__dirname, 'pages/admin.html'),
+                // admin: resolve(__dirname, 'pages/admin.html'), // Legacy
                 about: resolve(__dirname, 'pages/about.html'),
                 categories: resolve(__dirname, 'pages/categories.html'),
                 contact: resolve(__dirname, 'pages/contact.html'),
@@ -18,41 +18,14 @@ export default defineConfig({
                 category: resolve(__dirname, 'pages/category.html'),
                 checkout: resolve(__dirname, 'pages/checkout.html'),
                 cottonVarieties: resolve(__dirname, 'pages/cotton-varieties.html'),
-                // handloomSpecial: resolve(__dirname, 'pages/handloom-special.html'),
-                // shantipuriSpecial: resolve(__dirname, 'pages/shantipuri-special.html'),
-                // suratSilk: resolve(__dirname, 'pages/surat-silk.html'),
             },
         },
     },
     server: {
+        host: '0.0.0.0',
         port: 8080,
         proxy: {
             '/api': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/admin': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/admin-login': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/main.js': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/admin.js': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                secure: false,
-            },
-            '/style.css': {
                 target: 'http://localhost:3000',
                 changeOrigin: true,
                 secure: false,
