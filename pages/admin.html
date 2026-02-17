@@ -189,6 +189,30 @@
             color: white;
         }
 
+        /* Drop Zone Styles */
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.2s;
+            background: #fafafa;
+            position: relative;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #2C1B10;
+            background: #e0f2fe;
+        }
+
+        .drop-zone-text {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+            pointer-events: none;
+            /* Prevent interference with drag events */
+        }
+
         /* Admin Navbar Overrides */
         .admin-navbar {
             background-color: #c1ff72 !important;
@@ -513,15 +537,16 @@
                 </button>
                 <h2 id="modal-title">ADD PRODUCT</h2>
                 <form id="product-form" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <div style="text-align: center; margin-bottom: 1rem;">
+                    <div id="drop-zone" class="drop-zone" style="text-align: center; margin-bottom: 1rem;">
                         <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
                             <label for="product-images" class="btn-upload-modern" style="margin:0; flex:1;">+UPLOAD
                                 IMAGES </label><button type="button" id="btn-camera" class="btn-upload-modern"
                                 style="margin:0; flex:1; background: #2C1B10; color: white;">📷
                                 TAKE PHOTO </button>
-                        </div><input type="file" id="product-images" accept="image/*" multiple
-                            style="display: none;"><input type="file" id="camera-input" accept="image/*"
-                            capture="environment" style="display: none;">
+                        </div>
+                        <p class="drop-zone-text">or Drag and Drop Images Here</p>
+                        <input type="file" id="product-images" accept="image/*" multiple style="display: none;"><input
+                            type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
                         <div id="image-preview-container"
                             style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
                         </div>

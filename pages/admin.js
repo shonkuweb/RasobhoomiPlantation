@@ -277,9 +277,65 @@ function setupListeners() {
         console.error('Product form not found');
     }
 
+    // Drag and Drop Logic
+    const dropZone = document.getElementById('drop-zone');
+    if (dropZone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('drag-over');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('drag-over');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+    }
+
+    function handleFiles(files) {
+        if (files.length + currentImages.length > 3) {
+            window.showToast('You can only upload up to 3 images.', 'error');
+            return;
+        }
+
+        ([...files]).forEach(file => { // Convert FileList to Array
+            if (!file.type.startsWith('image/')) return;
+
+            compressImage(file, 800, 0.7).then(compressedDataUrl => {
+                currentImages.push(compressedDataUrl);
+                renderPreviews();
+            }).catch(err => {
+                console.error('Compression failed', err);
+                window.showToast('Failed to process image', 'error');
+            });
+        });
+    }
+
     // Image Upload
     if (productImagesInput) {
-        productImagesInput.addEventListener('change', handleImageUpload);
+        productImagesInput.addEventListener('change', (e) => handleFiles(e.target.files));
     }
 
     // Camera Upload
@@ -290,7 +346,7 @@ function setupListeners() {
         cameraBtn.addEventListener('click', () => {
             cameraInput.click();
         });
-        cameraInput.addEventListener('change', handleImageUpload);
+        cameraInput.addEventListener('change', (e) => handleFiles(e.target.files));
     }
 
 
@@ -358,29 +414,6 @@ function showConfirm(msg, onConfirm) {
 
     yesBtn.addEventListener('click', handleYes);
     cancelBtn.addEventListener('click', close);
-}
-
-function handleImageUpload(e) {
-    const files = Array.from(e.target.files);
-
-    if (files.length + currentImages.length > 3) {
-        window.showToast('You can only upload up to 3 images.', 'error');
-        return;
-    }
-
-    files.forEach(file => {
-        if (!file.type.startsWith('image/')) return;
-
-        compressImage(file, 800, 0.7).then(compressedDataUrl => {
-            currentImages.push(compressedDataUrl);
-            renderPreviews();
-        }).catch(err => {
-            console.error('Compression failed', err);
-            window.showToast('Failed to process image', 'error');
-        });
-    });
-
-    e.target.value = '';
 }
 
 // Helper: Compress Image using Canvas
