@@ -31,11 +31,12 @@
     - [x] Configure `.env` file
     - [x] Verify Database Configuration
     - [x] Start Development Server (`npm run dev:all`)
-- [/] Implement PhonePe V2 Standard Checkout
-    - [x] Analyze V2 API Requirements
-    - [x] Create `implementation_plan.md` for V2
-    - [x] Obtain V2 Sandbox Credentials (Client ID, Secret, Version)
-    - [x] Implement OAuth Flow (`getAuthToken`)
-    - [x] Update Payment Initiation to `/checkout/v2/pay`
-    - [x] Update Callback Handling
-    - [ ] Verify Payment Flow
+- [/] Configure PhonePe Gateway
+    - [x] Update `.env` with Merchant ID and Salt Key
+    - [x] Verify Production/Sandbox URLs
+    - [x] Refactor to Standard Checkout V2 (OAuth)
+        - [x] Create `implementation_plan.md` for V2
+        - [x] Implement OAuth Token Generation
+        - [x] Update Payment Request Payload
+        - [x] Implement Secure Webhook & Redirect Handler
+        - [/] Test V2 Payment Flow (Ready for User Testing - Use `npm run dev:all`)

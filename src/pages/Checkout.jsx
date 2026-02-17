@@ -52,17 +52,22 @@ const Checkout = () => {
             const data = await res.json();
 
             if (res.ok) {
-                if (data.payment_url) {
-                    // Real Payment Flow
+                if (data.success && data.payment_url) {
+                    // Real Payment Flow (Redirect to PhonePe)
                     window.location.href = data.payment_url;
-                } else {
-                    // Mock Flow Notification
-                    alert('PhonePe Payment Gateway will be added soon. Order ID: ' + data.id);
+                } else if (data.success) {
+                    // Mock Flow / Success without Redirect
+                    alert(`Order Placed Successfully! (Mock Payment)\nOrder ID: ${data.id}`);
                     clearCart();
                     navigate('/');
+                } else {
+                    alert('Payment Initiation Failed: ' + (data.message || 'Unknown Error'));
                 }
             } else {
-                alert('Order Failed: ' + (data.error || 'Unknown Error'));
+                const errorMsg = data.error || 'Unknown Error';
+                const details = data.details ? '\n' + (typeof data.details === 'object' ? JSON.stringify(data.details, null, 2) : data.details) : '';
+                alert('Order Failed: ' + errorMsg + details);
+                console.error('Order Error:', data);
             }
         } catch (err) {
             console.error(err);
