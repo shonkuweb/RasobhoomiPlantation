@@ -54,6 +54,7 @@ const Checkout = () => {
             if (res.ok) {
                 if (data.success && data.payment_url) {
                     // Real Payment Flow (Redirect to PhonePe)
+                    console.log('Redirecting to PhonePe:', data.payment_url);
                     window.location.href = data.payment_url;
                 } else {
                     alert('Payment Initiation Failed: ' + (data.message || 'Unknown Error'));
