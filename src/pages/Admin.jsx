@@ -359,27 +359,38 @@ const Admin = () => {
 
                         <div className="admin-list">
                             {filteredProducts.map(p => (
-                                <div key={p.id} className="admin-list-item" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                <div
+                                    key={p.id}
+                                    className="admin-list-item"
+                                    style={{
+                                        borderColor: p.qty < 5 ? 'var(--color-red-text)' : '#e5e7eb',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                        backgroundColor: p.qty < 5 ? '#fee2e2' : 'white'
+                                    }}
+                                >
                                     <div className="admin-item-image">
                                         {p.image ? <img src={p.image} alt={p.name} /> : 'IMG'}
                                     </div>
                                     <div className="admin-item-details">
-                                        <p className="item-id" style={{ color: '#9ca3af' }}>#{p.id}</p>
+                                        <p className="item-id" style={{ color: p.qty < 5 ? '#7f1d1d' : '#9ca3af' }}>#{p.id}</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <p style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 0 }}>{p.category}</p>
                                             {p.qty > 0 && p.qty < 5 && (
                                                 <span style={{ fontSize: '0.65rem', backgroundColor: '#fef3c7', color: '#d97706', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>LOW STOCK</span>
                                             )}
+                                            {p.qty <= 0 && (
+                                                <span style={{ fontSize: '0.65rem', backgroundColor: 'white', color: 'var(--color-red-text)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: '1px solid var(--color-red-text)' }}>OUT OF STOCK</span>
+                                            )}
                                         </div>
                                         <h3 className="item-name" style={{ color: 'var(--color-gray-800)' }}>{p.name}</h3>
                                         <div className="item-meta">
-                                            <span style={p.qty < 5 ? { color: p.qty === 0 ? 'var(--color-red-text)' : '#d97706', fontWeight: 'bold' } : {}}>Qty: {p.qty}</span>
+                                            <span style={p.qty < 5 ? { color: 'var(--color-red-text)', fontWeight: 'bold' } : {}}>Qty: {p.qty}</span>
                                             <span>₹{p.price}</span>
                                         </div>
                                     </div>
                                     <div className="view-btn-container" style={{ gap: '0.5rem' }}>
                                         <button className="view-btn edit-btn" onClick={() => openProductModal(p)} style={{ backgroundColor: 'var(--color-gray-100)', color: 'var(--color-gray-800)', border: 'none' }}>EDIT</button>
-                                        <button className="view-btn delete-btn" onClick={() => handleDeleteProduct(p.id)} style={{ backgroundColor: '#fee2e2', color: 'var(--color-red-text)', border: 'none' }}>DEL</button>
+                                        <button className="view-btn delete-btn" onClick={() => handleDeleteProduct(p.id)} style={{ backgroundColor: p.qty < 5 ? 'white' : '#fee2e2', color: 'var(--color-red-text)', border: p.qty < 5 ? '1px solid var(--color-red-text)' : 'none' }}>DEL</button>
                                     </div>
                                 </div>
                             ))}
