@@ -344,7 +344,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                     message: "Payment for Order " + orderId,
                     merchantUrls: {
                         redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
-                        redirectMode: "POST",
+                        redirectMode: "REDIRECT",
                         callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
                     }
                 }
