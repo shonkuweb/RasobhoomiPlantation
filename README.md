@@ -83,4 +83,4 @@ built with React (Frontend) and Node.js/Express (Backend). It supports PostgreSQ
 - **Headers**: Security headers are automatically applied.
 
 ## 📄 License
-Indrita Fabrics - All Rights Reserved.
+Rasobhoomi Plantation - All Rights Reserved.

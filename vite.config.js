@@ -18,7 +18,7 @@ export default defineConfig({
                 category: resolve(__dirname, 'pages/category.html'),
                 checkout: resolve(__dirname, 'pages/checkout.html'),
                 cottonVarieties: resolve(__dirname, 'pages/cotton-varieties.html'),
-                handloomSpecial: resolve(__dirname, 'pages/handloom-special.html'),
+                // handloomSpecial: resolve(__dirname, 'pages/handloom-special.html'),
                 shantipuriSpecial: resolve(__dirname, 'pages/shantipuri-special.html'),
                 suratSilk: resolve(__dirname, 'pages/surat-silk.html'),
             },

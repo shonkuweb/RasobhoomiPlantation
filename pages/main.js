@@ -561,8 +561,6 @@ function initProductGrid(filters = {}) {
     const path = window.location.pathname;
     if (!catParam) {
       if (path.includes('surat-silk.html')) catParam = 'Surat Silk Special';
-      else if (path.includes('handloom-special.html')) catParam = 'Handloom Special';
-      else if (path.includes('shantipuri-special.html')) catParam = 'Shantipuri Special';
       else if (path.includes('cotton-varieties.html')) catParam = 'Cotton Varieties';
     }
 
@@ -671,14 +669,14 @@ function initProductDetails() {
                 </div>
 
                 <div class="detail-content">
-                    <span class="detail-category-tag">${product.category || 'Handloom'}</span>
+                    <span class="detail-category-tag">${product.category || 'Plants'}</span>
                     <h1 class="detail-title">${product.name}</h1>
                     <div class="detail-price-row">
                         <span class="detail-price">₹${price}</span>
                         <span class="detail-price-mrp">₹${mrp}</span>
                         <span class="detail-discount">40% OFF</span>
                     </div>
-                    <p class="detail-desc">${product.description || 'Authentic handloom product.'}</p>
+                    <p class="detail-desc">${product.description || 'Authentic plant from Rasobhoomi Plantation.'}</p>
                     
 
                     <div style="background:#f0faf0; border-left:4px solid #c1ff72; padding:1rem; margin:1.5rem 0; border-radius:4px;">

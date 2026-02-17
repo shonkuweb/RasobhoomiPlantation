@@ -58,9 +58,9 @@ const Home = () => {
     return (
         <main className="home-main">
             <SEO
-                title="Rasobhoomi Plantation - Authentic Handloom Sarees"
-                description="Explore our exclusive collection of handloom sarees including Tussar, Silk, and Cotton. Handcrafted with love."
-                keywords="handloom sarees, tussar silk, cotton sarees, indian traditional wear"
+                title="Rasobhoomi Plantation - Authentic Plants & Greenery"
+                description="Explore our exclusive collection of healthy plants, fruit trees, and indoor greenery. Grown with love."
+                keywords="plants, nursery, fruit trees, indoor plants, gardening, greenery"
                 structuredData={{
                     "@context": "https://schema.org",
                     "name": "Rasobhoomi Plantation",
@@ -74,7 +74,7 @@ const Home = () => {
                 <div className="hero-overlay"></div>
                 <div className="hero-content">
                     <h1 className="hero-title">Rasobhoomi Plantation</h1>
-                    <p className="hero-subtitle">Authentic Handloom Sarees & Plants</p>
+                    <p className="hero-subtitle">Authentic Plants & Greenery</p>
                     <Link to="/categories" className="hero-cta">Shop Now</Link>
                 </div>
                 <div className="carousel-track">

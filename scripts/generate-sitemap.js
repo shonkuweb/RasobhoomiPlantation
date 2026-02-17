@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '../public');
 const SITEMAP_PATH = path.join(PUBLIC_DIR, 'sitemap.xml');
-const BASE_URL = 'https://maahandloom.com'; // Replace with actual domain
+const BASE_URL = 'https://rasobhoomiplantation.com'; // Replace with actual domain
 const API_URL = 'http://localhost:3000/api'; // Local API
 
 async function generateSitemap() {
