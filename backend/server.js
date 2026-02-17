@@ -98,10 +98,17 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '../pages/admin.html'));
 });
 
+// --- LOGGING MIDDLEWARE ---
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // Token verification endpoint
 app.get('/api/auth/verify', requireAuth, (req, res) => {
     res.json({ valid: true, role: req.admin.role });
 });
+
 
 
 // --- PAYMENT CONFIGURATION (V2) ---
@@ -325,12 +332,19 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     const itemsStr = JSON.stringify(verifiedItems);
     const sql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
+    console.log(`[ORDER] Creating order ${orderId} for amount ₹${total}`);
+
     db.run(sql, [orderId, name, phone, address, city, zip, total, itemsStr, 'pending_payment', 'pending', null], async function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error(`[ORDER] DB Insert Error: ${err.message}`);
+            return res.status(500).json({ error: err.message });
+        }
 
         // Initiate PhonePe V2
         try {
+            console.log(`[PHONEPE] Initiating payment for ${orderId}...`);
             const token = await getAuthToken();
+
 
             const payload = {
                 merchantOrderId: orderId,
@@ -375,6 +389,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 // PhonePe Redirect Handler (User comes here after payment)
 app.get('/api/phonepe/redirect', async (req, res) => {
     const { orderId } = req.query;
+    console.log(`[REDIRECT] Handling redirect for Order ID: ${orderId}`);
 
     if (!orderId) {
         return res.redirect('/?error=missing_order_id');
@@ -382,11 +397,14 @@ app.get('/api/phonepe/redirect', async (req, res) => {
 
     try {
         const token = await getAuthToken();
+        console.log(`[REDIRECT] Checking status with PhonePe for ${orderId}...`);
+
         const response = await axios.get(`${PHONEPE_HOST_URL}/checkout/v2/order/${orderId}/status`, {
             headers: { 'Authorization': `O-Bearer ${token}` }
         });
 
         const { state } = response.data; // "COMPLETED", "FAILED", "PENDING"
+        console.log(`[REDIRECT] Payment Status for ${orderId}: ${state}`);
 
         if (state === 'COMPLETED') {
             // Update DB
@@ -421,6 +439,7 @@ app.get('/api/phonepe/redirect', async (req, res) => {
 
 // PhonePe Webhook (S2S Callback for robustness)
 app.post('/api/phonepe/callback', async (req, res) => {
+    console.log(`[WEBHOOK] Received callback: ${JSON.stringify(req.body)}`);
     try {
         // Basic Authorization Header Verification
         // Header format: SHA256(username:password)
