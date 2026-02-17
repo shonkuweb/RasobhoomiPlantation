@@ -55,11 +55,6 @@ const Checkout = () => {
                 if (data.success && data.payment_url) {
                     // Real Payment Flow (Redirect to PhonePe)
                     window.location.href = data.payment_url;
-                } else if (data.success) {
-                    // Mock Flow / Success without Redirect
-                    alert(`Order Placed Successfully! (Mock Payment)\nOrder ID: ${data.id}`);
-                    clearCart();
-                    navigate('/');
                 } else {
                     alert('Payment Initiation Failed: ' + (data.message || 'Unknown Error'));
                 }

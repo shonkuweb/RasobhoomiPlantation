@@ -314,29 +314,12 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     const total = calculatedTotal + SHIPPING_FEE; // Include shipping fee in total
     const jsonItemsStr = JSON.stringify(items);
 
-    const useMock = forcedMock || (!process.env.PHONEPE_CLIENT_ID && !process.env.PHONEPE_CLIENT_SECRET);
 
     console.log(`[DEBUG] Order ID: ${orderId}`);
-    console.log(`[DEBUG] Client ID Present: ${!!process.env.PHONEPE_CLIENT_ID}`);
-    console.log(`[DEBUG] Client Secret Present: ${!!process.env.PHONEPE_CLIENT_SECRET}`);
-    console.log(`[DEBUG] useMock: ${useMock}`);
 
-    if (useMock) {
-        // MOCK FLOW
-        const transactionId = 'MOCK-TXN-' + Date.now();
-        const sql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-        db.run(sql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'new', 'paid', transactionId], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-
-            // Deduct Stock
-            verifiedItems.forEach(item => {
-                db.run("UPDATE products SET qty = qty - ? WHERE id = ?", [item.qty, item.id], (err) => { });
-            });
-
-            res.json({ success: true, message: 'Order created (Mock)', id: orderId });
-        });
-        return;
+    // Check for credentials
+    if (!process.env.PHONEPE_CLIENT_ID || !process.env.PHONEPE_CLIENT_SECRET) {
+        return res.status(500).json({ error: 'Server Payment Configuration Missing' });
     }
 
     // REAL PHONEPE FLOW (V2 OAuth)
@@ -437,22 +420,23 @@ app.post('/api/phonepe/callback', async (req, res) => {
         const xVerify = req.headers['x-verify'];
 
         if (response && xVerify) {
-            // 1. VERIFY SIGNATURE (Security)
-            const saltKey = process.env.PHONEPE_SALT_KEY;
-            const saltIndex = process.env.PHONEPE_SALT_INDEX || 1;
+            // 1. VERIFY SIGNATURE (Custom Authorization Header as per User Requirement)
+            const authHeader = req.headers['authorization'];
+            const webhookUser = process.env.PHONEPE_WEBHOOK_USERNAME;
+            const webhookPass = process.env.PHONEPE_WEBHOOK_PASSWORD;
 
-            if (!saltKey) {
-                console.error("Missing Salt Key in .env");
-                return res.status(500).send("Server Configuration Error");
-            }
+            if (webhookUser && webhookPass) {
+                // Prompt: SHA256(username:password)
+                const expectedAuth = crypto.createHash('sha256').update(`${webhookUser}:${webhookPass}`).digest('hex');
 
-            const calculatedChecksum = crypto.createHash('sha256')
-                .update(response + saltKey)
-                .digest('hex') + '###' + saltIndex;
-
-            if (xVerify !== calculatedChecksum) {
-                console.error("Invalid Webhook Signature");
-                return res.status(401).send("Invalid Signature");
+                if (authHeader !== expectedAuth) {
+                    console.error("Invalid Webhook Authorization Header");
+                    console.error("Received:", authHeader);
+                    console.error("Expected:", expectedAuth);
+                    return res.status(401).send("Unauthorized Webhook");
+                }
+            } else {
+                console.warn("Skipping Webhook Verification: Missing Username/Password in .env");
             }
 
             // 2. DECODE & PROCESS
