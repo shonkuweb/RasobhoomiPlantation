@@ -31,6 +31,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Enable Proxy Trust for Docker/Nginx (Fixes rate-limit error)
+app.set('trust proxy', 1);
+
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet({
     contentSecurityPolicy: false, // Disabled for now to prevent breaking existing inline scripts/styles

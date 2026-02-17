@@ -13,7 +13,6 @@ services:
       - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/ecommerce
       # Add PhonePe keys here or in .env file
       - PHONEPE_MERCHANT_ID=${PHONEPE_MERCHANT_ID}
-      - PHONEPE_SALT_KEY=${PHONEPE_SALT_KEY}
       - APP_BE_URL=http://your-domain.com
     depends_on:
       - db
