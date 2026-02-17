@@ -71,8 +71,13 @@ const Home = () => {
             />
             {/* Hero Section */}
             <section className="hero-carousel">
+                <div className="hero-overlay"></div>
+                <div className="hero-content">
+                    <h1 className="hero-title">Rasobhoomi Plantation</h1>
+                    <p className="hero-subtitle">Authentic Handloom Sarees & Plants</p>
+                    <Link to="/categories" className="hero-cta">Shop Now</Link>
+                </div>
                 <div className="carousel-track">
-                    {/* Assuming images are in public/hero/ */}
                     {/* Assuming images are in public/hero/ */}
                     <img src="/hero/Gemini_Generated_Image_ufccdnufccdnufcc.png" alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
                 </div>

@@ -96,13 +96,73 @@ const Checkout = () => {
     }
 
     return (
-        <main style={{ padding: '1rem', maxWidth: '800px', margin: '0 auto' }}>
-            <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>CHECKOUT</h1>
+        <main className="checkout-page-container">
+            <h1 className="checkout-page-title">CHECKOUT</h1>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                {/* Order Summary */}
-                <div style={{ border: '1px solid #e5e7eb', padding: '1.5rem', borderRadius: '12px', backgroundColor: '#f9fafb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <h3 style={{ marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb', paddingBottom: '0.75rem', fontSize: '1.25rem', color: '#1f2937' }}>Order Summary</h3>
+            <div className="checkout-grid">
+
+                {/* Shipping Details Form - FIRST */}
+                <form onSubmit={handleSubmit} className="checkout-card">
+                    <h3 className="checkout-section-title">Shipping Details</h3>
+
+                    <div className="form-group">
+                        <input
+                            type="text" name="name" placeholder="Full Name" required
+                            value={formData.name} onChange={handleChange}
+                            className="modern-input"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <input
+                            type="tel" name="phone" placeholder="Phone Number" required
+                            value={formData.phone} onChange={handleChange}
+                            className="modern-input"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <textarea
+                            name="address" placeholder="Address" required
+                            value={formData.address} onChange={handleChange}
+                            rows="3"
+                            className="modern-input"
+                        />
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <input
+                                type="text" name="city" placeholder="City" required
+                                value={formData.city} onChange={handleChange}
+                                className="modern-input"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <input
+                                type="text" name="zip" placeholder="Zip Code" required
+                                value={formData.zip} onChange={handleChange}
+                                className="modern-input"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn-primary btn-block"
+                        style={{ fontSize: '1rem', opacity: isSubmitting ? 0.7 : 1 }}
+                    >
+                        {isSubmitting ? 'Processing...' : `PAY ₹${total}`}
+                    </button>
+                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#666', marginTop: '1rem' }}>
+                        Secure Payment via PhonePe
+                    </p>
+                </form>
+
+                {/* Order Summary - SECOND */}
+                <div className="checkout-card">
+                    <h3 className="checkout-section-title">Order Summary</h3>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {/* Items List */}
@@ -119,81 +179,23 @@ const Checkout = () => {
                             })}
                         </div>
 
-                        <div style={{ borderTop: '1px dashed #d1d5db', marginTop: '0.5rem', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#374151' }}>
+                        <div className="summary-total">
+                            <div className="summary-row" style={{ fontSize: '1rem' }}>
                                 <span>Item Subtotal</span>
                                 <span>₹{subtotal}</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: '#374151' }}>
+                            <div className="summary-row" style={{ fontSize: '1rem' }}>
                                 <span>Delivery Charges</span>
                                 <span style={{ color: '#059669' }}>+ ₹{shippingFee}</span>
                             </div>
-                        </div>
-
-                        <div style={{ borderTop: '2px solid #e5e7eb', marginTop: '0.5rem', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>
-                            <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#2C1B10' }}>₹{total}</span>
+                            <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
+                                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>
+                                <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#2C1B10' }}>₹{total}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Shipping Details Form */}
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <h3 style={{ marginBottom: '0.5rem' }}>Shipping Details</h3>
-
-                    <input
-                        type="text" name="name" placeholder="Full Name" required
-                        value={formData.name} onChange={handleChange}
-                        style={{ padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    />
-
-                    <input
-                        type="tel" name="phone" placeholder="Phone Number" required
-                        value={formData.phone} onChange={handleChange}
-                        style={{ padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    />
-
-                    <textarea
-                        name="address" placeholder="Address" required
-                        value={formData.address} onChange={handleChange}
-                        rows="3"
-                        style={{ padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                    />
-
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <input
-                            type="text" name="city" placeholder="City" required
-                            value={formData.city} onChange={handleChange}
-                            style={{ flex: 1, padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                        />
-                        <input
-                            type="text" name="zip" placeholder="Zip Code" required
-                            value={formData.zip} onChange={handleChange}
-                            style={{ flex: 1, padding: '0.75rem', border: '1px solid #ccc', borderRadius: '4px' }}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        style={{
-                            marginTop: '1rem',
-                            padding: '1rem',
-                            background: isSubmitting ? '#9ca3af' : '#2C1B10',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                            fontSize: '1rem'
-                        }}
-                    >
-                        {isSubmitting ? 'Processing...' : `PAY ₹${total}`}
-                    </button>
-                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#666' }}>
-                        Secure Payment via PhonePe
-                    </p>
-                </form>
             </div>
         </main>
     );
