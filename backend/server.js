@@ -32,6 +32,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- SECURITY MIDDLEWARE ---
+app.set('trust proxy', 1); // Trust first proxy (Nginx/Docker)
 app.use(helmet({
     contentSecurityPolicy: false, // Disabled for now to prevent breaking existing inline scripts/styles
 }));

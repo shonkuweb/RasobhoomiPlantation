@@ -34,7 +34,7 @@
 - [/] Implement PhonePe V2 Standard Checkout
     - [x] Analyze V2 API Requirements
     - [x] Create `implementation_plan.md` for V2
-    - [ ] Obtain V2 Sandbox Credentials (Client ID, Secret, Version)
+    - [x] Obtain V2 Sandbox Credentials (Client ID, Secret, Version)
     - [x] Implement OAuth Flow (`getAuthToken`)
     - [x] Update Payment Initiation to `/checkout/v2/pay`
     - [x] Update Callback Handling
