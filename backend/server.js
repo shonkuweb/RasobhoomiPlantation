@@ -343,9 +343,9 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                     type: "PG_CHECKOUT",
                     message: "Payment for Order " + orderId,
                     merchantUrls: {
-                        redirectUrl: `${APP_BE_URL}/api/phonepe/callback`,
+                        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
                         redirectMode: "POST",
-                        callbackUrl: `${APP_BE_URL}/api/phonepe/callback`
+                        callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
                     }
                 }
             };
@@ -397,6 +397,11 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             });
         }
     });
+});
+
+// PhonePe Callback GET Handler (To prevent "Cannot GET" error if accessed directly)
+app.get('/api/phonepe/callback', (req, res) => {
+    res.status(405).send('<h1>Method Not Allowed</h1><p>This URL is for PhonePe callbacks only. Please do not access it directly.</p><a href="/">Go to Home</a>');
 });
 
 // PhonePe Callback & Redirect Handler (V2 Secure)
