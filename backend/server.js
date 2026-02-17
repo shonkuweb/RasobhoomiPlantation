@@ -399,9 +399,29 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     });
 });
 
-// PhonePe Callback GET Handler (To prevent "Cannot GET" error if accessed directly)
+// PhonePe Callback GET Handler (Handle GET Redirects from PhonePe)
 app.get('/api/phonepe/callback', (req, res) => {
-    res.status(405).send('<h1>Method Not Allowed</h1><p>This URL is for PhonePe callbacks only. Please do not access it directly.</p><a href="/">Go to Home</a>');
+    console.log("PhonePe Callback Received via GET");
+    console.log("Query Params:", JSON.stringify(req.query));
+
+    const { code, transactionId } = req.query;
+
+    if (code && transactionId) {
+        // Handle GET Redirect (Same logic as POST)
+        console.log(`Processing GET Redirect: Code=${code}, Txn=${transactionId}`);
+        const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080';
+
+        if (code === 'PAYMENT_SUCCESS') {
+            return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
+        } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
+            return res.redirect(`${baseUrl}/payment/pending?orderId=${transactionId}`);
+        } else {
+            return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
+        }
+    }
+
+    // If no code/txn, then show error (Direct Access)
+    res.status(405).send('<h1>Method Not Allowed</h1><p>Invalid Callback Request.</p><a href="/">Go to Home</a>');
 });
 
 // PhonePe Callback & Redirect Handler (V2 Secure)
