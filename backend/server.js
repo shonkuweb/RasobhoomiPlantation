@@ -350,6 +350,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                 }
             };
 
+            console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}/checkout/v2/pay`);
             const response = await axios.post(`${PHONEPE_PAY_URL}/checkout/v2/pay`,
                 payload,
                 {
