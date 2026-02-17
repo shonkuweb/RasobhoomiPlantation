@@ -1,8 +1,13 @@
 :root {
-  --color-black: #2C1B10;
+  /* New Brand Colors: Deep Green Theme */
+  --color-black: #0F2B1A;
   --color-white: #FFFAF0;
   --color-grey: #e5e7eb;
   --color-light-grey: #f3f4f6;
+  --color-primary: #1A4D2E;
+  /* Deep Forest Green */
+  --color-accent: var(--color-accent);
+  /* Lime - Keeping as accent */
   --color-red-text: #ef4444;
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --header-height: clamp(60px, 8vh, 80px);
@@ -153,12 +158,12 @@ main.home-main {
 /* Admin Panel Link */
 .admin-link-container {
   padding: 1rem;
-  background-color: #c1ff72;
+  background-color: var(--color-accent);
   margin-top: auto;
 }
 
 .admin-link {
-  color: #2C1B10;
+  color: var(--color-black);
   text-decoration: none;
   display: flex;
   justify-content: center;
@@ -267,10 +272,10 @@ main.home-main {
 
 .filter-btn {
   width: 100%;
-  background-color: #c1ff72;
+  background-color: var(--color-accent);
   /* Primary Green */
-  color: #2C1B10;
-  border: 1px solid #2C1B10;
+  color: var(--color-black);
+  border: 1px solid var(--color-black);
   padding: 1rem;
   border-radius: 4px;
   /* Slightly rounded for modern feel, though wireframe is sharp */
@@ -286,9 +291,9 @@ main.home-main {
 /* Modern Add Product Button */
 .btn-add-product-modern {
   width: 100%;
-  background-color: #c1ff72;
-  color: #2C1B10;
-  border: 1px solid #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
+  border: 1px solid var(--color-black);
   padding: 1rem;
   border-radius: 6px;
   font-weight: 800;
@@ -344,7 +349,7 @@ main.home-main {
 .cat-circle {
   width: 75px;
   height: 75px;
-  background: linear-gradient(135deg, #2C1B10 0%, #5D4037 100%);
+  background: linear-gradient(135deg, var(--color-black) 0%, #5D4037 100%);
   /* Chocolate Gradient */
   border-radius: 50%;
   display: flex;
@@ -367,7 +372,7 @@ main.home-main {
 
 .cat-label {
   font-size: 0.7rem;
-  color: #2C1B10;
+  color: var(--color-black);
   font-weight: 700;
   text-transform: uppercase;
   text-align: center;
@@ -445,7 +450,7 @@ main.home-main {
 }
 
 .add-cart-pill {
-  background-color: #2C1B10;
+  background-color: var(--color-black);
   color: white;
   border: none;
   border-radius: 20px;
@@ -518,8 +523,8 @@ main.home-main {
 }
 
 .toggle-btn.active {
-  background-color: #c1ff72;
-  color: #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
 }
 
 /* Filters */
@@ -544,8 +549,8 @@ main.home-main {
 }
 
 .filter-chip.active {
-  background-color: #c1ff72;
-  color: #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
 }
 
 /* List Items */
@@ -603,9 +608,9 @@ main.home-main {
 }
 
 .view-btn {
-  background-color: #c1ff72;
-  color: #2C1B10;
-  border: 1px solid #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
+  border: 1px solid var(--color-black);
   padding: 0.5rem 1.5rem;
   border-radius: 20px;
   font-weight: bold;
@@ -617,8 +622,8 @@ main.home-main {
 /* Footer */
 /* Footer */
 footer {
-  background-color: #c1ff72;
-  color: #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
   padding: 4rem 1.5rem 2rem;
   margin-top: auto;
   width: 100%;
@@ -645,7 +650,7 @@ footer {
 .footer-logo {
   font-family: 'Great Vibes', cursive;
   font-size: 2.5rem;
-  color: #2C1B10;
+  color: var(--color-black);
   margin-bottom: 0.5rem;
 }
 
@@ -661,7 +666,7 @@ footer {
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 0.5rem;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .footer-links-list {
@@ -673,7 +678,7 @@ footer {
 
 .footer-link-item {
   text-decoration: none;
-  color: #2C1B10;
+  color: var(--color-black);
   opacity: 0.8;
   font-weight: 500;
   transition: opacity 0.2s;
@@ -698,7 +703,7 @@ footer {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #2C1B10;
+  color: var(--color-black);
   transition: all 0.2s;
 }
 
@@ -764,11 +769,11 @@ footer {
 
 .cart-header {
   height: var(--header-height);
-  background-color: #c1ff72;
+  background-color: var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2C1B10;
+  color: var(--color-black);
   font-weight: bold;
   font-size: 1.2rem;
   letter-spacing: 1px;
@@ -914,7 +919,7 @@ footer {
   font-size: 1.5rem;
   margin-bottom: 2rem;
   text-align: center;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .modern-input {
@@ -930,14 +935,14 @@ footer {
 }
 
 .modern-input:focus {
-  border-color: #2C1B10;
+  border-color: var(--color-black);
 }
 
 .btn-upload-modern {
   width: 100%;
   background-color: transparent;
-  color: #2C1B10;
-  border: 2px dashed #2C1B10;
+  color: var(--color-black);
+  border: 2px dashed var(--color-black);
   padding: 1rem;
   font-weight: bold;
   text-transform: uppercase;
@@ -955,12 +960,12 @@ footer {
 
 .btn-save-modern {
   width: 100%;
-  background-color: #c1ff72;
-  color: #2C1B10;
+  background-color: var(--color-accent);
+  color: var(--color-black);
   padding: 1rem;
   font-weight: 800;
   text-transform: uppercase;
-  border: 1px solid #2C1B10;
+  border: 1px solid var(--color-black);
   cursor: pointer;
   font-size: 1.1rem;
   letter-spacing: 1px;
@@ -1059,7 +1064,7 @@ footer {
 .detail-price {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .detail-price-mrp {
@@ -1125,7 +1130,7 @@ footer {
 }
 
 .btn-primary {
-  background: #2C1B10;
+  background: var(--color-black);
   color: #fff;
   box-shadow: 0 4px 15px rgba(44, 27, 16, 0.3);
 }
@@ -1312,7 +1317,7 @@ footer {
   font-family: 'Inter', sans-serif;
   font-size: 2rem;
   font-weight: 900;
-  color: #2C1B10;
+  color: var(--color-black);
   margin-bottom: 0.5rem;
   line-height: 1.1;
   letter-spacing: -0.5px;
@@ -1328,7 +1333,7 @@ footer {
 .detail-price {
   font-size: 2rem;
   font-weight: 900;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .detail-price-mrp {
@@ -1402,9 +1407,9 @@ footer {
 
 .btn-buy-now-large {
   flex: 1;
-  background-color: #2C1B10;
+  background-color: var(--color-black);
   color: white;
-  border: 3px solid #2C1B10;
+  border: 3px solid var(--color-black);
   border-radius: 16px;
   padding: 1rem 1.5rem;
   font-weight: 700;
@@ -1463,7 +1468,7 @@ footer {
 .auth-icon {
   width: 72px;
   height: 72px;
-  background-color: #2C1B10;
+  background-color: var(--color-black);
   border-radius: 50%;
   display: flex;
   justify-content: center;
@@ -1496,7 +1501,7 @@ footer {
 .auth-card h2 {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #2C1B10;
+  color: var(--color-black);
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -1523,14 +1528,14 @@ footer {
 }
 
 .input-group input:focus {
-  border-color: #2C1B10;
+  border-color: var(--color-black);
   box-shadow: 0 0 0 4px rgba(44, 27, 16, 0.1);
   background: white;
 }
 
 .auth-btn {
   width: 100%;
-  background-color: #2C1B10;
+  background-color: var(--color-black);
   color: white;
   padding: 1rem;
   border: none;
@@ -1604,7 +1609,7 @@ footer {
 .cat-page-circle {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #2C1B10 0%, #5D4037 100%);
+  background: linear-gradient(135deg, var(--color-black) 0%, #5D4037 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1617,7 +1622,7 @@ footer {
 }
 
 .cat-page-label {
-  color: #2C1B10;
+  color: var(--color-black);
   font-weight: 800;
   text-transform: uppercase;
   text-align: center;
@@ -1627,7 +1632,7 @@ footer {
 
 /* Tracking Page Premium Redesign */
 .tracking-hero {
-  background: linear-gradient(135deg, #2C1B10 0%, #4A3b32 100%);
+  background: linear-gradient(135deg, var(--color-black) 0%, #4A3b32 100%);
   padding: 3rem 1.5rem;
   padding: 4rem 1.5rem;
   /* Standard padding */
@@ -1676,11 +1681,11 @@ footer {
   outline: none;
   font-size: 1rem;
   font-weight: bold;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .tracking-btn {
-  background: #2C1B10;
+  background: var(--color-black);
   color: white;
   border: none;
   border-radius: 50px;
@@ -1760,7 +1765,7 @@ footer {
 }
 
 .timeline-step.active .timeline-icon {
-  background: #2C1B10;
+  background: var(--color-black);
   color: white;
   transform: scale(1.1);
   box-shadow: 0 0 0 5px rgba(44, 27, 16, 0.1);
@@ -1800,12 +1805,12 @@ footer {
   width: 45px;
   height: 45px;
   background: white;
-  border: 2px solid #2C1B10;
+  border: 2px solid var(--color-black);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2C1B10;
+  color: var(--color-black);
   flex-shrink: 0;
   transition: all 0.3s ease;
 }
@@ -1818,7 +1823,7 @@ footer {
   font-weight: 800;
   font-size: 1rem;
   margin-bottom: 0.25rem;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .timeline-content p {
@@ -1847,7 +1852,7 @@ footer {
 /* Specific Line logic hard to do with pure CSS sibling selectors without structure change. 
    We will toggle a class on the line via JS. */
 .timeline-line.active {
-  background: #2C1B10;
+  background: var(--color-black);
 }
 
 @keyframes fadeIn {
@@ -1889,7 +1894,7 @@ footer {
   font-family: 'Inter', sans-serif;
   font-weight: 900;
   font-size: 1.5rem;
-  color: #2C1B10;
+  color: var(--color-black);
   text-transform: uppercase;
   margin-bottom: 0.5rem;
   line-height: 1.2;
@@ -1912,7 +1917,7 @@ footer {
 .detail-price {
   font-size: 2rem;
   font-weight: 900;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .sticky-action-bar {
@@ -1949,13 +1954,13 @@ footer {
 
 .btn-secondary {
   background: white;
-  border: 2px solid #2C1B10;
-  color: #2C1B10;
+  border: 2px solid var(--color-black);
+  color: var(--color-black);
 }
 
 .btn-primary {
-  background: #2C1B10;
-  border: 2px solid #2C1B10;
+  background: var(--color-black);
+  border: 2px solid var(--color-black);
   color: white;
 }
 
@@ -2043,7 +2048,7 @@ footer {
     font-weight: bold;
 
     /* Default: Button is WHITE (Inactive), so Badge is BLACK */
-    background-color: #2C1B10;
+    background-color: var(--color-black);
     color: white;
     transition: all 0.3s ease;
   }
@@ -2051,7 +2056,7 @@ footer {
   /* Active: Button is DARK (Active), so Badge is WHITE */
   .toggle-btn.active .order-counter {
     background-color: white;
-    color: #2C1B10;
+    color: var(--color-black);
   }
 }
 
@@ -2296,7 +2301,7 @@ footer {
   font-family: 'Great Vibes', cursive;
   font-size: 2.5rem;
   /* Larger */
-  color: #2C1B10;
+  color: var(--color-black);
   margin-bottom: 0.2rem;
   line-height: 1;
 }
@@ -2328,7 +2333,7 @@ footer {
 
 .info-value {
   font-weight: 800;
-  color: #2C1B10;
+  color: var(--color-black);
   font-size: 1.1rem;
 }
 
@@ -2377,7 +2382,7 @@ footer {
 
 .customer-val {
   flex: 1;
-  color: #2C1B10;
+  color: var(--color-black);
   font-weight: 600;
 }
 
@@ -2411,7 +2416,7 @@ footer {
   /* Receipt style */
   padding-top: 1.5rem;
   margin-top: 1.5rem;
-  color: #2C1B10;
+  color: var(--color-black);
 }
 
 .order-item-row {
@@ -2500,7 +2505,7 @@ footer {
 }
 
 .policy-content h3 {
-  color: #2C1B10;
+  color: var(--color-black);
   font-size: 1.25rem;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
