@@ -402,15 +402,23 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 // PhonePe Callback & Redirect Handler (V2 Secure)
 app.post('/api/phonepe/callback', async (req, res) => {
     try {
+        console.log("PhonePe Callback Received");
+        console.log("Headers:", JSON.stringify(req.headers));
+        console.log("Body:", JSON.stringify(req.body));
+
         // DETECT REQUEST TYPE
         // Type A: Browser Redirect (Standard Checkout V2) -> Content-Type: application/x-www-form-urlencoded
         // Body contains: code, merchantId, transactionId, providerReferenceId
         if (req.body.code && req.body.merchantId) {
             const { code, transactionId } = req.body;
+            console.log(`Processing Redirect: Code=${code}, Txn=${transactionId}`);
 
             // For Browser Redirect, we TRUST the 'code' implies success (or should ideally check Status API)
             // Redirect user to Success Page immediately.
-            const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080'; // Frontend URL
+            // IMPORTANT: If APP_FE_URL is not set in Production, this might redirect to localhost!
+            // Fallback to relative path if on same domain? No, separating FE/BE is safer.
+            const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080';
+            console.log(`Redirecting to Base URL: ${baseUrl}`);
 
             if (code === 'PAYMENT_SUCCESS') {
                 return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);

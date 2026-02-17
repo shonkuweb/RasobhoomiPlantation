@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
+import '../styles/PaymentStatus.css';
 
 const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
@@ -12,28 +13,32 @@ const PaymentSuccess = () => {
     }, [clearCart]);
 
     return (
-        <div style={{ textAlign: 'center', padding: '50px 20px', maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ fontSize: '64px', color: '#4CAF50', marginBottom: '20px' }}>✓</div>
-            <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>Payment Successful!</h1>
-            <p style={{ fontSize: '18px', color: '#666', marginBottom: '30px' }}>
-                Thank you for your order. Your transaction was successful.
-            </p>
-            {orderId && (
-                <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px', marginBottom: '30px' }}>
-                    <strong>Order ID:</strong> {orderId}
+        <div className="payment-status-container">
+            <div className="status-card">
+                <div className="status-icon-wrapper icon-success">
+                    ✓
                 </div>
-            )}
-            <Link to="/" style={{
-                display: 'inline-block',
-                background: '#000',
-                color: '#fff',
-                padding: '12px 30px',
-                textDecoration: 'none',
-                borderRadius: '5px',
-                fontWeight: 'bold'
-            }}>
-                Continue Shopping
-            </Link>
+                <h1 className="status-title">Payment Successful!</h1>
+                <p className="status-message">
+                    Thank you for your purchase. Your order has been confirmed and will be shipped soon.
+                </p>
+
+                {orderId && (
+                    <div className="order-details">
+                        <strong>Order ID</strong>
+                        <span className="order-id-text">#{orderId}</span>
+                    </div>
+                )}
+
+                <div className="action-buttons">
+                    <Link to="/" className="btn-primary">
+                        Continue Shopping
+                    </Link>
+                    <Link to="/track-order" className="btn-outline">
+                        Track Order
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 };
