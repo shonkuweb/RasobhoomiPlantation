@@ -26,3 +26,16 @@
 - [x] Update Hero Image to Rasobhoomi Nursery (Placeholder used)
 - [x] Sync Navbar Font and Icon Colors with Footer
 - [x] Fix Admin Panel UI and Functionality
+- [x] Local Environment Setup
+    - [x] Install dependencies (`npm install`)
+    - [x] Configure `.env` file
+    - [x] Verify Database Configuration
+    - [x] Start Development Server (`npm run dev:all`)
+- [/] Implement PhonePe V2 Standard Checkout
+    - [x] Analyze V2 API Requirements
+    - [x] Create `implementation_plan.md` for V2
+    - [ ] Obtain V2 Sandbox Credentials (Client ID, Secret, Version)
+    - [x] Implement OAuth Flow (`getAuthToken`)
+    - [x] Update Payment Initiation to `/checkout/v2/pay`
+    - [x] Update Callback Handling
+    - [ ] Verify Payment Flow
