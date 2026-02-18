@@ -340,19 +340,20 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 
             const payload = {
                 merchantId: PHONEPE_MERCHANT_ID,
-                merchantTransactionId: orderId,
-                merchantUserId: "MUID-" + orderId,
+                merchantOrderId: orderId,
                 amount: total * 100,
-                redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
-                redirectMode: "REDIRECT",
-                callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
-                mobileNumber: phone,
-                paymentInstrument: {
-                    type: "PAY_PAGE"
+                paymentFlow: {
+                    type: "PG_CHECKOUT",
+                    message: "Payment for Order " + orderId,
+                    merchantUrls: {
+                        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
+                        redirectMode: "REDIRECT",
+                        callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
+                    }
                 }
             };
 
-            const endpoint = "/pg/v1/pay";
+            const endpoint = "/checkout/v2/pay";
             console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}${endpoint}`);
 
             // Note: If using OAuth, some docs suggest sending JSON directly.
