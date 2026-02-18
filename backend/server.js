@@ -340,21 +340,25 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 
             const payload = {
                 merchantId: PHONEPE_MERCHANT_ID,
-                merchantOrderId: orderId,
-                amount: total * 100, // in paise
-                paymentFlow: {
-                    type: "PG_CHECKOUT",
-                    message: "Payment for Order " + orderId,
-                    merchantUrls: {
-                        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
-                        redirectMode: "REDIRECT",
-                        callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
-                    }
+                merchantTransactionId: orderId,
+                merchantUserId: "MUID-" + orderId,
+                amount: total * 100,
+                redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
+                redirectMode: "REDIRECT",
+                callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
+                mobileNumber: phone,
+                paymentInstrument: {
+                    type: "PAY_PAGE"
                 }
             };
 
-            console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}/checkout/v2/pay`);
-            const response = await axios.post(`${PHONEPE_PAY_URL}/checkout/v2/pay`,
+            const endpoint = "/pg/v1/pay";
+            console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}${endpoint}`);
+
+            // Note: If using OAuth, some docs suggest sending JSON directly.
+            // If using Salt, we would need Base64 + X-VERIFY. 
+            // Assuming OAuth supports JSON body for V1 as per recent V2-like behavior docs or we'll try standard JSON.
+            const response = await axios.post(`${PHONEPE_PAY_URL}${endpoint}`,
                 payload,
                 {
                     headers: {
@@ -364,18 +368,12 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                 }
             );
 
-            const data = response.data; // V2 Response Structure
+            const data = response.data;
             console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
 
-            // Robust Success Check: V2 standard (code) OR flattened (state)
-            if ((data.success && data.code === 'PAYMENT_INITIATED') ||
-                (data.state === 'COMPLETED' || data.state === 'PENDING') ||
-                (data.data && (data.data.state === 'COMPLETED' || data.data.state === 'PENDING'))) {
-
-                // Robust URL Extraction
+            if (data.success && (data.code === 'PAYMENT_INITIATED' || data.code === 'SUCCESS')) {
                 const redirectUrl = data.data?.instrumentResponse?.redirectInfo?.url ||
-                    data.data?.redirectUrl ||
-                    data.redirectUrl;
+                    data.data?.redirectUrl;
 
                 if (redirectUrl) {
                     res.json({
