@@ -381,6 +381,16 @@ main.home-main {
   line-height: 1.2;
 }
 
+.cat-circle-text {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #1A4D2E;
+  text-align: center;
+  text-transform: uppercase;
+  line-height: 1.2;
+  padding: 0.3rem;
+}
+
 /* Product Grid */
 .product-grid {
   display: grid;
