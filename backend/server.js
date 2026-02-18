@@ -286,7 +286,6 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     const { name, phone, address, city, zip, items, forcedMock } = req.body;
     const orderId = 'ORD-' + Date.now();
 
-
     // Server-Side Calculation & Verification
     let calculatedTotal = 0;
     const verifiedItems = [];
@@ -318,7 +317,6 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     const SHIPPING_FEE = 150;
     const total = calculatedTotal + SHIPPING_FEE; // Include shipping fee in total
     const jsonItemsStr = JSON.stringify(items);
-
 
     console.log(`[DEBUG] Order ID: ${orderId}`);
 
@@ -368,24 +366,22 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             const data = response.data;
             console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
 
-            if (data.success && (data.code === 'PAYMENT_INITIATED' || data.code === 'SUCCESS')) {
-                const redirectUrl = data.data?.instrumentResponse?.redirectInfo?.url ||
-                    data.data?.redirectUrl;
+            if (data && data.redirectUrl) {
 
-                if (redirectUrl) {
-                    res.json({
-                        success: true,
-                        message: 'Payment Initiated',
-                        payment_url: redirectUrl,
-                        orderId: orderId
-                    });
-                } else {
-                    res.status(500).json({ error: 'No Redirect URL in PhonePe Response', details: data });
-                }
+                res.json({
+                    success: true,
+                    message: "Payment Session Created",
+                    payment_url: data.redirectUrl,
+                    orderId: orderId
+                });
 
             } else {
-                res.status(500).json({ error: 'PhonePe Error', details: data });
+                res.status(500).json({
+                    error: "Unexpected PhonePe Response",
+                    details: data
+                });
             }
+
 
         } catch (pgErr) {
             console.error("PhonePe Init Error:", pgErr.response ? pgErr.response.data : pgErr.message);
@@ -573,8 +569,6 @@ app.post('/api/auth/login', (req, res) => {
     // SECURE: Use Environment Variable
     const adminPass = process.env.ADMIN_PASSCODE || '1234';
 
-
-
     if (password === adminPass) {
         // Generate real JWT token
         const token = jwt.sign(
@@ -601,7 +595,6 @@ app.delete('/api/orders/:id', requireAuth, (req, res) => {
         res.json({ message: 'Deleted' });
     });
 });
-
 
 // Fallback for SPA
 app.get(/.*/, (req, res) => {
