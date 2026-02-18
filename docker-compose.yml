@@ -25,6 +25,7 @@ services:
       - PHONEPE_WEBHOOK_PASSWORD=${PHONEPE_WEBHOOK_PASSWORD}
       # App
       - APP_BE_URL=${APP_BE_URL}
+      - APP_FE_URL=${APP_FE_URL:-${APP_BE_URL}}
     depends_on:
       - db
     networks:

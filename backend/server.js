@@ -403,7 +403,7 @@ app.get('/api/phonepe/callback', (req, res) => {
     if (code && transactionId) {
         // Handle GET Redirect (Same logic as POST)
         console.log(`Processing GET Redirect: Code=${code}, Txn=${transactionId}`);
-        const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080';
+        const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
 
         if (code === 'PAYMENT_SUCCESS') {
             return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
@@ -414,8 +414,9 @@ app.get('/api/phonepe/callback', (req, res) => {
         }
     }
 
-    // If no code/txn, then show error (Direct Access)
-    res.status(405).send('<h1>Method Not Allowed</h1><p>Invalid Callback Request.</p><a href="/">Go to Home</a>');
+    // If no code/txn, redirect to failure page instead of showing error
+    const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
+    res.redirect(`${baseUrl}/payment/failure`);
 });
 
 // PhonePe Callback & Redirect Handler (V2 Secure)
@@ -436,7 +437,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
             // Redirect user to Success Page immediately.
             // IMPORTANT: If APP_FE_URL is not set in Production, this might redirect to localhost!
             // Fallback to relative path if on same domain? No, separating FE/BE is safer.
-            const baseUrl = process.env.APP_FE_URL || 'http://localhost:8080';
+            const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
             console.log(`Redirecting to Base URL: ${baseUrl}`);
 
             if (code === 'PAYMENT_SUCCESS') {
