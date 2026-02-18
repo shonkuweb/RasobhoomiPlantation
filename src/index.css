@@ -2363,11 +2363,90 @@ footer {
 #close-navbar-search {
   background: none;
   border: none;
-  color: white;
+  color: var(--color-black);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+}
+
+/* Search Bar Styles */
+.search-bar-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 1rem;
+}
+
+.search-input-wrapper.pill-search {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-white);
+  border-radius: 25px;
+  padding: 0.4rem 1rem;
+  width: 100%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.search-input-wrapper.pill-search:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pill-icon-left {
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.pill-icon-right {
+  color: var(--color-gray-500);
+  display: flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+#navbar-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  font-size: 1rem;
+  color: var(--color-black);
+  width: 100%;
+  /* Ensure it takes available space */
+}
+
+/* Mobile Search Toggle Logic */
+@media (max-width: 768px) {
+  .search-bar-container {
+    display: none;
+    /* Hidden by default on mobile */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background-color: var(--color-primary);
+    padding: 0.5rem 1rem;
+    z-index: 10;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .navbar.search-active .search-bar-container {
+    display: flex;
+    /* Show when active */
+  }
 }
 
 /* State: Search Active */
