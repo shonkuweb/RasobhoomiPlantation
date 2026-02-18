@@ -489,9 +489,16 @@
                     id="btn-orders" class="toggle-btn">orders</button></div>
         </div>
         <!-- Toolbar (Products View) -->
-        <div id="product-toolbar" style="display: none; gap: 1rem; margin-bottom: 2rem; align-items: center;">
-            <button id="add-product-btn" class="btn-add-product-modern" style="margin-bottom: 0; flex: 1;">+ ADD
+        <div id="product-toolbar"
+            style="display: none; gap: 1rem; margin-bottom: 2rem; align-items: center; flex-wrap: wrap;">
+            <button id="add-product-btn" class="btn-add-product-modern"
+                style="margin-bottom: 0; flex: 1; min-width: 150px;">+ ADD
                 PRODUCT</button>
+
+            <div class="search-container" style="flex: 2; min-width: 200px;">
+                <input type="text" id="product-search" placeholder="Search products..." class="modern-input"
+                    style="width: 100%; margin: 0;">
+            </div>
 
             <div style="position: relative;">
                 <button id="filter-toggle-btn" class="btn-icon-modern">
@@ -508,11 +515,19 @@
         </div>
 
         <!-- Order Filters -->
-        <div id="order-filters" class="admin-filters" style="display: none;"><button class="filter-chip active"
-                data-type="order" data-filter="new">NEW</button><button class="filter-chip" data-type="order"
-                data-filter="in-process">IN-PROCESS</button><button class="filter-chip" data-type="order"
-                data-filter="in-transit">IN-TRANSIT</button><button class="filter-chip" data-type="order"
-                data-filter="completed">COMPLETED</button></div>
+        <div id="order-filters" class="admin-filters"
+            style="display: none; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;">
+            <div class="search-container" style="flex: 1; min-width: 200px;">
+                <input type="text" id="order-search" placeholder="Search Order ID..." class="modern-input"
+                    style="width: 100%; margin: 0;">
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="filter-chip active" data-type="order" data-filter="new">NEW</button>
+                <button class="filter-chip" data-type="order" data-filter="in-process">IN-PROCESS</button>
+                <button class="filter-chip" data-type="order" data-filter="in-transit">IN-TRANSIT</button>
+                <button class="filter-chip" data-type="order" data-filter="completed">COMPLETED</button>
+            </div>
+        </div>
         <!-- List Container -->
         <div id="admin-list" class="admin-list">
             <!-- JS renders items here -->

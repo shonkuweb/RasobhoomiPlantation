@@ -78,15 +78,39 @@ main.home-main {
   align-items: center;
   padding: 0 1rem;
   z-index: 2001;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  /* Added shadow */
 }
 
 /* Logo */
 .nav-logo {
-  flex: 1;
-  text-align: center;
+  flex: 0 0 auto;
+  /* Stop shrinking/growing */
+  text-align: left;
   font-family: 'Great Vibes', cursive;
-  font-size: 2rem;
+  font-size: 1.8rem;
   color: var(--color-text-on-primary);
+  margin-right: auto;
+  /* Push actions to right */
+  white-space: nowrap;
+}
+
+.navbar-brand-text {
+  font-family: 'Great Vibes', cursive !important;
+}
+
+@media (max-width: 400px) {
+  .nav-logo .navbar-brand-text {
+    display: none;
+    /* Hide text on super small screens to prevent overlap */
+  }
+}
+
+.nav-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
 }
 
 .nav-icon {
@@ -95,6 +119,9 @@ main.home-main {
   background: none;
   border: none;
   color: var(--color-text-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Sidebar */
@@ -394,34 +421,37 @@ main.home-main {
 /* Product Grid */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--spacing-base);
-  padding: var(--spacing-base);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  padding: 1rem;
 }
 
 @media (min-width: 600px) {
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem;
   }
 }
 
 .product-card {
   background-color: white;
-  border: 1px solid black;
-  border-radius: 12px;
+  border: none;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: auto;
-  aspect-ratio: 3/4;
+  aspect-ratio: 2/3;
   position: relative;
-  color: black;
+  color: #0F1111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  transition: all 0.3s cubic-bezier(.25, .8, .25, 1);
+}
+
+.product-card:hover {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  transform: translateY(-2px);
 }
 
 .product-image-placeholder {
@@ -429,59 +459,91 @@ main.home-main {
   display: flex;
   justify-content: center;
   align-items: center;
-  /* Image would go here */
+  background-color: #f7f7f7;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+.product-image-placeholder img {
+  mix-blend-mode: multiply;
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-image-placeholder img {
+  transform: scale(1.05);
 }
 
 .product-info {
   background-color: white;
-  padding: 0.75rem;
-  margin-top: auto;
-  border-top: 1px solid black;
+  padding: 0.8rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  border-top: 1px solid #f0f0f0;
 }
 
 .product-info h3 {
-  font-size: 0.8rem;
-  color: black;
+  font-size: 0.9rem;
+  color: #0F1111;
   margin-bottom: 0;
-  font-weight: bold;
+  font-weight: 500;
+  line-height: 1.3;
+  height: 2.6em;
+  /* Limit to 2 lines */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .product-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
 }
 
 .product-price {
-  font-size: 1rem;
-  font-weight: bold;
-  color: black;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0F1111;
+}
+
+.product-price::before {
+  content: "₹";
+  font-size: 0.8rem;
+  position: relative;
+  top: -3px;
+  font-weight: 400;
 }
 
 .add-cart-pill {
-  background-color: var(--color-primary);
-  color: var(--color-text-on-primary);
-  border: 1px solid var(--color-text-on-primary);
+  background-color: #FFD814;
+  color: #0F1111;
+  border: 1px solid #FCD200;
   border-radius: 20px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
   gap: 0.25rem;
   cursor: pointer;
-  text-transform: uppercase;
+  text-transform: capitalize;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(213, 217, 217, .5);
+  transition: all 0.2s;
 }
 
-.cart-btn {
-  position: absolute;
-  bottom: 4rem;
-  /* Position above text */
-  left: 0.75rem;
-  font-size: 1.5rem;
-  color: var(--color-black);
+.add-cart-pill:hover {
+  background-color: #F7CA00;
+  border-color: #F2C200;
+  box-shadow: 0 2px 5px rgba(213, 217, 217, .5);
+}
+
+.add-cart-pill svg {
+  stroke-width: 2px;
 }
 
 /* Admin Panel Specifics */

@@ -20,7 +20,7 @@ const ProductCard = ({ product }) => {
             <div className="product-info">
                 <h3>{product.name}</h3>
                 <div className="product-row">
-                    <span className="product-price">₹{product.price}</span>
+                    <span className="product-price">{product.price}</span>
                     <button className="add-cart-pill" onClick={(e) => {
                         e.preventDefault();
                         addToCart(product.id);

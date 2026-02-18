@@ -33,6 +33,8 @@ async function checkAuth() {
 let products = [];
 let orders = [];
 let categories = [];
+let currentProductSearch = '';
+let currentOrderSearch = '';
 
 // Helper function to get auth headers
 function getAuthHeaders() {
@@ -104,7 +106,6 @@ const viewToggle = document.getElementById('view-toggle');
 const productsBtn = document.getElementById('btn-products');
 const ordersBtn = document.getElementById('btn-orders');
 // Filter Containers
-// Filter Containers
 const productToolbar = document.getElementById('product-toolbar');
 const orderFilterSection = document.getElementById('order-filters');
 const listContainer = document.getElementById('admin-list');
@@ -121,6 +122,10 @@ const resetDbBtn = document.getElementById('reset-db-btn');
 const delCompletedBtn = document.getElementById('delete-completed-btn');
 const productImagesInput = document.getElementById('product-images');
 const imagePreviewContainer = document.getElementById('image-preview-container');
+// Search Elements
+const productSearchInput = document.getElementById('product-search');
+const orderSearchInput = document.getElementById('order-search');
+
 // Order Modal Elements
 const orderModal = document.getElementById('order-modal');
 const closeOrderModalBtn = document.getElementById('close-order-modal');
@@ -185,6 +190,20 @@ function setupListeners() {
         });
     }
 
+    // Search Listeners
+    if (productSearchInput) {
+        productSearchInput.addEventListener('input', (e) => {
+            currentProductSearch = e.target.value.toLowerCase();
+            render();
+        });
+    }
+    if (orderSearchInput) {
+        orderSearchInput.addEventListener('input', (e) => {
+            currentOrderSearch = e.target.value.toLowerCase();
+            render();
+        });
+    }
+
     // Close dropdown on outside click
     document.addEventListener('click', (e) => {
         if (filterDropdown && filterDropdown.classList.contains('active')) {
@@ -220,7 +239,6 @@ function setupListeners() {
         });
     });
 
-    // Danger Zone Listeners
     // Danger Zone Listeners
     if (resetDbBtn) {
         resetDbBtn.addEventListener('click', () => {
@@ -471,8 +489,6 @@ function switchView(view) {
     currentView = view;
 
     if (view === 'products') {
-        productsBtn.classList.add('active');
-        ordersBtn.classList.remove('active');
         productsBtn.classList.add('active');
         ordersBtn.classList.remove('active');
         if (productToolbar) productToolbar.style.display = 'flex';
@@ -822,16 +838,22 @@ function render() {
     let itemsToRender = [];
 
     if (currentView === 'products') {
-        if (currentProductFilter === 'all') {
-            itemsToRender = [...products];
-        } else if (currentProductFilter === 'out-of-stock') {
-            itemsToRender = products.filter(p => Number(p.qty) <= 0);
-        } else {
-            // Category Match (Partial include match to be safe)
-            itemsToRender = products.filter(p => (p.category || '').includes(currentProductFilter));
-        }
+        itemsToRender = products.filter(p => {
+            const nameMatch = p.name.toLowerCase().includes(currentProductSearch);
+            const categoryMatch = currentProductFilter === 'all'
+                ? true
+                : currentProductFilter === 'out-of-stock'
+                    ? Number(p.qty) <= 0
+                    : (p.category || '').includes(currentProductFilter);
+
+            return nameMatch && categoryMatch;
+        });
     } else {
-        itemsToRender = orders.filter(o => o.status === currentOrderFilter);
+        itemsToRender = orders.filter(o => {
+            const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch);
+            const statusMatch = o.status === currentOrderFilter;
+            return idMatch && statusMatch;
+        });
     }
 
     // LIFO (Last In First Out) - Newest First
