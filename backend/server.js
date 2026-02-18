@@ -106,11 +106,10 @@ app.get('/api/auth/verify', requireAuth, (req, res) => {
 });
 
 
-// --- PAYMENT CONFIGURATION (V2) ---
-// --- PAYMENT CONFIGURATION (V2) ---
-// Production: 
+// --- PAYMENT CONFIGURATION (V2 Standard Checkout - OAuth) ---
+// Production:
 // Auth: https://api.phonepe.com/apis/identity-manager
-// Pay:  https://api.phonepe.com/apis/hermes
+// Pay:  https://api.phonepe.com/apis/pg
 // Sandbox:
 // Auth: https://api-preprod.phonepe.com/apis/pg-sandbox
 // Pay:  https://api-preprod.phonepe.com/apis/pg-sandbox
@@ -118,7 +117,7 @@ app.get('/api/auth/verify', requireAuth, (req, res) => {
 const isSandbox = process.env.PHONEPE_MERCHANT_ID ? process.env.PHONEPE_MERCHANT_ID.startsWith('PGTEST') : true;
 
 const PHONEPE_AUTH_URL = process.env.PHONEPE_AUTH_URL || (isSandbox ? "https://api-preprod.phonepe.com/apis/pg-sandbox" : "https://api.phonepe.com/apis/identity-manager");
-const PHONEPE_PAY_URL = process.env.PHONEPE_PAY_URL || (isSandbox ? "https://api-preprod.phonepe.com/apis/pg-sandbox" : "https://api.phonepe.com/apis/hermes");
+const PHONEPE_PAY_URL = process.env.PHONEPE_PAY_URL || (isSandbox ? "https://api-preprod.phonepe.com/apis/pg-sandbox" : "https://api.phonepe.com/apis/pg");
 
 const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID;
 const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET;
@@ -356,9 +355,6 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             const endpoint = "/checkout/v2/pay";
             console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}${endpoint}`);
 
-            // Note: If using OAuth, some docs suggest sending JSON directly.
-            // If using Salt, we would need Base64 + X-VERIFY. 
-            // Assuming OAuth supports JSON body for V1 as per recent V2-like behavior docs or we'll try standard JSON.
             const response = await axios.post(`${PHONEPE_PAY_URL}${endpoint}`,
                 payload,
                 {
