@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { useNavigate } from 'react-router-dom';
 
+const MIN_ORDER_QTY = 5;
+const DELIVERY_PER_PLANT = 150;
+
 const Checkout = () => {
     const { cart, products, getCartTotal, clearCart } = useShop();
     const navigate = useNavigate();
@@ -13,10 +16,12 @@ const Checkout = () => {
         zip: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showMinOrderNotice, setShowMinOrderNotice] = useState(false);
 
-    const shippingFee = 150;
+    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const subtotal = getCartTotal();
-    const total = subtotal + shippingFee;
+    const deliveryCharge = totalQty * DELIVERY_PER_PLANT;
+    const total = subtotal + deliveryCharge;
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,6 +29,12 @@ const Checkout = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (totalQty < MIN_ORDER_QTY) {
+            setShowMinOrderNotice(true);
+            return;
+        }
+
         setIsSubmitting(true);
 
         const orderItems = cart.map(item => {
@@ -53,7 +64,6 @@ const Checkout = () => {
 
             if (res.ok) {
                 if (data.success && data.payment_url) {
-                    // Real Payment Flow (Redirect to PhonePe)
                     console.log('Redirecting to PhonePe:', data.payment_url);
                     window.location.href = data.payment_url;
                 } else {
@@ -99,9 +109,31 @@ const Checkout = () => {
         <main className="checkout-page-container">
             <h1 className="checkout-page-title">CHECKOUT</h1>
 
+            {/* Minimum Order Notification */}
+            {showMinOrderNotice && (
+                <div className="min-order-overlay" onClick={() => setShowMinOrderNotice(false)}>
+                    <div className="min-order-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="min-order-icon">🌿</div>
+                        <h2 className="min-order-title">Almost There!</h2>
+                        <p className="min-order-message">
+                            Minimum order is <strong>{MIN_ORDER_QTY} plants</strong>. You currently have <strong>{totalQty}</strong> plant{totalQty !== 1 ? 's' : ''} in your cart.
+                        </p>
+                        <p className="min-order-sub">Add <strong>{MIN_ORDER_QTY - totalQty} more</strong> to proceed with checkout.</p>
+                        <div className="min-order-actions">
+                            <button className="btn-primary" onClick={() => { setShowMinOrderNotice(false); navigate('/'); }}>
+                                🌱 Add More Plants
+                            </button>
+                            <button className="min-order-dismiss" onClick={() => setShowMinOrderNotice(false)}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="checkout-grid">
 
-                {/* Shipping Details Form - FIRST */}
+                {/* Shipping Details Form */}
                 <form onSubmit={handleSubmit} className="checkout-card">
                     <h3 className="checkout-section-title">Shipping Details</h3>
 
@@ -147,6 +179,12 @@ const Checkout = () => {
                         </div>
                     </div>
 
+                    {totalQty < MIN_ORDER_QTY && (
+                        <div className="min-order-inline-warning">
+                            <span>⚠️</span> Add {MIN_ORDER_QTY - totalQty} more plant{(MIN_ORDER_QTY - totalQty) !== 1 ? 's' : ''} to checkout (min {MIN_ORDER_QTY})
+                        </div>
+                    )}
+
                     <button
                         type="submit"
                         disabled={isSubmitting}
@@ -160,7 +198,7 @@ const Checkout = () => {
                     </p>
                 </form>
 
-                {/* Order Summary - SECOND */}
+                {/* Order Summary */}
                 <div className="checkout-card">
                     <h3 className="checkout-section-title">Order Summary</h3>
 
@@ -184,9 +222,13 @@ const Checkout = () => {
                                 <span>Item Subtotal</span>
                                 <span>₹{subtotal}</span>
                             </div>
+                            <div className="summary-row" style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                                <span>Total Plants</span>
+                                <span>{totalQty}</span>
+                            </div>
                             <div className="summary-row" style={{ fontSize: '1rem' }}>
-                                <span>Delivery Charges</span>
-                                <span style={{ color: '#059669' }}>+ ₹{shippingFee}</span>
+                                <span>Delivery ({totalQty} × ₹{DELIVERY_PER_PLANT})</span>
+                                <span style={{ color: '#059669' }}>+ ₹{deliveryCharge}</span>
                             </div>
                             <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
                                 <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>

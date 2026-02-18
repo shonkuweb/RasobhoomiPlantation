@@ -2849,3 +2849,99 @@ footer {
   width: 100%;
   margin-top: 1rem;
 }
+
+/* Minimum Order Notice Modal */
+.min-order-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+.min-order-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem 1.8rem;
+  width: 88%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  animation: modalPop 0.3s ease-out;
+}
+
+.min-order-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.min-order-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #1A4D2E;
+  margin-bottom: 0.5rem;
+}
+
+.min-order-message {
+  font-size: 0.95rem;
+  color: #4b5563;
+  line-height: 1.5;
+  margin-bottom: 0.3rem;
+}
+
+.min-order-sub {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-bottom: 1.2rem;
+}
+
+.min-order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.min-order-dismiss {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem;
+}
+
+.min-order-dismiss:hover {
+  color: #6b7280;
+}
+
+/* Inline Warning */
+.min-order-inline-warning {
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: #92400E;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  border: 1px solid #F59E0B;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

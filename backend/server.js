@@ -288,6 +288,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 
     // Server-Side Calculation & Verification
     let calculatedTotal = 0;
+    let totalQty = 0;
     const verifiedItems = [];
 
     try {
@@ -301,6 +302,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             }
             const itemTotal = product.price * item.qty;
             calculatedTotal += itemTotal;
+            totalQty += item.qty;
 
             // Store verified price in the order item to prevent tampering in history
             verifiedItems.push({
@@ -314,8 +316,15 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         return res.status(500).json({ error: 'Failed to verify product prices' });
     }
 
-    const SHIPPING_FEE = 150;
-    const total = calculatedTotal + SHIPPING_FEE; // Include shipping fee in total
+    // Minimum order: 5 plants
+    const MIN_ORDER_QTY = 5;
+    if (totalQty < MIN_ORDER_QTY) {
+        return res.status(400).json({ error: `Minimum order is ${MIN_ORDER_QTY} plants. You have ${totalQty}.` });
+    }
+
+    const DELIVERY_PER_PLANT = 150;
+    const deliveryCharge = totalQty * DELIVERY_PER_PLANT;
+    const total = calculatedTotal + deliveryCharge;
     const jsonItemsStr = JSON.stringify(items);
 
     console.log(`[DEBUG] Order ID: ${orderId}`);
