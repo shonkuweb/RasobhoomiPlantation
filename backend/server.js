@@ -115,8 +115,11 @@ app.get('/api/auth/verify', requireAuth, (req, res) => {
 // Auth: https://api-preprod.phonepe.com/apis/pg-sandbox
 // Pay:  https://api-preprod.phonepe.com/apis/pg-sandbox
 
-const PHONEPE_AUTH_URL = process.env.PHONEPE_AUTH_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
-const PHONEPE_PAY_URL = process.env.PHONEPE_PAY_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
+const isSandbox = process.env.PHONEPE_MERCHANT_ID ? process.env.PHONEPE_MERCHANT_ID.startsWith('PGTEST') : true;
+
+const PHONEPE_AUTH_URL = process.env.PHONEPE_AUTH_URL || (isSandbox ? "https://api-preprod.phonepe.com/apis/pg-sandbox" : "https://api.phonepe.com/apis/identity-manager");
+const PHONEPE_PAY_URL = process.env.PHONEPE_PAY_URL || (isSandbox ? "https://api-preprod.phonepe.com/apis/pg-sandbox" : "https://api.phonepe.com/apis/hermes");
+
 const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID;
 const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET;
 const PHONEPE_CLIENT_VERSION = process.env.PHONEPE_CLIENT_VERSION || 1;
