@@ -353,24 +353,22 @@ main.home-main {
 .cat-circle {
   width: 75px;
   height: 75px;
-  background: linear-gradient(135deg, #2C1B10 0%, #5D4037 100%);
-  /* Chocolate Gradient */
+  background: #f5f5f5;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #DFC186;
-  /* Gold text */
+  overflow: hidden;
   font-size: 1.5rem;
   font-weight: bold;
-  box-shadow: 0 4px 10px rgba(44, 27, 16, 0.3);
-  border: 2px solid #DFC186;
-  /* Gold border */
+  box-shadow: 0 4px 10px rgba(26, 77, 46, 0.2);
+  border: 3px solid #1A4D2E;
+  /* Dark green border */
   transition: all 0.3s ease;
 }
 
 .category-item:hover .cat-circle {
-  box-shadow: 0 8px 15px rgba(44, 27, 16, 0.4);
+  box-shadow: 0 8px 15px rgba(26, 77, 46, 0.35);
   transform: scale(1.05);
 }
 

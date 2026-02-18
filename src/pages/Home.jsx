@@ -110,7 +110,7 @@ const Home = () => {
                     .map(cat => (
                         <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
                             <div className="cat-circle">
-                                <img src={cat.image} alt={cat.name}
+                                <img src="/categories/fruits-default.png" alt={cat.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                             </div>
                             <span className="cat-label">{cat.name}</span>

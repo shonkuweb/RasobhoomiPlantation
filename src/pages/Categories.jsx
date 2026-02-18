@@ -39,8 +39,8 @@ const Categories = () => {
             <div className="category-grid-page" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1.5rem', justifyContent: 'center' }}>
                 {visibleCategories.map(cat => (
                     <Link to={`/category/${cat.slug}`} key={cat.id} className="cat-page-card" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                        <div className="cat-page-circle" style={{ overflow: 'hidden', border: '3px solid #DFC186', width: '120px', height: '120px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <img src={cat.image} alt={cat.name}
+                        <div className="cat-page-circle" style={{ overflow: 'hidden', border: '3px solid #1A4D2E', width: '120px', height: '120px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <img src="/categories/fruits-default.png" alt={cat.name}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div className="cat-page-label" style={{ textAlign: 'center', color: '#2C1B10', fontWeight: 'bold' }}>{cat.name}</div>
