@@ -21,7 +21,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Refund from './pages/Refund';
 import TrackOrder from './pages/TrackOrder';
-import Admin from './pages/Admin';
+
 import Terms from './pages/Terms';
 import Return from './pages/Return';
 import Shipping from './pages/Shipping';
@@ -78,7 +78,7 @@ function AppContent() {
                 <Route path="/payment/failure" element={<PaymentFailure />} />
                 <Route path="/payment/pending" element={<PaymentPending />} />
                 <Route path="/track-order" element={<TrackOrder />} />
-                <Route path="/admin" element={<Admin />} />
+
                 <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/refund" element={<Refund />} />
