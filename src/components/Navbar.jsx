@@ -13,7 +13,7 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
 
 
             {/* Logo Image & Text (Left) */}
-            <Link to="/" className="nav-logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <Link to="/" className="nav-logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <img src="/assets/logo.png" alt="Rasobhoomi" className="logo-img" style={{ height: '40px' }} />
                 <span className="navbar-brand-text" style={{ fontFamily: 'var(--font-family)', fontWeight: 'bold', fontSize: '1.5rem' }}>Rasobhoomi</span>
             </Link>
