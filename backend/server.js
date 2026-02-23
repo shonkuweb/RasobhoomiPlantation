@@ -263,11 +263,28 @@ app.put('/api/products/:id', requireAuth, validateProduct, (req, res) => {
 });
 
 // CATEGORIES
-app.get('/api/categories', (req, res) => {
-    db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+app.get('/api/categories', async (req, res) => {
+    try {
+        const { categories: staticCategories } = await import('../src/utils/categories.js');
+
+        db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Merge DB categories with static categories using a Map to ensure unique slugs
+            const mergedMap = new Map();
+            staticCategories.forEach(cat => mergedMap.set(cat.slug, cat));
+            rows.forEach(cat => mergedMap.set(cat.slug, cat)); // DB overwrites static if conflict
+
+            res.json(Array.from(mergedMap.values()).sort((a, b) => a.id - b.id));
+        });
+    } catch (importErr) {
+        console.error("Failed to load static categories:", importErr);
+        // Fallback to purely DB if import fails in production structure
+        db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
+    }
 });
 
 // ORDERS & PAYMENT

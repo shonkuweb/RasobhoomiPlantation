@@ -137,22 +137,13 @@ function initDb() {
         pool.query(q)
             .then(() => {
                 // Check if categories need seeding
-                if (q.includes('CREATE TABLE IF NOT EXISTS categories')) {
-                    pool.query('SELECT count(*) as count FROM categories')
-                        .then(res => {
-                            if (res.rows[0].count === '0') {
-                                console.log("Seeding categories (Postgres)...");
-                                const insertQuery = "INSERT INTO categories (name, slug, image) VALUES ($1, $2, $3)";
-                                categories.forEach(cat => {
-                                    // Note: we let Postgres handle the ID with SERIAL
-                                    pool.query(insertQuery, [cat.name, cat.slug, cat.image])
-                                        .catch(e => console.error("Seed error:", e));
-                                });
-                                console.log("Categories seeded (Postgres).");
-                            }
-                        })
-                        .catch(err => console.error("Error checking categories count:", err));
-                }
+                // Seed missing categories safely on every startup
+                console.log("Ensuring all standard categories exist (Postgres)...");
+                const insertQuery = "INSERT INTO categories (name, slug, image) VALUES ($1, $2, $3) ON CONFLICT (slug) DO NOTHING";
+                categories.forEach(cat => {
+                    pool.query(insertQuery, [cat.name, cat.slug, cat.image])
+                        .catch(e => console.error("Category Seed error:", e));
+                });
             })
             .catch(err => console.error('Table creation error:', err));
     });
