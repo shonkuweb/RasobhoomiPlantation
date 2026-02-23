@@ -20,7 +20,14 @@ const Checkout = () => {
 
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const subtotal = getCartTotal();
-    const deliveryCharge = totalQty * DELIVERY_PER_PLANT;
+    const deliveryCharge = cart.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        if (!product) return sum;
+        if (product.category === 'Drum Plants') {
+            return sum + (product.price * 0.5 * item.qty);
+        }
+        return sum + (150 * item.qty);
+    }, 0);
     const total = subtotal + deliveryCharge;
 
     const handleChange = (e) => {
@@ -227,7 +234,7 @@ const Checkout = () => {
                                 <span>{totalQty}</span>
                             </div>
                             <div className="summary-row" style={{ fontSize: '1rem' }}>
-                                <span>Delivery ({totalQty} × ₹{DELIVERY_PER_PLANT})</span>
+                                <span>Delivery Charges</span>
                                 <span style={{ color: '#059669' }}>+ ₹{deliveryCharge}</span>
                             </div>
                             <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
