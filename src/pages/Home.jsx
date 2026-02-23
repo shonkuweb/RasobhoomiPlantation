@@ -100,7 +100,7 @@ const Home = () => {
             {/* Categories */}
             <section className="category-list">
                 {categories
-                    .filter(cat => products.some(p => p.category === cat.name))
+                    .filter(cat => cat.name === 'Drum Plants' || products.some(p => p.category === cat.name))
                     .map(cat => (
                         <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
                             <div className="cat-circle">

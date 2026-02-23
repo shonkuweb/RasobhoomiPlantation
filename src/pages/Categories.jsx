@@ -24,7 +24,7 @@ const Categories = () => {
     }, []);
 
     const visibleCategories = categories.filter(cat =>
-        products.some(p => p.category === cat.name && p.qty > 0) || products.some(p => p.category === cat.name)
+        cat.name === 'Drum Plants' || products.some(p => p.category === cat.name && p.qty > 0) || products.some(p => p.category === cat.name)
         // Logic: Show if ANY product exists. The user said "no product... not visible". 
         // If they meant stock > 0, I'd add p.qty > 0. For now, strict "existence" is safely matching "no product".
         // Actually, user said "no product for that category". 
