@@ -486,10 +486,13 @@
                 </svg></a></div>
     </aside>
     <main style="padding: 1rem; padding-top: 2rem;">
-        <!-- Toggle (Products / Orders) -->
+        <!-- Toggle (Products | Orders | Settings) -->
         <div class="admin-toggle-container">
-            <div class="toggle-wrapper"><button id="btn-products" class="toggle-btn active">products</button><button
-                    id="btn-orders" class="toggle-btn">orders</button></div>
+            <div class="toggle-wrapper">
+                <button id="btn-products" class="toggle-btn active">Products</button>
+                <button id="btn-orders" class="toggle-btn">Orders</button>
+                <button id="btn-settings" class="toggle-btn">Settings</button>
+            </div>
         </div>
         <!-- Toolbar (Products View) -->
         <div id="product-toolbar"
@@ -532,6 +535,10 @@
             </div>
         </div>
         <!-- List Container -->
+        <div id="admin-list" class="admin-list">
+            <!-- JS renders items here -->
+        </div>
+
         <!-- Settings View Container -->
         <div id="settings-view" class="admin-settings" style="display: none; max-width: 600px; margin: 0 auto;">
             <div
