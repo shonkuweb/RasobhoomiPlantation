@@ -131,6 +131,13 @@ const orderModal = document.getElementById('order-modal');
 const closeOrderModalBtn = document.getElementById('close-order-modal');
 const modalUpdateStatusBtn = document.getElementById('modal-update-status-btn');
 
+// Settings Elements
+const settingsBtn = document.getElementById('btn-settings');
+const settingsView = document.getElementById('settings-view');
+const settingsPasswordForm = document.getElementById('settings-password-form');
+const settingsPasswordError = document.getElementById('settings-password-error');
+const settingsPasswordSuccess = document.getElementById('settings-password-success');
+
 // State for image handling
 let currentImages = [];
 
@@ -170,6 +177,7 @@ function setupListeners() {
 
     productsBtn.addEventListener('click', () => switchView('products'));
     ordersBtn.addEventListener('click', () => switchView('orders'));
+    if (settingsBtn) settingsBtn.addEventListener('click', () => switchView('settings'));
 
     // Logout
     const logoutBtn = document.getElementById('logout-btn');
@@ -178,6 +186,55 @@ function setupListeners() {
             if (confirm('Are you sure you want to logout?')) {
                 sessionStorage.removeItem('adminToken');
                 window.location.href = '/admin-login';
+            }
+        });
+    }
+
+    // Change Password Form Logic (Settings Tab)
+    if (settingsPasswordForm) {
+        settingsPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveBtn = settingsPasswordForm.querySelector('button[type="submit"]');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'SAVING...';
+            }
+            if (settingsPasswordError) settingsPasswordError.textContent = '';
+            if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = '';
+
+            const oldPass = document.getElementById('settings-old-pass').value;
+            const newPass = document.getElementById('settings-new-pass').value;
+            const confirmNewPass = document.getElementById('settings-confirm-new-pass').value;
+
+            if (newPass !== confirmNewPass) {
+                if (settingsPasswordError) settingsPasswordError.textContent = 'New passwords do not match.';
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'CHANGE PASSWORD'; }
+                return;
+            }
+
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const res = await fetch('/api/admin/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = 'Password updated. Redirecting to login...';
+                    setTimeout(() => {
+                        sessionStorage.removeItem('adminToken');
+                        window.location.href = '/admin-login';
+                    }, 2000);
+                } else {
+                    if (settingsPasswordError) settingsPasswordError.textContent = data.message || 'Error updating password';
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'CHANGE PASSWORD'; }
+                }
+            } catch (err) {
+                console.error('Password change error:', err);
+                if (settingsPasswordError) settingsPasswordError.textContent = 'Network error. Try again.';
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'CHANGE PASSWORD'; }
             }
         });
     }
@@ -488,24 +545,43 @@ function renderPreviews() {
 function switchView(view) {
     currentView = view;
 
+    // Reset basics
+    if (productToolbar) productToolbar.style.display = 'none';
+    if (orderFilterSection) orderFilterSection.style.display = 'none';
+    if (settingsView) settingsView.style.display = 'none';
+    if (listContainer) listContainer.style.display = 'block'; // Block by default unless settings
+
+    productsBtn.classList.remove('active');
+    ordersBtn.classList.remove('active');
+    if (settingsBtn) settingsBtn.classList.remove('active');
+
     if (view === 'products') {
         productsBtn.classList.add('active');
-        ordersBtn.classList.remove('active');
         if (productToolbar) productToolbar.style.display = 'flex';
-        orderFilterSection.style.display = 'none';
         if (resetDbBtn) resetDbBtn.style.display = 'block';
         if (delCompletedBtn) delCompletedBtn.style.display = 'none';
-    } else {
-        productsBtn.classList.remove('active');
+    } else if (view === 'orders') {
         ordersBtn.classList.add('active');
-        if (productToolbar) productToolbar.style.display = 'none';
-        orderFilterSection.style.display = 'flex';
+        if (orderFilterSection) orderFilterSection.style.display = 'flex';
         if (resetDbBtn) resetDbBtn.style.display = 'none';
         if (delCompletedBtn) delCompletedBtn.style.display = 'block';
+    } else if (view === 'settings') {
+        if (settingsBtn) settingsBtn.classList.add('active');
+        if (listContainer) listContainer.style.display = 'none';
+        if (settingsView) settingsView.style.display = 'block';
+        if (resetDbBtn) resetDbBtn.style.display = 'none';
+        if (delCompletedBtn) delCompletedBtn.style.display = 'none';
+
+        // Reset form when entering view
+        if (settingsPasswordForm) settingsPasswordForm.reset();
+        if (settingsPasswordError) settingsPasswordError.textContent = '';
+        if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = '';
     }
 
     checkAddButtonVisibility();
-    render();
+    if (view !== 'settings') {
+        render();
+    }
 }
 
 function checkAddButtonVisibility() {

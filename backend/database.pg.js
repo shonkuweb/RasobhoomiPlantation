@@ -130,6 +130,10 @@ function initDb() {
             name TEXT NOT NULL,
             slug TEXT UNIQUE,
             image TEXT
+        )`,
+        `CREATE TABLE IF NOT EXISTS admin_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )`
     ];
 

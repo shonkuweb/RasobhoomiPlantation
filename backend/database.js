@@ -76,6 +76,14 @@ function initDb() {
             }
         });
 
+        // Admin Settings Table (for persistent password)
+        db.run(`CREATE TABLE IF NOT EXISTS admin_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )`, (err) => {
+            if (err) console.error("Error creating admin_settings table:", err);
+        });
+
         console.log('Database tables initialized.');
     });
 }

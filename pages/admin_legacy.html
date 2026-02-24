@@ -461,7 +461,10 @@
         <div class="nav-logo admin-logo">
             <span style="opacity:0.7; font-weight:400;">RASOBHOOMI</span> PANEL
         </div>
-        <button id="logout-btn" class="logout-btn">LOGOUT</button>
+        <div style="display: flex; gap: 0.5rem;">
+            <button id="change-pwd-btn" class="logout-btn">CHANGE PASSWORD</button>
+            <button id="logout-btn" class="logout-btn">LOGOUT</button>
+        </div>
     </nav>
     <div id="overlay" class="overlay"></div>
     <aside id="sidebar" class="sidebar">
@@ -529,8 +532,46 @@
             </div>
         </div>
         <!-- List Container -->
-        <div id="admin-list" class="admin-list">
-            <!-- JS renders items here -->
+        <!-- Settings View Container -->
+        <div id="settings-view" class="admin-settings" style="display: none; max-width: 600px; margin: 0 auto;">
+            <div
+                style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <h2
+                    style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 2rem;">
+                    Change Admin Password</h2>
+
+                <form id="settings-password-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label for="settings-old-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">Current
+                            Password</label>
+                        <input type="password" id="settings-old-pass" placeholder="Enter current password" required
+                            class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label for="settings-new-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">New
+                            Password</label>
+                        <input type="password" id="settings-new-pass" placeholder="Enter new password (min 4 chars)"
+                            required class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label for="settings-confirm-new-pass"
+                            style="font-weight: 600; color: #555; font-size: 0.9rem;">Confirm New Password</label>
+                        <input type="password" id="settings-confirm-new-pass" placeholder="Confirm new password"
+                            required class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                    </div>
+
+                    <div id="settings-password-error" style="color: red; font-size: 0.85rem; text-align: center;"></div>
+                    <div id="settings-password-success" style="color: #15803d; font-size: 0.85rem; text-align: center;">
+                    </div>
+
+                    <button type="submit" class="btn-save-modern"
+                        style="margin-top: 1rem; padding: 1rem; font-size: 1rem; border-radius: 8px; font-weight: bold;">
+                        CHANGE PASSWORD
+                    </button>
+                </form>
+            </div>
         </div>
 
         <!-- Danger Zone -->
@@ -545,6 +586,8 @@
                 RESET ALL PRODUCTS </button>
         </div>
         <script type="module" src="main.js"></script>
+        <!-- Password Change Modal removed, integrated into Settings Tab -->
+        </div>
         <!-- Product Modal (Moved to Bottom) -->
         <div id="product-modal" class="overlay modal-overlay"
             style="display: none; align-items: center; justify-content: center; z-index: 2000;">
@@ -641,6 +684,47 @@
                             style="width: auto; margin: 0; padding: 0 1.5rem;">UPDATE</button>
                     </div>
                 </div>
+            </div>
+        </div>
+        <!-- Change Password Modal -->
+        <div id="password-modal" class="auth-overlay" style="display: none; z-index: 3000;">
+            <div class="auth-card" style="position: relative;">
+                <button id="close-password-modal"
+                    style="position:absolute; top:10px; right:15px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#666;">&times;</button>
+                <div class="auth-icon"
+                    style="background-color: #1A4D2E; color: white; display: flex; align-items: center; justify-content: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                </div>
+                <h2
+                    style="text-transform: uppercase; font-size: 1.2rem; letter-spacing: 1px; color: #1A4D2E; margin-bottom: 1rem;">
+                    CHANGE PASSWORD</h2>
+                <form id="password-form" style="width: 100%;">
+                    <div style="margin-bottom:0.75rem;">
+                        <input type="password" id="old-pass" placeholder="Current Password" required
+                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <input type="password" id="new-pass" placeholder="New Password" required minlength="4"
+                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
+                    </div>
+                    <div style="margin-bottom:1.5rem;">
+                        <input type="password" id="confirm-new-pass" placeholder="Confirm New Password" required
+                            minlength="4"
+                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
+                    </div>
+                    <button type="submit" class="auth-btn"
+                        style="background:#1A4D2E; width:100%; padding:0.75rem; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">SAVE
+                        CHANGES</button>
+                </form>
+                <p id="password-error"
+                    style="color: red; font-size: 0.85rem; margin-top: 1rem; min-height: 1.2em; font-weight: bold;"></p>
+                <p id="password-success"
+                    style="color: green; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; font-weight: bold;">
+                </p>
             </div>
         </div>
         <!-- Auth Modal -->

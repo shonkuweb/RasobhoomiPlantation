@@ -9,6 +9,7 @@ import axios from 'axios';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
 
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.env') }); // Load .env from root
 
@@ -703,20 +704,70 @@ app.put('/api/orders/:id', requireAuth, (req, res) => {
 
 app.post('/api/auth/login', (req, res) => {
     const { password } = req.body;
-    // SECURE: Use Environment Variable
-    const adminPass = process.env.ADMIN_PASSCODE || '1234';
 
-    if (password === adminPass) {
-        // Generate real JWT token
-        const token = jwt.sign(
-            { role: 'admin', loginTime: Date.now() },
-            JWT_SECRET,
-            { expiresIn: '2h' }
-        );
-        res.json({ success: true, token });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid Credentials' });
-    }
+    // Check DB first, fallback to .env 
+    db.get("SELECT value FROM admin_settings WHERE key = 'admin_password'", [], (err, row) => {
+        if (err) {
+            console.error("DB Error checking password:", err);
+            return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+
+        const adminPass = row ? row.value : (process.env.ADMIN_PASSCODE || '1234');
+
+        if (password === adminPass) {
+            // Generate real JWT token
+            const token = jwt.sign(
+                { role: 'admin', loginTime: Date.now() },
+                JWT_SECRET,
+                { expiresIn: '2h' }
+            );
+            res.json({ success: true, token });
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid Credentials' });
+        }
+    });
+});
+
+app.post('/api/admin/change-password', requireAuth, (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+
+    // First check current active password (DB or ENV)
+    db.get("SELECT value FROM admin_settings WHERE key = 'admin_password'", [], (err, row) => {
+        if (err) {
+            console.error("DB Error on change password:", err);
+            return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+
+        const currentAdminPass = row ? row.value : (process.env.ADMIN_PASSCODE || '1234');
+
+        if (oldPassword !== currentAdminPass) {
+            return res.status(401).json({ success: false, message: 'Incorrect old password' });
+        }
+
+        if (!newPassword || newPassword.length < 4) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 4 characters' });
+        }
+
+        // Upsert the new password into admin_settings
+        // In PostgreSQL this should ideally be an ON CONFLICT DO UPDATE, but for compatibility 
+        // with SQLite and the db wrapper, we'll do a simple DELETE then INSERT. 
+        // A single user admin environment makes this safe enough.
+        db.run("DELETE FROM admin_settings WHERE key = 'admin_password'", [], (delErr) => {
+            if (delErr) {
+                console.error("Failed to delete old password from DB:", delErr);
+                return res.status(500).json({ success: false, message: 'Failed to update password' });
+            }
+
+            db.run("INSERT INTO admin_settings (key, value) VALUES ('admin_password', ?)", [newPassword], (insErr) => {
+                if (insErr) {
+                    console.error("Failed to insert new password to DB:", insErr);
+                    return res.status(500).json({ success: false, message: 'Failed to update password' });
+                }
+
+                res.json({ success: true, message: 'Password updated successfully' });
+            });
+        });
+    });
 });
 
 app.delete('/api/products/:id', requireAuth, (req, res) => {
