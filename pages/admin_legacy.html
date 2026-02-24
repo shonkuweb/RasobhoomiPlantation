@@ -462,7 +462,6 @@
             <span style="opacity:0.7; font-weight:400;">RASOBHOOMI</span> PANEL
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button id="change-pwd-btn" class="logout-btn">CHANGE PASSWORD</button>
             <button id="logout-btn" class="logout-btn">LOGOUT</button>
         </div>
     </nav>
@@ -551,22 +550,61 @@
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <label for="settings-old-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">Current
                             Password</label>
-                        <input type="password" id="settings-old-pass" placeholder="Enter current password" required
-                            class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="settings-old-pass" placeholder="Enter current password" required
+                                class="modern-input"
+                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
+                            <button type="button" class="pwd-toggle-btn"
+                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
+                                aria-label="Toggle password visibility">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <label for="settings-new-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">New
                             Password</label>
-                        <input type="password" id="settings-new-pass" placeholder="Enter new password (min 4 chars)"
-                            required class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="settings-new-pass" placeholder="Enter new password (min 4 chars)"
+                                required class="modern-input"
+                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
+                            <button type="button" class="pwd-toggle-btn"
+                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
+                                aria-label="Toggle password visibility">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <label for="settings-confirm-new-pass"
                             style="font-weight: 600; color: #555; font-size: 0.9rem;">Confirm New Password</label>
-                        <input type="password" id="settings-confirm-new-pass" placeholder="Confirm new password"
-                            required class="modern-input" style="padding: 0.8rem; background: #fafafa;">
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" id="settings-confirm-new-pass" placeholder="Confirm new password"
+                                required class="modern-input"
+                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
+                            <button type="button" class="pwd-toggle-btn"
+                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
+                                aria-label="Toggle password visibility">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="eye-icon">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div id="settings-password-error" style="color: red; font-size: 0.85rem; text-align: center;"></div>
