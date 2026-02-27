@@ -342,8 +342,8 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         return res.status(500).json({ error: 'Failed to verify product prices' });
     }
 
-    // Minimum order: 5 plants
-    const MIN_ORDER_QTY = 5;
+    // Minimum order: 3 plants
+    const MIN_ORDER_QTY = 3;
     if (totalQty < MIN_ORDER_QTY) {
         return res.status(400).json({ error: `Minimum order is ${MIN_ORDER_QTY} plants. You have ${totalQty}.` });
     }
