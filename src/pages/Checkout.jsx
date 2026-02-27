@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { useNavigate } from 'react-router-dom';
 
-const MIN_ORDER_QTY = 5;
+const MIN_ORDER_QTY = 3;
 const DELIVERY_PER_PLANT = 150;
 
 const Checkout = () => {
