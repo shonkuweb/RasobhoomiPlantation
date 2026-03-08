@@ -13,26 +13,56 @@ export const ShopProvider = ({ children }) => {
             return [];
         }
     });
+    const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+    const [hasMore, setHasMore] = useState(true);
+    const [page, setPage] = useState(1);
+
+    // We keep search query inside context as before
     const [searchQuery, setSearchQuery] = useState('');
 
+    const LIMIT = 6;
+
     useEffect(() => {
-        fetchProducts();
+        // Initial fetch on mount
+        fetchProductsBatch(1, true);
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('cart', JSON.stringify(cart));
-    }, [cart]);
-
-    const fetchProducts = async () => {
+    const fetchProductsBatch = async (pageNumber, isInitial = false) => {
         try {
-            const res = await fetch('/api/products');
+            const res = await fetch(`/api/products?page=${pageNumber}&limit=${LIMIT}`);
             if (res.ok) {
                 const data = await res.json();
-                setProducts(data);
+
+                setProducts(prev => {
+                    // Avoid duplicate fetching issues by using Map or simple unique filter based on ID
+                    const newProducts = [...prev, ...data];
+                    const uniqueProducts = Array.from(new Map(newProducts.map(item => [item.id, item])).values());
+                    return uniqueProducts;
+                });
+
+                if (data.length < LIMIT) {
+                    setHasMore(false); // No more products left
+                } else {
+                    // Automatically fetch next batch in the background
+                    setTimeout(() => {
+                        fetchProductsBatch(pageNumber + 1);
+                    }, 500); // Small delay to prioritize browser main thread for rendering
+                }
             }
         } catch (error) {
             console.error('Failed to fetch products', error);
+        } finally {
+            if (isInitial) {
+                setIsLoadingInitial(false);
+            }
         }
+    };
+
+    const fetchProducts = () => {
+        setProducts([]); // Clear existing to prevent duplicate appends on manual refresh
+        setPage(1);
+        setHasMore(true);
+        fetchProductsBatch(1, true);
     };
 
     const addToCart = (productId) => {

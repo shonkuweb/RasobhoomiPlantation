@@ -208,7 +208,20 @@ const validateOrder = (req, res, next) => {
 
 // PRODUCTS
 app.get('/api/products', (req, res) => {
-    db.all("SELECT * FROM products", [], (err, rows) => {
+    let sql = "SELECT * FROM products ORDER BY id DESC"; // Added ORDER BY id DESC to consistently order items
+    let params = [];
+
+    // Check for pagination queries
+    const page = parseInt(req.query.page) || 0;
+    const limit = parseInt(req.query.limit) || 0;
+
+    if (page > 0 && limit > 0) {
+        const offset = (page - 1) * limit;
+        sql += " LIMIT ? OFFSET ?";
+        params.push(limit, offset);
+    }
+
+    db.all(sql, params, (err, rows) => {
         if (err) {
             console.error("Fetch Products Error:", err);
             return res.status(500).json({ error: err.message });
@@ -219,7 +232,11 @@ app.get('/api/products', (req, res) => {
                 ...p,
                 images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
             }));
-            console.log(`Fetched ${products.length} products`);
+
+            // if paginated, we should ideally also return total count, 
+            // but to not break existing frontend expecting an array, we just return the array.
+            // We will handle 'hasMore' logic on frontend by checking if returned array length < limit.
+            console.log(`Fetched ${products.length} products (Page: ${page}, Limit: ${limit})`);
             res.json(products);
         } catch (parseErr) {
             console.error("Product Parse Error:", parseErr);
