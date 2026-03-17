@@ -301,11 +301,68 @@ app.get('/api/categories', async (req, res) => {
 function getProductFromDb(id) {
     return new Promise((resolve, reject) => {
         db.get("SELECT * FROM products WHERE id = ?", [id], (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
+            if (err) reject(err); else resolve(row);
         });
     });
 }
+
+// In-memory store for order data BEFORE payment is confirmed
+// Key: orderId, Value: { name, phone, address, city, zip, total, items, createdAt }
+const pendingOrders = new Map();
+
+// Auto-clean pending orders older than 30 minutes (payment session timeout)
+setInterval(() => {
+    const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
+    for (const [orderId, data] of pendingOrders.entries()) {
+        if (data.createdAt < thirtyMinsAgo) {
+            pendingOrders.delete(orderId);
+            console.log(`[CLEANUP] Removed expired pending order: ${orderId}`);
+        }
+    }
+}, 5 * 60 * 1000); // Run every 5 minutes
+
+// Helper to save a confirmed order to DB (called only after payment success)
+function saveConfirmedOrder(orderId, phonePeTxnId) {
+    const orderData = pendingOrders.get(orderId);
+    if (!orderData) {
+        console.warn(`[ORDER] No pending order found for ${orderId} — may already be saved or expired`);
+        return Promise.resolve(null);
+    }
+
+    const { name, phone, address, city, zip, total, items } = orderData;
+    const jsonItemsStr = typeof items === 'string' ? items : JSON.stringify(items);
+
+    return new Promise((resolve, reject) => {
+        // Check if already saved (idempotency)
+        db.get("SELECT id FROM orders WHERE id = ?", [orderId], (err, existing) => {
+            if (err) return reject(err);
+            if (existing) {
+                console.log(`[ORDER] Order ${orderId} already in DB — skipping duplicate insert`);
+                pendingOrders.delete(orderId);
+                return resolve(existing);
+            }
+
+            const sql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            db.run(sql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'new', 'paid', phonePeTxnId || orderId], function (err) {
+                if (err) return reject(err);
+
+                console.log(`[ORDER] Saved confirmed order ${orderId} to DB`);
+                pendingOrders.delete(orderId);
+
+                // Deduct stock
+                try {
+                    const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+                    parsedItems.forEach(item => {
+                        db.run("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?", [item.qty, item.id, item.qty]);
+                    });
+                } catch (e) { console.error("[ORDER] Stock deduction error:", e); }
+
+                resolve({ id: orderId });
+            });
+        });
+    });
+}
+
 
 // ORDERS & PAYMENT
 app.post('/api/orders', validateOrder, async (req, res) => {
@@ -366,73 +423,67 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         return res.status(500).json({ error: 'Server Payment Configuration Missing' });
     }
 
-    // REAL PHONEPE FLOW (V2 OAuth)
-    const sql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    // PHONEPE FLOW — Store order in memory, initiate payment, save to DB ONLY on success
+    try {
+        const token = await getPhonePeAuthToken();
 
-    db.run(sql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'pending_payment', 'pending', null], async function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-
-        // Initiate PhonePe
-        try {
-            const token = await getPhonePeAuthToken(); // Get OAuth Token
-
-            const payload = {
-                merchantId: PHONEPE_MERCHANT_ID,
-                merchantOrderId: orderId,
-                amount: total * 100,
-                paymentFlow: {
-                    type: "PG_CHECKOUT",
-                    message: "Payment for Order " + orderId,
-                    merchantUrls: {
-                        redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
-                        redirectMode: "REDIRECT",
-                        callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
-                    }
+        const payload = {
+            merchantId: PHONEPE_MERCHANT_ID,
+            merchantOrderId: orderId,
+            amount: total * 100,
+            paymentFlow: {
+                type: "PG_CHECKOUT",
+                message: "Payment for Order " + orderId,
+                merchantUrls: {
+                    redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
+                    redirectMode: "REDIRECT",
+                    callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
                 }
-            };
-
-            const endpoint = "/checkout/v2/pay";
-            console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}${endpoint}`);
-
-            const response = await axios.post(`${PHONEPE_PAY_URL}${endpoint}`,
-                payload,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `O-Bearer ${token}`
-                    }
-                }
-            );
-
-            const data = response.data;
-            console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
-
-            if (data && data.redirectUrl) {
-
-                res.json({
-                    success: true,
-                    message: "Payment Session Created",
-                    payment_url: data.redirectUrl,
-                    orderId: orderId
-                });
-
-            } else {
-                res.status(500).json({
-                    error: "Unexpected PhonePe Response",
-                    details: data
-                });
             }
+        };
 
+        const endpoint = "/checkout/v2/pay";
+        console.log(`[DEBUG] Initiating Payment to: ${PHONEPE_PAY_URL}${endpoint}`);
 
-        } catch (pgErr) {
-            console.error("PhonePe Init Error:", pgErr.response ? pgErr.response.data : pgErr.message);
-            res.status(500).json({
-                error: 'Payment Initiation Failed',
-                details: pgErr.response ? pgErr.response.data : pgErr.message
+        const response = await axios.post(`${PHONEPE_PAY_URL}${endpoint}`, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `O-Bearer ${token}`
+            }
+        });
+
+        const data = response.data;
+        console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
+
+        if (data && data.redirectUrl) {
+            // Store order in temp map — NOT in DB yet
+            pendingOrders.set(orderId, {
+                name, phone, address, city, zip,
+                total,
+                items: JSON.stringify(verifiedItems),
+                createdAt: Date.now()
             });
+            console.log(`[ORDER] Stored pending order ${orderId} in memory (not DB)`);
+
+            res.json({
+                success: true,
+                message: "Payment Session Created",
+                payment_url: data.redirectUrl,
+                orderId
+            });
+        } else {
+            res.status(500).json({ error: "Unexpected PhonePe Response", details: data });
         }
-    });
+
+    } catch (pgErr) {
+        console.error("PhonePe Init Error:", pgErr.response ? pgErr.response.data : pgErr.message);
+        res.status(500).json({
+            error: 'Payment Initiation Failed',
+            details: pgErr.response ? pgErr.response.data : pgErr.message
+        });
+    }
 });
+
 
 // PhonePe Callback GET Handler (Browser Redirect after payment)
 app.get('/api/phonepe/callback', async (req, res) => {
@@ -440,14 +491,10 @@ app.get('/api/phonepe/callback', async (req, res) => {
     console.log("Query Params:", JSON.stringify(req.query));
 
     const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
-
-    // PhonePe V2 sends: code, merchantOrderId, transactionId (their internal txn ID)
     const { code, merchantOrderId, transactionId } = req.query;
-
-    // Our merchant order ID is either merchantOrderId or transactionId param
     const orderId = merchantOrderId || transactionId;
 
-    console.log(`[CALLBACK] code=${code} merchantOrderId=${merchantOrderId} transactionId=${transactionId} orderId=${orderId}`);
+    console.log(`[CALLBACK] code=${code} orderId=${orderId}`);
 
     if (!orderId) {
         console.error("[CALLBACK] No orderId found in query params");
@@ -455,17 +502,12 @@ app.get('/api/phonepe/callback', async (req, res) => {
     }
 
     try {
-        // Verify payment status via PhonePe Status Check API
-        // Use merchantOrderId for the status check URL
         const token = await getPhonePeAuthToken();
         const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${PHONEPE_MERCHANT_ID}/${orderId}/status`;
         console.log(`[CALLBACK] Checking status at: ${statusUrl}`);
 
         const statusResponse = await axios.get(statusUrl, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `O-Bearer ${token}`
-            }
+            headers: { 'Content-Type': 'application/json', 'Authorization': `O-Bearer ${token}` }
         });
 
         const statusData = statusResponse.data;
@@ -476,55 +518,20 @@ app.get('/api/phonepe/callback', async (req, res) => {
         const isPending = paymentCode === 'PAYMENT_PENDING' || paymentCode === 'PAYMENT_INITIATED';
 
         if (isSuccess) {
-            // Get order to check idempotency and deduct stock
-            const order = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, row) => {
-                    if (err) reject(err); else resolve(row);
-                });
-            });
-
-            if (!order) {
-                console.error(`[CALLBACK] Order not found for orderId=${orderId}`);
-                return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
+            const phonePeTxnId = statusData?.data?.transactionId || transactionId || orderId;
+            try {
+                await saveConfirmedOrder(orderId, phonePeTxnId);
+            } catch (e) {
+                console.error("[CALLBACK] Failed to save order:", e);
             }
-
-            if (order.payment_status !== 'paid') {
-                const phonePeTxnId = statusData?.data?.transactionId || transactionId || orderId;
-
-                // Await the DB update before redirecting
-                await new Promise((resolve) => {
-                    db.run(
-                        "UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ? WHERE id = ?",
-                        [phonePeTxnId, orderId],
-                        (err) => {
-                            if (err) console.error("[CALLBACK] DB Update Error:", err);
-                            else console.log(`[CALLBACK] Order ${orderId} marked as paid`);
-                            resolve();
-                        }
-                    );
-                });
-
-                // Deduct stock
-                if (order.items) {
-                    try {
-                        const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                        items.forEach(item => {
-                            db.run("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?", [item.qty, item.id, item.qty]);
-                        });
-                    } catch (e) { console.error("[CALLBACK] Item Parse Error:", e); }
-                }
-            } else {
-                console.log(`[CALLBACK] Order ${orderId} already paid — skipping`);
-            }
-
             return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
 
         } else if (isPending) {
             return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            await new Promise((resolve) => {
-                db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [orderId], resolve);
-            });
+            // Payment failed — discard pending order from memory
+            pendingOrders.delete(orderId);
+            console.log(`[CALLBACK] Payment failed for ${orderId} — discarded`);
             return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
         }
 
@@ -533,167 +540,78 @@ app.get('/api/phonepe/callback', async (req, res) => {
 
         // Fallback: Trust the code from query params if status API fails
         if (code === 'PAYMENT_SUCCESS') {
-            console.log(`[CALLBACK FALLBACK] Marking order ${orderId} as paid based on code param`);
-            await new Promise((resolve) => {
-                db.run("UPDATE orders SET status = 'new', payment_status = 'paid' WHERE id = ?", [orderId], resolve);
-            });
+            console.log(`[CALLBACK FALLBACK] Saving order ${orderId} based on code param`);
+            try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
             return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
         } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
             return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            await new Promise((resolve) => {
-                db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [orderId], resolve);
-            });
+            pendingOrders.delete(orderId);
             return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
         }
     }
 });
 
-// PhonePe Callback & Redirect Handler (V2 Secure)
+
+// PhonePe Callback & Redirect Handler (V2 Secure - Server-to-Server Webhook)
 app.post('/api/phonepe/callback', async (req, res) => {
     try {
-        console.log("PhonePe Callback Received");
-        console.log("Headers:", JSON.stringify(req.headers));
+        console.log("PhonePe POST Callback Received");
         console.log("Body:", JSON.stringify(req.body));
 
-        // DETECT REQUEST TYPE
-        // Type A: Browser Redirect (Standard Checkout V2) -> Content-Type: application/x-www-form-urlencoded
-        // Body contains: code, merchantId, transactionId, providerReferenceId
+        const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
+
+        // Type A: Browser POST Redirect (form-encoded) — code, merchantId, transactionId in body
         if (req.body.code && req.body.merchantId) {
-            const { code, transactionId } = req.body;
-            console.log(`Processing POST Redirect: Code=${code}, Txn=${transactionId}`);
+            const { code, merchantOrderId, transactionId } = req.body;
+            const orderId = merchantOrderId || transactionId;
+            console.log(`[POST CALLBACK] Code=${code}, orderId=${orderId}`);
 
-            const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
-
-            try {
-                // Verify payment via Status Check API
-                const token = await getPhonePeAuthToken();
-                const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${PHONEPE_MERCHANT_ID}/${transactionId}/status`;
-                const statusResponse = await axios.get(statusUrl, {
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `O-Bearer ${token}` }
-                });
-                const statusData = statusResponse.data;
-                console.log("PhonePe Status (POST):", JSON.stringify(statusData, null, 2));
-
-                const paymentCode = statusData?.code || code;
-
-                if (paymentCode === 'PAYMENT_SUCCESS') {
-                    // Update order status and deduct stock
-                    const order = await new Promise((resolve, reject) => {
-                        db.get("SELECT * FROM orders WHERE id = ?", [transactionId], (err, row) => {
-                            if (err) reject(err); else resolve(row);
-                        });
-                    });
-
-                    if (order && order.payment_status !== 'paid') {
-                        const phonePeTxnId = statusData?.data?.transactionId || transactionId;
-                        db.run("UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ? WHERE id = ?",
-                            [phonePeTxnId, transactionId],
-                            (err) => {
-                                if (err) console.error("DB Update Error:", err);
-                                if (order.items) {
-                                    try {
-                                        const items = JSON.parse(order.items);
-                                        items.forEach(item => {
-                                            db.run("UPDATE products SET qty = qty - ? WHERE id = ?", [item.qty, item.id]);
-                                        });
-                                    } catch (e) { console.error("Item Parse Error:", e); }
-                                }
-                            }
-                        );
-                    }
-                    return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
-                } else if (paymentCode === 'PAYMENT_PENDING' || paymentCode === 'PAYMENT_INITIATED') {
-                    return res.redirect(`${baseUrl}/payment/pending?orderId=${transactionId}`);
-                } else {
-                    db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [transactionId]);
-                    return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
-                }
-            } catch (statusErr) {
-                console.error("Status Check Error (POST):", statusErr.response ? statusErr.response.data : statusErr.message);
-                // Fallback: trust the code from body
-                if (code === 'PAYMENT_SUCCESS') {
-                    db.run("UPDATE orders SET status = 'new', payment_status = 'paid' WHERE id = ?", [transactionId]);
-                    return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
-                } else {
-                    db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [transactionId]);
-                    return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
-                }
+            if (code === 'PAYMENT_SUCCESS') {
+                try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
+                return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
+            } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
+                return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
+            } else {
+                pendingOrders.delete(orderId);
+                return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
             }
         }
 
-        // Type B: Server-to-Server Webhook -> Content-Type: application/json
-        // Body contains: { response: "base64String" }
-        // Header: x-verify
+        // Type B: Server-to-Server Webhook (JSON) — { response: "base64String" }, header: x-verify
         const { response } = req.body;
         const xVerify = req.headers['x-verify'];
 
         if (response && xVerify) {
-            // 1. VERIFY SIGNATURE (Custom Authorization Header as per User Requirement)
+            // Verify auth header
             const authHeader = req.headers['authorization'];
             const webhookUser = process.env.PHONEPE_WEBHOOK_USERNAME;
             const webhookPass = process.env.PHONEPE_WEBHOOK_PASSWORD;
 
             if (webhookUser && webhookPass) {
-                // Prompt: SHA256(username:password)
                 const expectedAuth = crypto.createHash('sha256').update(`${webhookUser}:${webhookPass}`).digest('hex');
-
                 if (authHeader !== expectedAuth) {
-                    console.error("Invalid Webhook Authorization Header");
-                    console.error("Received:", authHeader);
-                    console.error("Expected:", expectedAuth);
+                    console.error("Invalid Webhook Auth. Received:", authHeader);
                     return res.status(401).send("Unauthorized Webhook");
                 }
-            } else {
-                console.warn("Skipping Webhook Verification: Missing Username/Password in .env");
             }
 
-            // 2. DECODE & PROCESS
             const decoded = JSON.parse(Buffer.from(response, 'base64').toString('utf-8'));
             const { success, code, data } = decoded;
             const { merchantTransactionId, transactionId } = data;
 
-            // 3. IDEMPOTENCY CHECK (Prevent Double Deduction)
-            const order = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM orders WHERE id = ?", [merchantTransactionId], (err, row) => {
-                    if (err) reject(err); else resolve(row);
-                });
-            });
-
-            if (!order) return res.status(404).send("Order Not Found");
-
-            if (order.payment_status === 'paid') {
-                // Already processed, acknowledge to PhonePe
-                return res.status(200).send("OK");
-            }
+            console.log(`[WEBHOOK] success=${success} code=${code} orderId=${merchantTransactionId}`);
 
             if (success && code === 'PAYMENT_SUCCESS') {
-                // Update Order
-                db.run("UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ? WHERE id = ?",
-                    [transactionId, merchantTransactionId],
-                    (err) => {
-                        if (err) console.error("DB Error", err);
-
-                        // Deduct Stock
-                        // Ensure we parse items correctly
-                        if (order.items) {
-                            try {
-                                const items = JSON.parse(order.items);
-                                items.forEach(item => {
-                                    db.run("UPDATE products SET qty = qty - ? WHERE id = ?", [item.qty, item.id]);
-                                });
-                            } catch (e) { console.error("Item Parse Error", e); }
-                        }
-                    }
-                );
+                try { await saveConfirmedOrder(merchantTransactionId, transactionId); } catch (e) { console.error(e); }
                 return res.status(200).send("OK");
             } else {
-                db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [merchantTransactionId]);
-                return res.status(200).send("OK"); // Acknowledge failure receipt
+                // Payment failed — discard pending entry
+                pendingOrders.delete(merchantTransactionId);
+                return res.status(200).send("OK");
             }
         }
 
-        // Unknown Payload
         console.error("Unknown Callback Format", req.body);
         return res.status(400).send("Invalid Request");
 
@@ -703,8 +621,6 @@ app.post('/api/phonepe/callback', async (req, res) => {
     }
 });
 
-
-// ORDERS LIST (ADMIN) - Exclude pending_payment (incomplete payments)
 app.get('/api/orders', (req, res) => {
     db.all("SELECT * FROM orders WHERE status != 'pending_payment' ORDER BY created_at DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
