@@ -685,15 +685,44 @@ app.post('/api/phonepe/callback', async (req, res) => {
 });
 
 
-// ORDERS LIST (ADMIN)
+// ORDERS LIST (ADMIN) - Show ALL orders including pending_payment
 app.get('/api/orders', (req, res) => {
-    db.all("SELECT * FROM orders WHERE status != 'pending_payment' ORDER BY created_at DESC", [], (err, rows) => {
+    db.all("SELECT * FROM orders ORDER BY created_at DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         const orders = rows.map(o => ({
             ...o,
             items: o.items ? JSON.parse(o.items) : []
         }));
         res.json(orders);
+    });
+});
+
+// ADMIN: Manually mark an order as paid (for when PhonePe callback fails)
+app.post('/api/orders/:id/mark-paid', requireAuth, (req, res) => {
+    const orderId = req.params.id;
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, order) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        db.run(
+            "UPDATE orders SET status = 'new', payment_status = 'paid' WHERE id = ?",
+            [orderId],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+
+                // Deduct stock if not already done
+                if (order.payment_status !== 'paid' && order.items) {
+                    try {
+                        const items = JSON.parse(order.items);
+                        items.forEach(item => {
+                            db.run("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?", [item.qty, item.id, item.qty]);
+                        });
+                    } catch (e) { console.error("Item parse error:", e); }
+                }
+
+                res.json({ success: true, message: 'Order marked as paid' });
+            }
+        );
     });
 });
 

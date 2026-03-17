@@ -512,6 +512,11 @@ function setupListeners() {
             const id = target.closest('.view-order-btn').dataset.id;
             openOrderModal(id);
         }
+        // Mark Order as Paid
+        else if (target.closest('.mark-paid-btn')) {
+            const id = target.closest('.mark-paid-btn').dataset.id;
+            markOrderPaid(id);
+        }
     });
 
     // Order Modal Listeners
@@ -947,7 +952,30 @@ async function updateOrderStatus() {
     }
 }
 
+
+async function markOrderPaid(id) {
+    showConfirm(`Mark order #${id} as PAID? This will set status to NEW and deduct stock.`, async () => {
+        try {
+            const res = await fetch(`/api/orders/${id}/mark-paid`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                window.showToast('Order marked as paid!', 'success');
+                fetchData();
+            } else {
+                window.showToast(data.error || 'Failed to mark as paid', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showToast('Error marking order as paid', 'error');
+        }
+    });
+}
+
 function deleteOrder(id) {
+
     showConfirm('Delete this order?', async () => {
         try {
             const res = await fetch(`/api/orders/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
@@ -994,7 +1022,14 @@ function render() {
     } else {
         itemsToRender = orders.filter(o => {
             const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch);
-            const statusMatch = currentOrderFilter === 'all' ? true : o.status === currentOrderFilter;
+            let statusMatch;
+            if (currentOrderFilter === 'all') {
+                statusMatch = true;
+            } else if (currentOrderFilter === 'pending-payment') {
+                statusMatch = o.status === 'pending_payment';
+            } else {
+                statusMatch = o.status === currentOrderFilter;
+            }
             return idMatch && statusMatch;
         });
     }
@@ -1031,11 +1066,22 @@ function render() {
             `;
         } else {
             // ORDER SPECIFIC UI
-            actionButtons = `
-            <div class="view-btn-container">
-                <button class="view-btn view-order-btn" data-id="${item.id}">VIEW</button>
-            </div>
-            `;
+            const isPendingPayment = item.status === 'pending_payment';
+
+            if (isPendingPayment) {
+                actionButtons = `
+                <div class="view-btn-container" style="flex-direction:column; gap:0.4rem;">
+                    <button class="view-btn mark-paid-btn" data-id="${item.id}" style="background:#f59e0b; color:white; font-size:0.7rem;">✓ MARK PAID</button>
+                    <button class="view-btn view-order-btn" data-id="${item.id}" style="font-size:0.7rem;">VIEW</button>
+                </div>
+                `;
+            } else {
+                actionButtons = `
+                <div class="view-btn-container">
+                    <button class="view-btn view-order-btn" data-id="${item.id}">VIEW</button>
+                </div>
+                `;
+            }
 
             // Calculate total items for order
             const totalItems = (item.items || []).reduce((sum, i) => sum + Number(i.qty), 0);
@@ -1048,7 +1094,10 @@ function render() {
                         <span>Items: ${totalItems}</span>
                         <span>₹${item.total || 0}</span>
                     </div>
-                    <div class="status-badge status-${item.status}">${item.status}</div>
+                    ${isPendingPayment
+                        ? `<div class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">⚠ PAYMENT PENDING</div>`
+                        : `<div class="status-badge status-${item.status}">${item.status}</div>`
+                    }
                 </div>
             `;
         }
