@@ -622,7 +622,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
 });
 
 app.get('/api/orders', (req, res) => {
-    db.all("SELECT * FROM orders WHERE status != 'pending_payment' ORDER BY created_at DESC", [], (err, rows) => {
+    db.all("SELECT * FROM orders ORDER BY created_at DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         const orders = rows.map(o => ({
             ...o,
