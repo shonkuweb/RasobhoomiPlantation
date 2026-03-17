@@ -445,23 +445,30 @@ app.post('/api/orders', validateOrder, async (req, res) => {
 
 // PhonePe Callback GET Handler (Browser Redirect after payment)
 app.get('/api/phonepe/callback', async (req, res) => {
-    console.log("PhonePe Callback Received via GET");
+    console.log("PhonePe GET Callback Received");
     console.log("Query Params:", JSON.stringify(req.query));
 
     const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
 
-    // PhonePe V2 sends: code, transactionId, merchantId, etc. via query params
-    const { code, transactionId } = req.query;
+    // PhonePe V2 sends: code, merchantOrderId, transactionId (their internal txn ID)
+    const { code, merchantOrderId, transactionId } = req.query;
 
-    if (!code || !transactionId) {
+    // Our merchant order ID is either merchantOrderId or transactionId param
+    const orderId = merchantOrderId || transactionId;
+
+    console.log(`[CALLBACK] code=${code} merchantOrderId=${merchantOrderId} transactionId=${transactionId} orderId=${orderId}`);
+
+    if (!orderId) {
+        console.error("[CALLBACK] No orderId found in query params");
         return res.redirect(`${baseUrl}/payment/failure`);
     }
 
     try {
         // Verify payment status via PhonePe Status Check API
+        // Use merchantOrderId for the status check URL
         const token = await getPhonePeAuthToken();
-        const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${PHONEPE_MERCHANT_ID}/${transactionId}/status`;
-        console.log(`[DEBUG] Checking payment status at: ${statusUrl}`);
+        const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${PHONEPE_MERCHANT_ID}/${orderId}/status`;
+        console.log(`[CALLBACK] Checking status at: ${statusUrl}`);
 
         const statusResponse = await axios.get(statusUrl, {
             headers: {
@@ -471,61 +478,82 @@ app.get('/api/phonepe/callback', async (req, res) => {
         });
 
         const statusData = statusResponse.data;
-        console.log("PhonePe Status Response:", JSON.stringify(statusData, null, 2));
+        console.log("[CALLBACK] Status Response:", JSON.stringify(statusData, null, 2));
 
         const paymentCode = statusData?.code || code;
         const isSuccess = paymentCode === 'PAYMENT_SUCCESS';
         const isPending = paymentCode === 'PAYMENT_PENDING' || paymentCode === 'PAYMENT_INITIATED';
 
-        // Update order in DB
         if (isSuccess) {
             // Get order to check idempotency and deduct stock
             const order = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM orders WHERE id = ?", [transactionId], (err, row) => {
+                db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, row) => {
                     if (err) reject(err); else resolve(row);
                 });
             });
 
-            if (order && order.payment_status !== 'paid') {
-                const phonePeTxnId = statusData?.data?.transactionId || transactionId;
-
-                db.run("UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ? WHERE id = ?",
-                    [phonePeTxnId, transactionId],
-                    (err) => {
-                        if (err) console.error("DB Update Error:", err);
-
-                        // Deduct stock
-                        if (order.items) {
-                            try {
-                                const items = JSON.parse(order.items);
-                                items.forEach(item => {
-                                    db.run("UPDATE products SET qty = qty - ? WHERE id = ?", [item.qty, item.id]);
-                                });
-                            } catch (e) { console.error("Item Parse Error:", e); }
-                        }
-                    }
-                );
+            if (!order) {
+                console.error(`[CALLBACK] Order not found for orderId=${orderId}`);
+                return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
             }
-            return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
+
+            if (order.payment_status !== 'paid') {
+                const phonePeTxnId = statusData?.data?.transactionId || transactionId || orderId;
+
+                // Await the DB update before redirecting
+                await new Promise((resolve) => {
+                    db.run(
+                        "UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ? WHERE id = ?",
+                        [phonePeTxnId, orderId],
+                        (err) => {
+                            if (err) console.error("[CALLBACK] DB Update Error:", err);
+                            else console.log(`[CALLBACK] Order ${orderId} marked as paid`);
+                            resolve();
+                        }
+                    );
+                });
+
+                // Deduct stock
+                if (order.items) {
+                    try {
+                        const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+                        items.forEach(item => {
+                            db.run("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?", [item.qty, item.id, item.qty]);
+                        });
+                    } catch (e) { console.error("[CALLBACK] Item Parse Error:", e); }
+                }
+            } else {
+                console.log(`[CALLBACK] Order ${orderId} already paid — skipping`);
+            }
+
+            return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
+
         } else if (isPending) {
-            return res.redirect(`${baseUrl}/payment/pending?orderId=${transactionId}`);
+            return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [transactionId]);
-            return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
+            await new Promise((resolve) => {
+                db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [orderId], resolve);
+            });
+            return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
         }
+
     } catch (statusErr) {
-        console.error("Status Check Error:", statusErr.response ? statusErr.response.data : statusErr.message);
+        console.error("[CALLBACK] Status Check Error:", statusErr.response ? statusErr.response.data : statusErr.message);
 
         // Fallback: Trust the code from query params if status API fails
         if (code === 'PAYMENT_SUCCESS') {
-            // Still update the order even if status API fails
-            db.run("UPDATE orders SET status = 'new', payment_status = 'paid' WHERE id = ?", [transactionId]);
-            return res.redirect(`${baseUrl}/payment/success?orderId=${transactionId}`);
+            console.log(`[CALLBACK FALLBACK] Marking order ${orderId} as paid based on code param`);
+            await new Promise((resolve) => {
+                db.run("UPDATE orders SET status = 'new', payment_status = 'paid' WHERE id = ?", [orderId], resolve);
+            });
+            return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
         } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
-            return res.redirect(`${baseUrl}/payment/pending?orderId=${transactionId}`);
+            return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [transactionId]);
-            return res.redirect(`${baseUrl}/payment/failure?orderId=${transactionId}`);
+            await new Promise((resolve) => {
+                db.run("UPDATE orders SET payment_status = 'failed' WHERE id = ?", [orderId], resolve);
+            });
+            return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
         }
     }
 });
