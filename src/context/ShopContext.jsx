@@ -31,22 +31,25 @@ export const ShopProvider = ({ children }) => {
         try {
             const res = await fetch(`/api/products?page=${pageNumber}&limit=${LIMIT}`);
             if (res.ok) {
-                const data = await res.json();
+                const raw = await res.json();
+
+                // Handle both new {products, hasMore} format and old array format
+                const data = Array.isArray(raw) ? raw : (raw.products || []);
+                const serverHasMore = Array.isArray(raw) ? (data.length === LIMIT) : raw.hasMore;
 
                 setProducts(prev => {
-                    // Avoid duplicate fetching issues by using Map or simple unique filter based on ID
                     const newProducts = [...prev, ...data];
                     const uniqueProducts = Array.from(new Map(newProducts.map(item => [item.id, item])).values());
                     return uniqueProducts;
                 });
 
-                if (data.length < LIMIT) {
-                    setHasMore(false); // No more products left
+                if (!serverHasMore) {
+                    setHasMore(false); // Server says no more products
                 } else {
-                    // Automatically fetch next batch in the background
+                    // Fetch next batch in the background
                     setTimeout(() => {
                         fetchProductsBatch(pageNumber + 1);
-                    }, 500); // Small delay to prioritize browser main thread for rendering
+                    }, 500);
                 }
             }
         } catch (error) {

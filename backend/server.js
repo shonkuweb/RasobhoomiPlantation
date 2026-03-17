@@ -208,43 +208,50 @@ const validateOrder = (req, res, next) => {
 
 // PRODUCTS
 app.get('/api/products', (req, res) => {
-    let sql = "SELECT * FROM products ORDER BY id DESC"; // Added ORDER BY id DESC to consistently order items
-    let params = [];
-
-    // Check for pagination queries
     const page = parseInt(req.query.page) || 0;
     const limit = parseInt(req.query.limit) || 0;
+    const isPaginated = page > 0 && limit > 0;
 
-    if (page > 0 && limit > 0) {
-        const offset = (page - 1) * limit;
-        sql += " LIMIT ? OFFSET ?";
-        params.push(limit, offset);
+    if (isPaginated) {
+        // Get total count first, then fetch the page
+        db.get("SELECT COUNT(*) as total FROM products", [], (err, countRow) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            const total = countRow.total;
+            const offset = (page - 1) * limit;
+            const hasMore = offset + limit < total;
+
+            db.all("SELECT * FROM products ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset], (err, rows) => {
+                if (err) return res.status(500).json({ error: err.message });
+                try {
+                    const products = rows.map(p => ({
+                        ...p,
+                        images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+                    }));
+                    console.log(`Fetched ${products.length} products (Page: ${page}, Limit: ${limit}, Total: ${total})`);
+                    res.json({ products, hasMore, total, page });
+                } catch (parseErr) {
+                    res.status(500).json({ error: "Failed to parse product data" });
+                }
+            });
+        });
+    } else {
+        // Return all products (non-paginated, legacy)
+        db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            try {
+                const products = rows.map(p => ({
+                    ...p,
+                    images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+                }));
+                res.json(products);
+            } catch (parseErr) {
+                res.status(500).json({ error: "Failed to parse product data" });
+            }
+        });
     }
-
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            console.error("Fetch Products Error:", err);
-            return res.status(500).json({ error: err.message });
-        }
-
-        try {
-            const products = rows.map(p => ({
-                ...p,
-                images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
-            }));
-
-            // if paginated, we should ideally also return total count, 
-            // but to not break existing frontend expecting an array, we just return the array.
-            // We will handle 'hasMore' logic on frontend by checking if returned array length < limit.
-            console.log(`Fetched ${products.length} products (Page: ${page}, Limit: ${limit})`);
-            res.json(products);
-        } catch (parseErr) {
-            console.error("Product Parse Error:", parseErr);
-            console.error("Raw Rows:", rows);
-            res.status(500).json({ error: "Failed to parse product data" });
-        }
-    });
 });
+
 
 app.post('/api/products', requireAuth, validateProduct, (req, res) => {
     const { id, name, description, price, category, qty, image, images } = req.body;
@@ -282,28 +289,12 @@ app.put('/api/products/:id', requireAuth, validateProduct, (req, res) => {
 
 // CATEGORIES
 app.get('/api/categories', async (req, res) => {
-    try {
-        const { categories: staticCategories } = await import('../src/utils/categories.js');
-
-        db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-
-            // Merge DB categories with static categories using a Map to ensure unique slugs
-            const mergedMap = new Map();
-            staticCategories.forEach(cat => mergedMap.set(cat.slug, cat));
-            rows.forEach(cat => mergedMap.set(cat.slug, cat)); // DB overwrites static if conflict
-
-            res.json(Array.from(mergedMap.values()).sort((a, b) => a.id - b.id));
-        });
-    } catch (importErr) {
-        console.error("Failed to load static categories:", importErr);
-        // Fallback to purely DB if import fails in production structure
-        db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        });
-    }
+    db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
 });
+
 
 // ORDERS & PAYMENT
 // Helper to get product from DB

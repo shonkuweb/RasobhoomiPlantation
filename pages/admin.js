@@ -88,10 +88,13 @@ async function fetchProductsBatch(pageNumber) {
     try {
         const res = await fetch(`/api/products?page=${pageNumber}&limit=${ADMIN_PRODUCT_BATCH}`);
         if (!res.ok) return;
-        const data = await res.json();
+        const raw = await res.json();
 
-        if (!Array.isArray(data) || data.length === 0) {
-            // All loaded — trigger final render
+        // Handle both new {products, hasMore} format and old array format
+        const data = Array.isArray(raw) ? raw : (raw.products || []);
+        const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : raw.hasMore;
+
+        if (data.length === 0 && !serverHasMore) {
             render();
             return;
         }
@@ -108,8 +111,8 @@ async function fetchProductsBatch(pageNumber) {
         // Render immediately so new products appear
         if (currentView === 'products') render();
 
-        if (data.length === ADMIN_PRODUCT_BATCH) {
-            // More batches may exist — load next after a small delay
+        if (serverHasMore) {
+            // More batches — load next after a small delay
             setTimeout(() => fetchProductsBatch(pageNumber + 1), 400);
         } else {
             render();
