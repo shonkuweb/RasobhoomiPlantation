@@ -45,26 +45,17 @@ function getAuthHeaders() {
     };
 }
 
+const ADMIN_PRODUCT_BATCH = 4;
+
 async function fetchData() {
     try {
-        const [pRes, oRes, cRes] = await Promise.all([
-            fetch('/api/products'),
+        // Fetch orders and categories in parallel
+        const [oRes, cRes] = await Promise.all([
             fetch('/api/orders'),
             fetch('/api/categories')
         ]);
 
-        // Safe Parsing
-        const pData = await pRes.json();
         const oData = await oRes.json();
-
-        // Check if array
-        if (Array.isArray(pData)) {
-            products = pData;
-        } else {
-            console.error('Products API Error:', pData);
-            window.showToast('Error loading Products', 'error');
-            products = [];
-        }
 
         if (cRes.ok) {
             categories = await cRes.json();
@@ -79,13 +70,13 @@ async function fetchData() {
             orders = [];
         }
 
-        render(); // Re-render after fetch
-
-        // Update counts in buttons (Safely)
+        // Update order count button
         const btnOrders = document.getElementById('btn-orders');
         if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
-        const btnProducts = document.getElementById('btn-products');
-        if (btnProducts) btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length + 115}</span>`;
+
+        // Start progressive product loading
+        products = [];
+        await fetchProductsBatch(1);
 
     } catch (e) {
         console.error('Admin Fetch Failed', e);
@@ -93,10 +84,66 @@ async function fetchData() {
     }
 }
 
+async function fetchProductsBatch(pageNumber) {
+    try {
+        const res = await fetch(`/api/products?page=${pageNumber}&limit=${ADMIN_PRODUCT_BATCH}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+            // All loaded — trigger final render
+            render();
+            return;
+        }
+
+        // Merge, avoiding duplicates
+        const existingIds = new Set(products.map(p => p.id));
+        const newOnes = data.filter(p => !existingIds.has(p.id));
+        products = [...products, ...newOnes];
+
+        // Update count badge
+        const btnProducts = document.getElementById('btn-products');
+        if (btnProducts) btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length}</span>`;
+
+        // Render immediately so new products appear
+        if (currentView === 'products') render();
+
+        if (data.length === ADMIN_PRODUCT_BATCH) {
+            // More batches may exist — load next after a small delay
+            setTimeout(() => fetchProductsBatch(pageNumber + 1), 400);
+        } else {
+            render();
+        }
+    } catch (e) {
+        console.error('Product batch fetch failed', e);
+    }
+}
+
+async function fetchOrders() {
+    try {
+        const res = await fetch('/api/orders');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+            orders = data;
+            if (currentView === 'orders') render();
+            const btnOrders = document.getElementById('btn-orders');
+            if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
+        }
+    } catch (e) {
+        console.error('Order refresh failed', e);
+    }
+}
+
+function startOrdersAutoRefresh() {
+    if (ordersRefreshTimer) clearInterval(ordersRefreshTimer);
+    ordersRefreshTimer = setInterval(fetchOrders, 30000); // Refresh every 30 seconds
+}
+
 let currentView = 'products';
-let currentOrderFilter = 'new';
+let currentOrderFilter = 'all';
 let currentProductFilter = 'all';
 let editingId = null;
+let ordersRefreshTimer = null;
 
 // Order Status Flow
 const STATUS_FLOW = ['new', 'in-process', 'in-transit', 'completed'];
@@ -147,6 +194,7 @@ function init() {
     setupListeners();
     // switchView called after data load or defaults
     switchView('products');
+    startOrdersAutoRefresh();
 }
 
 function setupListeners() {
@@ -946,7 +994,7 @@ function render() {
     } else {
         itemsToRender = orders.filter(o => {
             const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch);
-            const statusMatch = o.status === currentOrderFilter;
+            const statusMatch = currentOrderFilter === 'all' ? true : o.status === currentOrderFilter;
             return idMatch && statusMatch;
         });
     }
