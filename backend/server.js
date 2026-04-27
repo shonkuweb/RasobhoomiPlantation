@@ -324,34 +324,44 @@ setInterval(() => {
 // Helper to save a confirmed order to DB (called only after payment success)
 function saveConfirmedOrder(orderId, phonePeTxnId) {
     const orderData = pendingOrders.get(orderId);
-    if (!orderData) {
-        console.warn(`[ORDER] No pending order found for ${orderId} — may already be saved or expired`);
-        return Promise.resolve(null);
-    }
-
-    const { name, phone, address, city, zip, total, items } = orderData;
-    const jsonItemsStr = typeof items === 'string' ? items : JSON.stringify(items);
+    const jsonItemsStr = orderData
+        ? (typeof orderData.items === 'string' ? orderData.items : JSON.stringify(orderData.items))
+        : null;
 
     return new Promise((resolve, reject) => {
         // Check if already saved (idempotency)
         db.get("SELECT id FROM orders WHERE id = ?", [orderId], (err, existing) => {
             if (err) return reject(err);
             if (existing) {
-                console.log(`[ORDER] Order ${orderId} already in DB — skipping duplicate insert`);
-                pendingOrders.delete(orderId);
-                return resolve(existing);
+                db.run(
+                    "UPDATE orders SET status = 'new', payment_status = 'paid', transaction_id = ?, items = COALESCE(?, items) WHERE id = ?",
+                    [phonePeTxnId || orderId, jsonItemsStr, orderId],
+                    function (updateErr) {
+                        if (updateErr) return reject(updateErr);
+                        console.log(`[ORDER] Updated existing order ${orderId} as paid`);
+                        pendingOrders.delete(orderId);
+                        resolve(existing);
+                    }
+                );
+                return;
             }
 
-            const sql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(sql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'new', 'paid', phonePeTxnId || orderId], function (err) {
-                if (err) return reject(err);
+            if (!orderData) {
+                console.warn(`[ORDER] No pending order found for ${orderId} and no DB row exists`);
+                return resolve(null);
+            }
+
+            const { name, phone, address, city, zip, total } = orderData;
+            const insertSql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            db.run(insertSql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'new', 'paid', phonePeTxnId || orderId], function (insertErr) {
+                if (insertErr) return reject(insertErr);
 
                 console.log(`[ORDER] Saved confirmed order ${orderId} to DB`);
                 pendingOrders.delete(orderId);
 
                 // Deduct stock
                 try {
-                    const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+                    const parsedItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
                     parsedItems.forEach(item => {
                         db.run("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?", [item.qty, item.id, item.qty]);
                     });
@@ -414,8 +424,6 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     }
 
     const total = calculatedTotal + deliveryCharge;
-    const jsonItemsStr = JSON.stringify(items);
-
     console.log(`[DEBUG] Order ID: ${orderId}`);
 
     // Check for credentials
@@ -456,14 +464,28 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
 
         if (data && data.redirectUrl) {
-            // Store order in temp map — NOT in DB yet
+            // Store order in temp map and DB as pending to avoid data loss on callback issues/restarts
+            const verifiedItemsJson = JSON.stringify(verifiedItems);
             pendingOrders.set(orderId, {
                 name, phone, address, city, zip,
                 total,
-                items: JSON.stringify(verifiedItems),
+                items: verifiedItemsJson,
                 createdAt: Date.now()
             });
-            console.log(`[ORDER] Stored pending order ${orderId} in memory (not DB)`);
+            console.log(`[ORDER] Stored pending order ${orderId} in memory`);
+
+            db.run(
+                `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [orderId, name, phone, address, city, zip, total, verifiedItemsJson, 'pending_payment', 'pending', null],
+                function (insertErr) {
+                    if (insertErr) {
+                        console.error(`[ORDER] Failed to persist pending order ${orderId}:`, insertErr.message);
+                    } else {
+                        console.log(`[ORDER] Pending order ${orderId} saved to DB`);
+                    }
+                }
+            );
 
             res.json({
                 success: true,
@@ -491,8 +513,11 @@ app.get('/api/phonepe/callback', async (req, res) => {
     console.log("Query Params:", JSON.stringify(req.query));
 
     const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
-    const { code, merchantOrderId, transactionId } = req.query;
-    const orderId = merchantOrderId || transactionId;
+    const getCallbackOrderId = (payload = {}) =>
+        payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
+
+    const { code, transactionId } = req.query;
+    const orderId = getCallbackOrderId(req.query);
 
     console.log(`[CALLBACK] code=${code} orderId=${orderId}`);
 
@@ -561,10 +586,13 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
         const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
 
+        const getCallbackOrderId = (payload = {}) =>
+            payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
+
         // Type A: Browser POST Redirect (form-encoded) — code, merchantId, transactionId in body
         if (req.body.code && req.body.merchantId) {
-            const { code, merchantOrderId, transactionId } = req.body;
-            const orderId = merchantOrderId || transactionId;
+            const { code, transactionId } = req.body;
+            const orderId = getCallbackOrderId(req.body);
             console.log(`[POST CALLBACK] Code=${code}, orderId=${orderId}`);
 
             if (code === 'PAYMENT_SUCCESS') {
@@ -598,16 +626,17 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
             const decoded = JSON.parse(Buffer.from(response, 'base64').toString('utf-8'));
             const { success, code, data } = decoded;
-            const { merchantTransactionId, transactionId } = data;
+            const transactionId = data?.transactionId;
+            const orderId = getCallbackOrderId(data || {});
 
-            console.log(`[WEBHOOK] success=${success} code=${code} orderId=${merchantTransactionId}`);
+            console.log(`[WEBHOOK] success=${success} code=${code} orderId=${orderId}`);
 
             if (success && code === 'PAYMENT_SUCCESS') {
-                try { await saveConfirmedOrder(merchantTransactionId, transactionId); } catch (e) { console.error(e); }
+                try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
                 return res.status(200).send("OK");
             } else {
                 // Payment failed — discard pending entry
-                pendingOrders.delete(merchantTransactionId);
+                pendingOrders.delete(orderId);
                 return res.status(200).send("OK");
             }
         }

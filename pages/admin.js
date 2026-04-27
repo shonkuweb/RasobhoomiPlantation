@@ -854,7 +854,10 @@ function openOrderModal(id) {
 
     // Populate Data
     document.getElementById('view-order-id').textContent = order.id;
-    document.getElementById('view-order-date').textContent = new Date(order.date).toLocaleString();
+    const orderDate = order.created_at || order.date;
+    document.getElementById('view-order-date').textContent = orderDate
+        ? new Date(orderDate).toLocaleString()
+        : 'N/A';
 
     // Status Badge Color
     const statusEl = document.getElementById('view-order-status');
@@ -1037,8 +1040,11 @@ function render() {
         });
     }
 
-    // LIFO (Last In First Out) - Newest First
-    itemsToRender.reverse();
+    // Keep server ordering for recency (API already returns newest first).
+    // Reversing here was pushing latest orders to the bottom of long lists.
+    if (currentView === 'orders') {
+        itemsToRender.sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0));
+    }
 
     itemsToRender.forEach(item => {
         const el = document.createElement('div');
