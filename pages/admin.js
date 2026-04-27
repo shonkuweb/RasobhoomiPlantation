@@ -63,7 +63,8 @@ async function fetchData() {
         }
 
         if (Array.isArray(oData)) {
-            orders = oData;
+            // Admin should only see payment-confirmed orders.
+            orders = oData.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
         } else {
             console.error('Orders API Error:', oData);
             window.showToast('Error loading Orders', 'error');
@@ -127,7 +128,8 @@ async function fetchOrders() {
         const res = await fetch('/api/orders');
         const data = await res.json();
         if (Array.isArray(data)) {
-            orders = data;
+            // Admin should only see payment-confirmed orders.
+            orders = data.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
             if (currentView === 'orders') render();
             const btnOrders = document.getElementById('btn-orders');
             if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
@@ -195,6 +197,8 @@ let currentImages = [];
 function init() {
     checkAuth();
     setupListeners();
+    const pendingFilterChip = document.querySelector('.filter-chip[data-filter="pending-payment"]');
+    if (pendingFilterChip) pendingFilterChip.style.display = 'none';
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
