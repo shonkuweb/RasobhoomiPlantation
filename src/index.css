@@ -2554,6 +2554,105 @@ footer {
   }
 }
 
+/* ---- Search UI final overrides (desktop + accessibility) ---- */
+.navbar .search-bar-container {
+  position: relative;
+  z-index: 1200;
+}
+
+.navbar .search-input-wrapper.pill-search {
+  background: #fff !important;
+  border: 1px solid #d6d6d6;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+}
+
+.navbar .pill-icon-left,
+.navbar .pill-icon-right {
+  color: #6b7280 !important;
+}
+
+.navbar #navbar-search-input {
+  color: #111827 !important;
+  font-weight: 500;
+}
+
+.navbar #navbar-search-input::placeholder {
+  color: #9ca3af !important;
+}
+
+.navbar #close-navbar-search.pill-icon-right:hover {
+  color: #111827 !important;
+}
+
+.navbar .search-input-wrapper.pill-search:focus-within {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18), 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.navbar-search-dropdown {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.18);
+}
+
+.navbar-search-item {
+  border: 1px solid transparent;
+}
+
+.navbar-search-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.navbar-search-item-name {
+  color: #111827;
+}
+
+.navbar-search-item-meta {
+  color: #4b5563;
+}
+
+.navbar-search-empty {
+  color: #374151;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+/* Desktop: keep search visible and centered nicely */
+@media (min-width: 769px) {
+  .navbar .search-bar-container {
+    display: flex !important;
+    position: relative;
+    top: auto;
+    left: auto;
+    width: min(680px, 60vw);
+    height: auto;
+    margin: 0 1rem;
+    padding: 0;
+    transform: none !important;
+    background: transparent;
+    border-bottom: none;
+  }
+
+  .navbar .search-input-wrapper.pill-search {
+    max-width: none;
+    height: 48px;
+    padding: 0 1rem;
+  }
+
+  .navbar.search-active .nav-logo,
+  .navbar.search-active .nav-actions,
+  .navbar.search-active #menu-btn,
+  .navbar.search-active .nav-icon {
+    display: flex !important;
+  }
+
+  .navbar.search-active .search-bar-container {
+    animation: none;
+  }
+}
+
 /* Ensure Search Results still show - modified from overlay logic */
 .search-results-dropdown {
   position: fixed;
