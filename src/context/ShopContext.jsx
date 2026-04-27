@@ -116,6 +116,8 @@ export const ShopProvider = ({ children }) => {
     const value = {
         products,
         cart,
+        searchQuery,
+        setSearchQuery,
         addToCart,
         removeFromCart,
         updateQty,
