@@ -1,10 +1,50 @@
-import React from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import '../styles/PaymentStatus.css';
 
 const PaymentPending = () => {
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const orderId = searchParams.get('orderId');
+    const [checkingStatus, setCheckingStatus] = useState(false);
+
+    useEffect(() => {
+        if (!orderId) return undefined;
+
+        let isActive = true;
+        let intervalId;
+
+        const checkOrderPaymentStatus = async () => {
+            if (!isActive) return;
+            setCheckingStatus(true);
+            try {
+                const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`);
+                if (!res.ok) return;
+
+                const order = await res.json();
+                const paymentStatus = String(order?.payment_status || '').toLowerCase();
+
+                if (!isActive) return;
+                if (paymentStatus === 'paid') {
+                    navigate(`/payment/success?orderId=${encodeURIComponent(orderId)}`, { replace: true });
+                } else if (paymentStatus === 'failed') {
+                    navigate(`/payment/failure?orderId=${encodeURIComponent(orderId)}`, { replace: true });
+                }
+            } catch (err) {
+                console.error('Pending status check failed:', err);
+            } finally {
+                if (isActive) setCheckingStatus(false);
+            }
+        };
+
+        checkOrderPaymentStatus();
+        intervalId = setInterval(checkOrderPaymentStatus, 5000);
+
+        return () => {
+            isActive = false;
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [orderId, navigate]);
 
     return (
         <div className="payment-status-container status-bg-pending">
@@ -28,6 +68,11 @@ const PaymentPending = () => {
                 <p className="status-subtitle">
                     Your payment is being verified. This usually takes a few moments. Please don't close this page.
                 </p>
+                {checkingStatus && (
+                    <p className="status-subtitle" style={{ fontSize: '0.9rem', marginTop: '0.4rem' }}>
+                        Checking payment status...
+                    </p>
+                )}
 
                 {/* Animated Progress Bar */}
                 <div className="pending-progress-bar">

@@ -124,7 +124,16 @@ const PHONEPE_CLIENT_ID = process.env.PHONEPE_CLIENT_ID;
 const PHONEPE_CLIENT_SECRET = process.env.PHONEPE_CLIENT_SECRET;
 const PHONEPE_CLIENT_VERSION = process.env.PHONEPE_CLIENT_VERSION || 1;
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID || "PGTESTPAYUAT";
-const APP_BE_URL = process.env.APP_BE_URL || `http://localhost:${PORT}`;
+const sanitizeBaseUrl = (rawUrl) => {
+    if (!rawUrl) return rawUrl;
+    return String(rawUrl)
+        .trim()
+        .replace(/%7D/gi, '')
+        .replace(/[}]+$/g, '')
+        .replace(/\/+$/g, '');
+};
+const APP_BE_URL = sanitizeBaseUrl(process.env.APP_BE_URL || `http://localhost:${PORT}`);
+const APP_FE_URL = sanitizeBaseUrl(process.env.APP_FE_URL || APP_BE_URL);
 
 // In-Memory Token Cache
 let phonePeToken = null;
@@ -443,9 +452,9 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                 type: "PG_CHECKOUT",
                 message: "Payment for Order " + orderId,
                 merchantUrls: {
-                    redirectUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`,
+                    redirectUrl: `${sanitizeBaseUrl(process.env.PHONEPE_CALLBACK_URL) || APP_BE_URL}/api/phonepe/callback`,
                     redirectMode: "REDIRECT",
-                    callbackUrl: `${process.env.PHONEPE_CALLBACK_URL || process.env.APP_BE_URL}/api/phonepe/callback`
+                    callbackUrl: `${sanitizeBaseUrl(process.env.PHONEPE_CALLBACK_URL) || APP_BE_URL}/api/phonepe/callback`
                 }
             }
         };
@@ -512,7 +521,7 @@ app.get('/api/phonepe/callback', async (req, res) => {
     console.log("PhonePe GET Callback Received");
     console.log("Query Params:", JSON.stringify(req.query));
 
-    const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
+    const baseUrl = APP_FE_URL || APP_BE_URL || `http://localhost:${PORT}`;
     const getCallbackOrderId = (payload = {}) =>
         payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
 
@@ -584,7 +593,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
         console.log("PhonePe POST Callback Received");
         console.log("Body:", JSON.stringify(req.body));
 
-        const baseUrl = process.env.APP_FE_URL || process.env.APP_BE_URL || `http://localhost:${PORT}`;
+        const baseUrl = APP_FE_URL || APP_BE_URL || `http://localhost:${PORT}`;
 
         const getCallbackOrderId = (payload = {}) =>
             payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
