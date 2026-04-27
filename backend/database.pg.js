@@ -134,7 +134,9 @@ function initDb() {
         `CREATE TABLE IF NOT EXISTS admin_settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
-        )`
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_products_created_at_desc ON products (created_at DESC)`,
+        `CREATE INDEX IF NOT EXISTS idx_orders_created_at_desc ON orders (created_at DESC)`
     ];
 
     queries.forEach(q => {

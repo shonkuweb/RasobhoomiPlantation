@@ -213,6 +213,44 @@ const validateOrder = (req, res, next) => {
     next();
 };
 
+// --- HOT PATH CACHE (PRODUCTS) ---
+// Goal: avoid repeated DB + JSON parsing work on every storefront request.
+const PRODUCT_CACHE_TTL_MS = 30 * 1000;
+let productCacheVersion = 1;
+const productResponseCache = new Map();
+
+const buildProductCacheKey = (page, limit, isPaginated) =>
+    isPaginated ? `p:${page}:l:${limit}:v:${productCacheVersion}` : `all:v:${productCacheVersion}`;
+
+const parseProductRows = (rows) => rows.map(p => ({
+    ...p,
+    images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+}));
+
+const getCachedPayload = (key) => {
+    const entry = productResponseCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.cachedAt > PRODUCT_CACHE_TTL_MS) {
+        productResponseCache.delete(key);
+        return null;
+    }
+    return entry.payload;
+};
+
+const setCachedPayload = (key, payload) => {
+    productResponseCache.set(key, { payload, cachedAt: Date.now() });
+};
+
+const invalidateProductCache = () => {
+    productCacheVersion += 1;
+    productResponseCache.clear();
+};
+
+const setProductResponseHeaders = (res, key) => {
+    res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+    res.set('ETag', `W/"${key}"`);
+};
+
 // --- API ENDPOINTS ---
 
 // PRODUCTS
@@ -220,6 +258,13 @@ app.get('/api/products', (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const limit = parseInt(req.query.limit) || 0;
     const isPaginated = page > 0 && limit > 0;
+    const cacheKey = buildProductCacheKey(page, limit, isPaginated);
+    const cachedPayload = getCachedPayload(cacheKey);
+
+    if (cachedPayload) {
+        setProductResponseHeaders(res, cacheKey);
+        return res.json(cachedPayload);
+    }
 
     if (isPaginated) {
         // Get total count first, then fetch the page
@@ -233,12 +278,12 @@ app.get('/api/products', (req, res) => {
             db.all("SELECT * FROM products ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset], (err, rows) => {
                 if (err) return res.status(500).json({ error: err.message });
                 try {
-                    const products = rows.map(p => ({
-                        ...p,
-                        images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
-                    }));
+                    const products = parseProductRows(rows);
                     console.log(`Fetched ${products.length} products (Page: ${page}, Limit: ${limit}, Total: ${total})`);
-                    res.json({ products, hasMore, total, page });
+                    const payload = { products, hasMore, total, page };
+                    setCachedPayload(cacheKey, payload);
+                    setProductResponseHeaders(res, cacheKey);
+                    res.json(payload);
                 } catch (parseErr) {
                     res.status(500).json({ error: "Failed to parse product data" });
                 }
@@ -249,10 +294,9 @@ app.get('/api/products', (req, res) => {
         db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             try {
-                const products = rows.map(p => ({
-                    ...p,
-                    images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
-                }));
+                const products = parseProductRows(rows);
+                setCachedPayload(cacheKey, products);
+                setProductResponseHeaders(res, cacheKey);
                 res.json(products);
             } catch (parseErr) {
                 res.status(500).json({ error: "Failed to parse product data" });
@@ -272,12 +316,14 @@ app.post('/api/products', requireAuth, validateProduct, (req, res) => {
             const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
             db.run(sql, [name, description, price, category, qty, image, imagesStr, finalId], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
+                invalidateProductCache();
                 res.json({ message: 'Product updated', id: finalId });
             });
         } else {
             const sql = `INSERT INTO products (id, name, description, price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
             db.run(sql, [finalId, name, description, price, category, qty, image, imagesStr], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
+                invalidateProductCache();
                 res.json({ message: 'Product created', id: finalId });
             });
         }
@@ -292,6 +338,7 @@ app.put('/api/products/:id', requireAuth, validateProduct, (req, res) => {
     const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
     db.run(sql, [name, description, price, category, qty, image, imagesStr, finalId], function (err) {
         if (err) return res.status(500).json({ error: err.message });
+        invalidateProductCache();
         res.json({ message: 'Product updated', id: finalId });
     });
 });
@@ -792,6 +839,7 @@ app.post('/api/admin/change-password', requireAuth, (req, res) => {
 app.delete('/api/products/:id', requireAuth, (req, res) => {
     db.run("DELETE FROM products WHERE id = ?", [req.params.id], function (err) {
         if (err) return res.status(500).json({ error: err.message });
+        invalidateProductCache();
         res.json({ message: 'Deleted' });
     });
 });
