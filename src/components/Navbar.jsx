@@ -1,12 +1,43 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 
 const Navbar = ({ onMenuClick, onCartClick }) => {
-    const { cart, searchQuery, setSearchQuery } = useShop();
+    const { cart, products, searchQuery, setSearchQuery } = useShop();
     const [searchOpen, setSearchOpen] = useState(false);
+    const searchRef = useRef(null);
 
     const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const searchResults = useMemo(() => {
+        if (!normalizedQuery) return [];
+        return products
+            .filter((p) =>
+                (p.name || '').toLowerCase().includes(normalizedQuery) ||
+                (p.description || '').toLowerCase().includes(normalizedQuery) ||
+                (p.category || '').toLowerCase().includes(normalizedQuery)
+            )
+            .slice(0, 8);
+    }, [normalizedQuery, products]);
+
+    const showDropdown = normalizedQuery.length > 0 && searchOpen;
+
+    useEffect(() => {
+        const handleOutsideClick = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setSearchOpen(false);
+            }
+        };
+        const handleEsc = (event) => {
+            if (event.key === 'Escape') setSearchOpen(false);
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        document.addEventListener('keydown', handleEsc);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+            document.removeEventListener('keydown', handleEsc);
+        };
+    }, []);
 
     return (
         <nav className={`navbar ${searchOpen ? 'search-active' : ''}`}>
@@ -19,7 +50,7 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
             </Link>
 
             {/* Search Bar (Mobile Toggle) */}
-            <div className="search-bar-container">
+            <div className="search-bar-container" ref={searchRef}>
                 <div className="search-input-wrapper pill-search">
                     <span className="pill-icon-left">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -35,6 +66,7 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
                         autoComplete="off"
                         autoFocus={searchOpen}
                         value={searchQuery}
+                        onFocus={() => setSearchOpen(true)}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     <button id="close-navbar-search" className="pill-icon-right" onClick={() => setSearchOpen(false)}>
@@ -45,6 +77,36 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
                         </svg>
                     </button>
                 </div>
+                {showDropdown && (
+                    <div className="navbar-search-dropdown">
+                        {searchResults.length > 0 ? (
+                            searchResults.map((product) => (
+                                <Link
+                                    key={product.id}
+                                    to={`/product/${product.id}`}
+                                    className="navbar-search-item"
+                                    onClick={() => setSearchOpen(false)}
+                                >
+                                    <div className="navbar-search-item-image">
+                                        {product.image ? (
+                                            <img src={product.image} alt={product.name} />
+                                        ) : (
+                                            <span>IMG</span>
+                                        )}
+                                    </div>
+                                    <div className="navbar-search-item-content">
+                                        <span className="navbar-search-item-name">{product.name}</span>
+                                        <span className="navbar-search-item-meta">
+                                            {product.category || 'Plant'} - Rs {product.price}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
+                            <div className="navbar-search-empty">No matching products</div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="nav-actions" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
