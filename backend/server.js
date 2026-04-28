@@ -135,6 +135,22 @@ const sanitizeBaseUrl = (rawUrl) => {
 const APP_BE_URL = sanitizeBaseUrl(process.env.APP_BE_URL || `http://localhost:${PORT}`);
 const APP_FE_URL = sanitizeBaseUrl(process.env.APP_FE_URL || APP_BE_URL);
 
+const isPhonePePaymentSuccess = (payload = {}) => {
+    const normalizedCode = String(payload?.code || payload?.status || payload?.state || '').toUpperCase();
+    const nestedCode = String(payload?.data?.code || payload?.data?.status || payload?.data?.state || payload?.data?.paymentState || '').toUpperCase();
+    const successFlag = payload?.success === true || payload?.data?.success === true;
+
+    const successCodes = new Set(['PAYMENT_SUCCESS', 'COMPLETED', 'SUCCESS', 'PAID', 'PAYMENT_COMPLETED', 'TXN_SUCCESS']);
+    return successFlag || successCodes.has(normalizedCode) || successCodes.has(nestedCode);
+};
+
+const isPhonePePaymentPending = (payload = {}) => {
+    const normalizedCode = String(payload?.code || payload?.status || payload?.state || '').toUpperCase();
+    const nestedCode = String(payload?.data?.code || payload?.data?.status || payload?.data?.state || payload?.data?.paymentState || '').toUpperCase();
+    const pendingCodes = new Set(['PAYMENT_PENDING', 'PAYMENT_INITIATED', 'PENDING', 'INITIATED', 'IN_PROGRESS', 'PROCESSING']);
+    return pendingCodes.has(normalizedCode) || pendingCodes.has(nestedCode);
+};
+
 // In-Memory Token Cache
 let phonePeToken = null;
 let phonePeTokenExpiry = 0;
@@ -429,6 +445,21 @@ function saveConfirmedOrder(orderId, phonePeTxnId) {
     });
 }
 
+function updateOrderPaymentState(orderId, paymentStatus, orderStatus = null, transactionId = null) {
+    return new Promise((resolve, reject) => {
+        if (!orderId) return resolve();
+        const statusToSet = orderStatus || (paymentStatus === 'paid' ? 'new' : 'pending_payment');
+        db.run(
+            "UPDATE orders SET payment_status = ?, status = ?, transaction_id = COALESCE(?, transaction_id) WHERE id = ?",
+            [paymentStatus, statusToSet, transactionId, orderId],
+            function (err) {
+                if (err) return reject(err);
+                resolve();
+            }
+        );
+    });
+}
+
 
 // ORDERS & PAYMENT
 app.post('/api/orders', validateOrder, async (req, res) => {
@@ -594,9 +625,8 @@ app.get('/api/phonepe/callback', async (req, res) => {
         const statusData = statusResponse.data;
         console.log("[CALLBACK] Status Response:", JSON.stringify(statusData, null, 2));
 
-        const paymentCode = statusData?.code || code;
-        const isSuccess = paymentCode === 'PAYMENT_SUCCESS';
-        const isPending = paymentCode === 'PAYMENT_PENDING' || paymentCode === 'PAYMENT_INITIATED';
+        const isSuccess = isPhonePePaymentSuccess(statusData) || code === 'PAYMENT_SUCCESS';
+        const isPending = isPhonePePaymentPending(statusData) || code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED';
 
         if (isSuccess) {
             const phonePeTxnId = statusData?.data?.transactionId || transactionId || orderId;
@@ -608,12 +638,13 @@ app.get('/api/phonepe/callback', async (req, res) => {
             return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
 
         } else if (isPending) {
+            try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
             return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            // Payment failed — discard pending order from memory
-            pendingOrders.delete(orderId);
-            console.log(`[CALLBACK] Payment failed for ${orderId} — discarded`);
-            return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
+            // Unknown state from gateway: avoid false negatives and data loss.
+            console.warn(`[CALLBACK] Unrecognized payment state for ${orderId}. Redirecting to pending.`);
+            try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
+            return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         }
 
     } catch (statusErr) {
@@ -625,9 +656,10 @@ app.get('/api/phonepe/callback', async (req, res) => {
             try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
             return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
         } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
+            try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
             return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
         } else {
-            pendingOrders.delete(orderId);
+            try { await updateOrderPaymentState(orderId, 'failed', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
             return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
         }
     }
@@ -655,8 +687,10 @@ app.post('/api/phonepe/callback', async (req, res) => {
                 try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
                 return res.redirect(`${baseUrl}/payment/success?orderId=${orderId}`);
             } else if (code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED') {
+                try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
                 return res.redirect(`${baseUrl}/payment/pending?orderId=${orderId}`);
             } else {
+                try { await updateOrderPaymentState(orderId, 'failed', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
                 pendingOrders.delete(orderId);
                 return res.redirect(`${baseUrl}/payment/failure?orderId=${orderId}`);
             }
@@ -687,11 +721,15 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
             console.log(`[WEBHOOK] success=${success} code=${code} orderId=${orderId}`);
 
-            if (success && code === 'PAYMENT_SUCCESS') {
+            if (isPhonePePaymentSuccess(decoded)) {
                 try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
+                return res.status(200).send("OK");
+            } else if (isPhonePePaymentPending(decoded)) {
+                try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
                 return res.status(200).send("OK");
             } else {
                 // Payment failed — discard pending entry
+                try { await updateOrderPaymentState(orderId, 'failed', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
                 pendingOrders.delete(orderId);
                 return res.status(200).send("OK");
             }
@@ -864,39 +902,8 @@ app.get(/.*/, (req, res) => {
     });
 });
 
-// --- AUTO-CLEANUP TASK ---
-function cleanupOldOrders() {
-    console.log('[CLEANUP] Starting cleanup of old completed orders...');
-    const isPostgres = process.env.DB_TYPE === 'postgres';
-
-    let sql;
-    if (isPostgres) {
-        sql = "DELETE FROM orders WHERE status = 'completed' AND created_at < NOW() - INTERVAL '7 days'";
-    } else {
-        // SQLite
-        sql = "DELETE FROM orders WHERE status = 'completed' AND created_at < datetime('now', '-7 days')";
-    }
-
-    db.run(sql, [], function (err) {
-        if (err) {
-            console.error('[CLEANUP] Error deleting old orders:', err.message);
-        } else {
-            // Safe access to 'this.changes' depending on DB wrapper
-            const changes = this ? this.changes : 'unknown';
-            if (changes > 0 || changes === 'unknown') {
-                console.log(`[CLEANUP] Deleted old completed orders. Rows affected: ${changes}`);
-            } else {
-                console.log('[CLEANUP] No old orders to delete.');
-            }
-        }
-    });
-}
-
-// Run cleanup on startup
-cleanupOldOrders();
-
-// Schedule cleanup every 24 hours (24 * 60 * 60 * 1000 ms)
-setInterval(cleanupOldOrders, 24 * 60 * 60 * 1000);
+// NOTE: Order history retention is permanent by requirement.
+// No automatic order deletion jobs are scheduled.
 
 // --- CENTRALIZED ERROR HANDLING ---
 app.use((err, req, res, next) => {

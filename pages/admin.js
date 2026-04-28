@@ -63,7 +63,7 @@ async function fetchData() {
         }
 
         if (Array.isArray(oData)) {
-            // Admin should only see payment-confirmed orders.
+            // Admin order list should include only successfully paid orders.
             orders = oData.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
         } else {
             console.error('Orders API Error:', oData);
@@ -128,7 +128,7 @@ async function fetchOrders() {
         const res = await fetch('/api/orders');
         const data = await res.json();
         if (Array.isArray(data)) {
-            // Admin should only see payment-confirmed orders.
+            // Keep refresh behavior consistent: show only paid orders.
             orders = data.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
             if (currentView === 'orders') render();
             const btnOrders = document.getElementById('btn-orders');
@@ -197,8 +197,6 @@ let currentImages = [];
 function init() {
     checkAuth();
     setupListeners();
-    const pendingFilterChip = document.querySelector('.filter-chip[data-filter="pending-payment"]');
-    if (pendingFilterChip) pendingFilterChip.style.display = 'none';
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
@@ -380,22 +378,7 @@ function setupListeners() {
     }
 
     if (delCompletedBtn) {
-        delCompletedBtn.addEventListener('click', () => {
-            const completedCount = orders.filter(o => o.status === 'completed').length;
-            if (completedCount === 0) {
-                window.showToast('No completed orders found.', 'info');
-                return;
-            }
-
-            showConfirm(`Delete ${completedCount} completed orders? This cannot be undone.`, async () => {
-                const completedOrders = orders.filter(o => o.status === 'completed');
-                for (const order of completedOrders) {
-                    await fetch(`/api/orders/${order.id}`, { method: 'DELETE', headers: getAuthHeaders() });
-                }
-                fetchData();
-                window.showToast('Completed history deleted.', 'success');
-            });
-        });
+        delCompletedBtn.style.display = 'none';
     }
 
     // Modal Handlers
@@ -1079,7 +1062,9 @@ function render() {
             `;
         } else {
             // ORDER SPECIFIC UI
-            const isPendingPayment = item.status === 'pending_payment';
+            const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
+            const isPendingPayment = paymentStatus === 'pending' || item.status === 'pending_payment';
+            const isFailedPayment = paymentStatus === 'failed';
 
             if (isPendingPayment) {
                 actionButtons = `
@@ -1107,9 +1092,14 @@ function render() {
                         <span>Items: ${totalItems}</span>
                         <span>₹${item.total || 0}</span>
                     </div>
+                    <div class="status-badge" style="background:${paymentStatus === 'paid' ? '#dcfce7' : paymentStatus === 'failed' ? '#fee2e2' : '#fef3c7'}; color:${paymentStatus === 'paid' ? '#166534' : paymentStatus === 'failed' ? '#b91c1c' : '#92400e'}; border:1px solid ${paymentStatus === 'paid' ? '#86efac' : paymentStatus === 'failed' ? '#fca5a5' : '#fcd34d'};">
+                        Payment: ${paymentStatus.toUpperCase()}
+                    </div>
                     ${isPendingPayment
                         ? `<div class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">⚠ PAYMENT PENDING</div>`
-                        : `<div class="status-badge status-${item.status}">${item.status}</div>`
+                        : isFailedPayment
+                            ? `<div class="status-badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;">⚠ PAYMENT FAILED</div>`
+                            : `<div class="status-badge status-${item.status}">${item.status}</div>`
                     }
                 </div>
             `;
