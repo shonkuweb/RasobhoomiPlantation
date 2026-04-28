@@ -771,7 +771,7 @@ app.get('/api/phonepe/callback', async (req, res) => {
 
     try {
         const token = await getPhonePeAuthToken();
-        const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${PHONEPE_MERCHANT_ID}/${orderId}/status`;
+        const statusUrl = `${PHONEPE_PAY_URL}/checkout/v2/order/${encodeURIComponent(orderId)}/status?details=true&errorContext=true`;
         console.log(`[CALLBACK] Checking status at: ${statusUrl}`);
 
         const statusResponse = await axios.get(statusUrl, {
