@@ -261,17 +261,21 @@ const APP_FE_URL = sanitizeBaseUrl(process.env.APP_FE_URL || APP_BE_URL);
 const isPhonePePaymentSuccess = (payload = {}) => {
     const normalizedCode = String(payload?.code || payload?.status || payload?.state || '').toUpperCase();
     const nestedCode = String(payload?.data?.code || payload?.data?.status || payload?.data?.state || payload?.data?.paymentState || '').toUpperCase();
+    const payloadCode = String(payload?.payload?.code || payload?.payload?.status || payload?.payload?.state || '').toUpperCase();
+    const eventName = String(payload?.event || payload?.type || '').toUpperCase();
     const successFlag = payload?.success === true || payload?.data?.success === true;
 
     const successCodes = new Set(['PAYMENT_SUCCESS', 'COMPLETED', 'SUCCESS', 'PAID', 'PAYMENT_COMPLETED', 'TXN_SUCCESS']);
-    return successFlag || successCodes.has(normalizedCode) || successCodes.has(nestedCode);
+    return successFlag || successCodes.has(normalizedCode) || successCodes.has(nestedCode) || successCodes.has(payloadCode) || eventName.includes('COMPLETED');
 };
 
 const isPhonePePaymentPending = (payload = {}) => {
     const normalizedCode = String(payload?.code || payload?.status || payload?.state || '').toUpperCase();
     const nestedCode = String(payload?.data?.code || payload?.data?.status || payload?.data?.state || payload?.data?.paymentState || '').toUpperCase();
+    const payloadCode = String(payload?.payload?.code || payload?.payload?.status || payload?.payload?.state || '').toUpperCase();
+    const eventName = String(payload?.event || payload?.type || '').toUpperCase();
     const pendingCodes = new Set(['PAYMENT_PENDING', 'PAYMENT_INITIATED', 'PENDING', 'INITIATED', 'IN_PROGRESS', 'PROCESSING']);
-    return pendingCodes.has(normalizedCode) || pendingCodes.has(nestedCode);
+    return pendingCodes.has(normalizedCode) || pendingCodes.has(nestedCode) || pendingCodes.has(payloadCode) || eventName.includes('PENDING');
 };
 
 // In-Memory Token Cache
@@ -389,6 +393,27 @@ const setProductResponseHeaders = (res, key) => {
     res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
     res.set('ETag', `W/"${key}"`);
 };
+
+const getPhonePeOrderId = (payload = {}) =>
+    payload.merchantOrderId ||
+    payload.merchantTransactionId ||
+    payload.orderId ||
+    payload.transactionId ||
+    payload.payload?.merchantOrderId ||
+    payload.payload?.merchantTransactionId ||
+    payload.payload?.orderId ||
+    payload.payload?.transactionId ||
+    payload.data?.merchantOrderId ||
+    payload.data?.merchantTransactionId ||
+    payload.data?.orderId ||
+    payload.data?.transactionId;
+
+const getPhonePeTransactionId = (payload = {}) =>
+    payload.transactionId ||
+    payload.payload?.transactionId ||
+    payload.payload?.paymentDetails?.[0]?.transactionId ||
+    payload.data?.transactionId ||
+    payload.data?.paymentDetails?.[0]?.transactionId;
 
 // --- API ENDPOINTS ---
 
@@ -664,7 +689,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
                 type: "PG_CHECKOUT",
                 message: "Payment for Order " + orderId,
                 merchantUrls: {
-                    redirectUrl: `${sanitizeBaseUrl(process.env.PHONEPE_CALLBACK_URL) || APP_BE_URL}/api/phonepe/callback`,
+                    redirectUrl: `${sanitizeBaseUrl(process.env.PHONEPE_CALLBACK_URL) || APP_BE_URL}/api/phonepe/callback?merchantOrderId=${encodeURIComponent(orderId)}`,
                     redirectMode: "REDIRECT",
                     callbackUrl: `${sanitizeBaseUrl(process.env.PHONEPE_CALLBACK_URL) || APP_BE_URL}/api/phonepe/callback`
                 }
@@ -734,11 +759,8 @@ app.get('/api/phonepe/callback', async (req, res) => {
     console.log("Query Params:", JSON.stringify(req.query));
 
     const baseUrl = APP_FE_URL || APP_BE_URL || `http://localhost:${PORT}`;
-    const getCallbackOrderId = (payload = {}) =>
-        payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
-
     const { code, transactionId } = req.query;
-    const orderId = getCallbackOrderId(req.query);
+    const orderId = getPhonePeOrderId(req.query);
 
     console.log(`[CALLBACK] code=${code} orderId=${orderId}`);
 
@@ -763,7 +785,7 @@ app.get('/api/phonepe/callback', async (req, res) => {
         const isPending = isPhonePePaymentPending(statusData) || code === 'PAYMENT_PENDING' || code === 'PAYMENT_INITIATED';
 
         if (isSuccess) {
-            const phonePeTxnId = statusData?.data?.transactionId || transactionId || orderId;
+            const phonePeTxnId = getPhonePeTransactionId(statusData) || transactionId || orderId;
             try {
                 await saveConfirmedOrder(orderId, phonePeTxnId);
             } catch (e) {
@@ -808,13 +830,10 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
         const baseUrl = APP_FE_URL || APP_BE_URL || `http://localhost:${PORT}`;
 
-        const getCallbackOrderId = (payload = {}) =>
-            payload.merchantOrderId || payload.merchantTransactionId || payload.orderId || payload.transactionId;
-
         // Type A: Browser POST Redirect (form-encoded) — code, merchantId, transactionId in body
         if (req.body.code && req.body.merchantId) {
             const { code, transactionId } = req.body;
-            const orderId = getCallbackOrderId(req.body);
+            const orderId = getPhonePeOrderId(req.body);
             console.log(`[POST CALLBACK] Code=${code}, orderId=${orderId}`);
 
             if (code === 'PAYMENT_SUCCESS') {
@@ -850,8 +869,8 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
             const decoded = JSON.parse(Buffer.from(response, 'base64').toString('utf-8'));
             const { success, code, data } = decoded;
-            const transactionId = data?.transactionId;
-            const orderId = getCallbackOrderId(data || {});
+            const transactionId = getPhonePeTransactionId(decoded);
+            const orderId = getPhonePeOrderId(decoded);
 
             console.log(`[WEBHOOK] success=${success} code=${code} orderId=${orderId}`);
 
@@ -863,6 +882,30 @@ app.post('/api/phonepe/callback', async (req, res) => {
                 return res.status(200).send("OK");
             } else {
                 // Payment failed — discard pending entry
+                try { await updateOrderPaymentState(orderId, 'failed', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
+                pendingOrders.delete(orderId);
+                return res.status(200).send("OK");
+            }
+        }
+
+        // Type C: PhonePe Business webhook (JSON) — { event, type, payload }
+        if (req.body.payload && (req.body.event || req.body.type)) {
+            const orderId = getPhonePeOrderId(req.body);
+            const transactionId = getPhonePeTransactionId(req.body) || orderId;
+            console.log(`[WEBHOOK V2] event=${req.body.event || req.body.type} orderId=${orderId}`);
+
+            if (!orderId) {
+                console.error("[WEBHOOK V2] No order id found", req.body);
+                return res.status(200).send("OK");
+            }
+
+            if (isPhonePePaymentSuccess(req.body)) {
+                try { await saveConfirmedOrder(orderId, transactionId); } catch (e) { console.error(e); }
+                return res.status(200).send("OK");
+            } else if (isPhonePePaymentPending(req.body)) {
+                try { await updateOrderPaymentState(orderId, 'pending', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
+                return res.status(200).send("OK");
+            } else {
                 try { await updateOrderPaymentState(orderId, 'failed', 'pending_payment', transactionId || null); } catch (e) { console.error(e); }
                 pendingOrders.delete(orderId);
                 return res.status(200).send("OK");
