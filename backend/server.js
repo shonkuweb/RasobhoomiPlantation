@@ -48,8 +48,11 @@ const limiter = rateLimit({
     legacyHeaders: false,
     // Storefront/admin polling makes many read calls; avoid throttling these.
     skip: (req) => {
-        if (req.method !== 'GET') return false;
         const requestPath = req.path || req.originalUrl || '';
+        if (requestPath.startsWith('/phonepe/callback') || requestPath.startsWith('/api/phonepe/callback')) {
+            return true;
+        }
+        if (req.method !== 'GET') return false;
         return (
             requestPath.startsWith('/products') ||
             requestPath.startsWith('/categories') ||
@@ -175,6 +178,17 @@ const saveOrderConfig = (config, callback) => {
             }
         );
     });
+};
+
+const isValidPhonePeWebhookAuth = (req) => {
+    const webhookUser = process.env.PHONEPE_WEBHOOK_USERNAME;
+    const webhookPass = process.env.PHONEPE_WEBHOOK_PASSWORD;
+    if (!webhookUser || !webhookPass) return true;
+
+    const expectedHash = crypto.createHash('sha256').update(`${webhookUser}:${webhookPass}`).digest('hex');
+    const authHeader = String(req.headers['authorization'] || '').trim();
+    const normalizedHeader = authHeader.replace(/^sha256[\s=:]*/i, '').trim();
+    return normalizedHeader === expectedHash;
 };
 
 app.use(cors()); // In production, restrict this to your domain: { origin: 'https://yourdomain.com' }
@@ -830,6 +844,11 @@ app.post('/api/phonepe/callback', async (req, res) => {
 
         const baseUrl = APP_FE_URL || APP_BE_URL || `http://localhost:${PORT}`;
 
+        if (!isValidPhonePeWebhookAuth(req)) {
+            console.error("Invalid PhonePe webhook auth header");
+            return res.status(401).send("Unauthorized Webhook");
+        }
+
         // Type A: Browser POST Redirect (form-encoded) — code, merchantId, transactionId in body
         if (req.body.code && req.body.merchantId) {
             const { code, transactionId } = req.body;
@@ -854,19 +873,6 @@ app.post('/api/phonepe/callback', async (req, res) => {
         const xVerify = req.headers['x-verify'];
 
         if (response && xVerify) {
-            // Verify auth header
-            const authHeader = req.headers['authorization'];
-            const webhookUser = process.env.PHONEPE_WEBHOOK_USERNAME;
-            const webhookPass = process.env.PHONEPE_WEBHOOK_PASSWORD;
-
-            if (webhookUser && webhookPass) {
-                const expectedAuth = crypto.createHash('sha256').update(`${webhookUser}:${webhookPass}`).digest('hex');
-                if (authHeader !== expectedAuth) {
-                    console.error("Invalid Webhook Auth. Received:", authHeader);
-                    return res.status(401).send("Unauthorized Webhook");
-                }
-            }
-
             const decoded = JSON.parse(Buffer.from(response, 'base64').toString('utf-8'));
             const { success, code, data } = decoded;
             const transactionId = getPhonePeTransactionId(decoded);
