@@ -4,6 +4,8 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
+import rasobhoomiHero from '../../rasobhoomihero.png';
+import rasobhoomiHeroMobile from '../../rasobhoomiHeroMobile.png';
 // import { categories } from '../utils/categories';
 
 const Home = () => {
@@ -72,8 +74,11 @@ const Home = () => {
             {/* Hero Section */}
             <section className="hero-carousel">
                 <div className="carousel-track">
-                    {/* Assuming images are in public/hero/ */}
-                    <img src="/hero/Gemini_Generated_Image_ufccdnufccdnufcc.png" alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
+                    <picture>
+                        <source media="(max-width: 767px)" srcSet={rasobhoomiHeroMobile} />
+                        <source media="(min-width: 768px)" srcSet={rasobhoomiHero} />
+                        <img src={rasobhoomiHeroMobile} alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
+                    </picture>
                 </div>
             </section>
 

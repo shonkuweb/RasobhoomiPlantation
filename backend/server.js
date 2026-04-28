@@ -43,9 +43,18 @@ app.use(helmet({
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: Number(process.env.API_RATE_LIMIT_MAX || 100),
     standardHeaders: true,
     legacyHeaders: false,
+    // Storefront/admin polling makes many read calls; avoid throttling these.
+    skip: (req) => {
+        if (req.method !== 'GET') return false;
+        return (
+            req.path.startsWith('/products') ||
+            req.path.startsWith('/categories') ||
+            req.path.startsWith('/orders')
+        );
+    }
 });
 app.use('/api', limiter);
 
