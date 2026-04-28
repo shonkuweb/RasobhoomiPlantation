@@ -71,6 +71,16 @@ app.use('/api/auth', authLimiter);
 
 // --- JWT SECRET ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const ORDER_SETTINGS_KEY = 'order_config';
+const DEFAULT_ORDER_CONFIG = {
+    minimumOrderQty: 3,
+    deliveryPerPlant: 150,
+    drumDeliveryMultiplier: 0.5,
+    freeDeliveryEnabled: false,
+    freeDeliveryStartsAt: null,
+    freeDeliveryEndsAt: null,
+    updatedAt: null
+};
 
 // --- AUTH MIDDLEWARE ---
 const requireAuth = (req, res, next) => {
@@ -89,6 +99,82 @@ const requireAuth = (req, res, next) => {
     } catch (err) {
         return res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
+};
+
+const normalizeOrderConfig = (rawConfig = {}) => {
+    const toIsoOrNull = (value) => {
+        if (!value) return null;
+        const timestamp = Date.parse(value);
+        if (!Number.isFinite(timestamp)) return null;
+        return new Date(timestamp).toISOString();
+    };
+    const parsedMinOrderQty = parseInt(rawConfig.minimumOrderQty, 10);
+    const parsedDeliveryPerPlant = parseFloat(rawConfig.deliveryPerPlant);
+    const parsedDrumMultiplier = parseFloat(rawConfig.drumDeliveryMultiplier);
+    const freeDeliveryEnabled = rawConfig.freeDeliveryEnabled === true || rawConfig.freeDeliveryEnabled === 'true';
+    const freeDeliveryStartsAt = toIsoOrNull(rawConfig.freeDeliveryStartsAt);
+    const freeDeliveryEndsAt = toIsoOrNull(rawConfig.freeDeliveryEndsAt);
+
+    return {
+        minimumOrderQty: Number.isFinite(parsedMinOrderQty) && parsedMinOrderQty > 0 ? parsedMinOrderQty : DEFAULT_ORDER_CONFIG.minimumOrderQty,
+        deliveryPerPlant: Number.isFinite(parsedDeliveryPerPlant) && parsedDeliveryPerPlant >= 0 ? parsedDeliveryPerPlant : DEFAULT_ORDER_CONFIG.deliveryPerPlant,
+        drumDeliveryMultiplier: Number.isFinite(parsedDrumMultiplier) && parsedDrumMultiplier >= 0 ? parsedDrumMultiplier : DEFAULT_ORDER_CONFIG.drumDeliveryMultiplier,
+        freeDeliveryEnabled,
+        freeDeliveryStartsAt,
+        freeDeliveryEndsAt,
+        updatedAt: new Date().toISOString()
+    };
+};
+
+const isFreeDeliveryActive = (config, now = Date.now()) => {
+    if (!config?.freeDeliveryEnabled) return false;
+    const start = config?.freeDeliveryStartsAt ? Date.parse(config.freeDeliveryStartsAt) : null;
+    const end = config?.freeDeliveryEndsAt ? Date.parse(config.freeDeliveryEndsAt) : null;
+    if (start && Number.isFinite(start) && now < start) return false;
+    if (end && Number.isFinite(end) && now > end) return false;
+    return true;
+};
+
+const loadOrderConfig = (callback) => {
+    db.get("SELECT value FROM admin_settings WHERE key = ?", [ORDER_SETTINGS_KEY], (err, row) => {
+        if (err) return callback(err);
+        if (!row?.value) return callback(null, { ...DEFAULT_ORDER_CONFIG });
+        try {
+            const parsed = JSON.parse(row.value);
+            callback(null, { ...DEFAULT_ORDER_CONFIG, ...normalizeOrderConfig(parsed), updatedAt: parsed.updatedAt || null });
+        } catch (parseErr) {
+            callback(null, { ...DEFAULT_ORDER_CONFIG });
+        }
+    });
+};
+
+const loadOrderConfigAsync = () => new Promise((resolve, reject) => {
+    loadOrderConfig((err, config) => {
+        if (err) reject(err);
+        else resolve(config);
+    });
+});
+
+const saveOrderConfig = (config, callback) => {
+    const normalized = normalizeOrderConfig(config);
+    if (
+        normalized.freeDeliveryStartsAt &&
+        normalized.freeDeliveryEndsAt &&
+        Date.parse(normalized.freeDeliveryEndsAt) < Date.parse(normalized.freeDeliveryStartsAt)
+    ) {
+        return callback(new Error('Free delivery end time must be after start time'));
+    }
+    db.run("DELETE FROM admin_settings WHERE key = ?", [ORDER_SETTINGS_KEY], (deleteErr) => {
+        if (deleteErr) return callback(deleteErr);
+        db.run(
+            "INSERT INTO admin_settings (key, value) VALUES (?, ?)",
+            [ORDER_SETTINGS_KEY, JSON.stringify(normalized)],
+            (insertErr) => {
+                if (insertErr) return callback(insertErr);
+                callback(null, normalized);
+            }
+        );
+    });
 };
 
 app.use(cors()); // In production, restrict this to your domain: { origin: 'https://yourdomain.com' }
@@ -117,6 +203,30 @@ app.get('/admin', (req, res) => {
 // Token verification endpoint
 app.get('/api/auth/verify', requireAuth, (req, res) => {
     res.json({ valid: true, role: req.admin.role });
+});
+
+app.get('/api/settings/order', (req, res) => {
+    loadOrderConfig((err, config) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const active = isFreeDeliveryActive(config);
+        res.json({
+            ...config,
+            freeDeliveryActive: active
+        });
+    });
+});
+
+app.post('/api/admin/settings/order', requireAuth, (req, res) => {
+    saveOrderConfig(req.body || {}, (err, savedConfig) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({
+            success: true,
+            settings: {
+                ...savedConfig,
+                freeDeliveryActive: isFreeDeliveryActive(savedConfig)
+            }
+        });
+    });
 });
 
 
@@ -483,7 +593,16 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     let calculatedTotal = 0;
     let totalQty = 0;
     let deliveryCharge = 0;
+    let orderConfig;
     const verifiedItems = [];
+
+    try {
+        orderConfig = await loadOrderConfigAsync();
+    } catch (cfgErr) {
+        console.error("Order config load failed:", cfgErr);
+        orderConfig = { ...DEFAULT_ORDER_CONFIG };
+    }
+    const freeDeliveryActive = isFreeDeliveryActive(orderConfig);
 
     try {
         for (const item of items) {
@@ -499,10 +618,12 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             totalQty += item.qty;
 
             // Delivery Calculation Logic
-            if (product.category === 'Drum Plants') {
-                deliveryCharge += (product.price * 0.5 * item.qty);
-            } else {
-                deliveryCharge += (150 * item.qty);
+            if (!freeDeliveryActive) {
+                if (product.category === 'Drum Plants') {
+                    deliveryCharge += (product.price * orderConfig.drumDeliveryMultiplier * item.qty);
+                } else {
+                    deliveryCharge += (orderConfig.deliveryPerPlant * item.qty);
+                }
             }
 
             // Store verified price in the order item to prevent tampering in history
@@ -518,7 +639,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     }
 
     // Minimum order: 3 plants
-    const MIN_ORDER_QTY = 3;
+    const MIN_ORDER_QTY = orderConfig.minimumOrderQty;
     if (totalQty < MIN_ORDER_QTY) {
         return res.status(400).json({ error: `Minimum order is ${MIN_ORDER_QTY} plants. You have ${totalQty}.` });
     }

@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useShop } from '../context/ShopContext';
 import { useNavigate } from 'react-router-dom';
 
-const MIN_ORDER_QTY = 3;
-const DELIVERY_PER_PLANT = 150;
+const DEFAULT_ORDER_SETTINGS = {
+    minimumOrderQty: 3,
+    deliveryPerPlant: 150,
+    drumDeliveryMultiplier: 0.5,
+    freeDeliveryEnabled: false,
+    freeDeliveryStartsAt: null,
+    freeDeliveryEndsAt: null,
+    freeDeliveryActive: false
+};
 
 const Checkout = () => {
     const { cart, products, getCartTotal, clearCart } = useShop();
@@ -17,17 +24,45 @@ const Checkout = () => {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showMinOrderNotice, setShowMinOrderNotice] = useState(false);
+    const [orderSettings, setOrderSettings] = useState(DEFAULT_ORDER_SETTINGS);
+
+    useEffect(() => {
+        let isMounted = true;
+        let timer;
+
+        const fetchOrderSettings = async () => {
+            try {
+                const res = await fetch('/api/settings/order');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (isMounted) setOrderSettings({ ...DEFAULT_ORDER_SETTINGS, ...data });
+            } catch (err) {
+                console.error('Failed to load order settings:', err);
+            }
+        };
+
+        fetchOrderSettings();
+        timer = setInterval(fetchOrderSettings, 15000);
+
+        return () => {
+            isMounted = false;
+            if (timer) clearInterval(timer);
+        };
+    }, []);
 
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const subtotal = getCartTotal();
-    const deliveryCharge = cart.reduce((sum, item) => {
-        const product = products.find(p => p.id === item.id);
-        if (!product) return sum;
-        if (product.category === 'Drum Plants') {
-            return sum + (product.price * 0.5 * item.qty);
-        }
-        return sum + (150 * item.qty);
-    }, 0);
+    const deliveryCharge = useMemo(() => {
+        if (orderSettings.freeDeliveryActive) return 0;
+        return cart.reduce((sum, item) => {
+            const product = products.find(p => p.id === item.id);
+            if (!product) return sum;
+            if (product.category === 'Drum Plants') {
+                return sum + (product.price * orderSettings.drumDeliveryMultiplier * item.qty);
+            }
+            return sum + (orderSettings.deliveryPerPlant * item.qty);
+        }, 0);
+    }, [cart, products, orderSettings]);
     const total = subtotal + deliveryCharge;
 
     const handleChange = (e) => {
@@ -37,7 +72,7 @@ const Checkout = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (totalQty < MIN_ORDER_QTY) {
+        if (totalQty < orderSettings.minimumOrderQty) {
             setShowMinOrderNotice(true);
             return;
         }
@@ -123,9 +158,9 @@ const Checkout = () => {
                         <div className="min-order-icon">🌿</div>
                         <h2 className="min-order-title">Almost There!</h2>
                         <p className="min-order-message">
-                            Minimum order is <strong>{MIN_ORDER_QTY} plants</strong>. You currently have <strong>{totalQty}</strong> plant{totalQty !== 1 ? 's' : ''} in your cart.
+                                Minimum order is <strong>{orderSettings.minimumOrderQty} plants</strong>. You currently have <strong>{totalQty}</strong> plant{totalQty !== 1 ? 's' : ''} in your cart.
                         </p>
-                        <p className="min-order-sub">Add <strong>{MIN_ORDER_QTY - totalQty} more</strong> to proceed with checkout.</p>
+                            <p className="min-order-sub">Add <strong>{orderSettings.minimumOrderQty - totalQty} more</strong> to proceed with checkout.</p>
                         <div className="min-order-actions">
                             <button className="btn-primary" onClick={() => { setShowMinOrderNotice(false); navigate('/'); }}>
                                 🌱 Add More Plants
@@ -186,9 +221,9 @@ const Checkout = () => {
                         </div>
                     </div>
 
-                    {totalQty < MIN_ORDER_QTY && (
+                    {totalQty < orderSettings.minimumOrderQty && (
                         <div className="min-order-inline-warning">
-                            <span>⚠️</span> Add {MIN_ORDER_QTY - totalQty} more plant{(MIN_ORDER_QTY - totalQty) !== 1 ? 's' : ''} to checkout (min {MIN_ORDER_QTY})
+                            <span>⚠️</span> Add {orderSettings.minimumOrderQty - totalQty} more plant{(orderSettings.minimumOrderQty - totalQty) !== 1 ? 's' : ''} to checkout (min {orderSettings.minimumOrderQty})
                         </div>
                     )}
 
@@ -235,7 +270,9 @@ const Checkout = () => {
                             </div>
                             <div className="summary-row" style={{ fontSize: '1rem' }}>
                                 <span>Delivery Charges</span>
-                                <span style={{ color: '#059669' }}>+ ₹{deliveryCharge}</span>
+                                <span style={{ color: '#059669' }}>
+                                    {orderSettings.freeDeliveryActive ? 'FREE' : `+ ₹${deliveryCharge}`}
+                                </span>
                             </div>
                             <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
                                 <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>

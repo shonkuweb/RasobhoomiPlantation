@@ -35,6 +35,8 @@ let orders = [];
 let categories = [];
 let currentProductSearch = '';
 let currentOrderSearch = '';
+let orderSettingsRefreshTimer = null;
+let currentOrderSettings = null;
 
 // Helper function to get auth headers
 function getAuthHeaders() {
@@ -46,6 +48,7 @@ function getAuthHeaders() {
 }
 
 const ADMIN_PRODUCT_BATCH = 4;
+const ORDER_SETTINGS_POLL_MS = 15000;
 
 async function fetchData() {
     try {
@@ -189,6 +192,16 @@ const settingsView = document.getElementById('settings-view');
 const settingsPasswordForm = document.getElementById('settings-password-form');
 const settingsPasswordError = document.getElementById('settings-password-error');
 const settingsPasswordSuccess = document.getElementById('settings-password-success');
+const settingsOrderForm = document.getElementById('settings-order-form');
+const settingsMinOrderQty = document.getElementById('settings-min-order-qty');
+const settingsDeliveryPerPlant = document.getElementById('settings-delivery-per-plant');
+const settingsDrumMultiplier = document.getElementById('settings-drum-multiplier');
+const settingsFreeDeliveryEnabled = document.getElementById('settings-free-delivery-enabled');
+const settingsFreeStart = document.getElementById('settings-free-start');
+const settingsFreeEnd = document.getElementById('settings-free-end');
+const settingsOrderError = document.getElementById('settings-order-error');
+const settingsOrderSuccess = document.getElementById('settings-order-success');
+const settingsOrderSaveBtn = document.getElementById('settings-order-save-btn');
 
 // State for image handling
 let currentImages = [];
@@ -197,9 +210,103 @@ let currentImages = [];
 function init() {
     checkAuth();
     setupListeners();
+    fetchOrderSettings();
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
+    startOrderSettingsAutoRefresh();
+}
+
+function toDateTimeLocal(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mm = pad(date.getMinutes());
+    return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function fromDateTimeLocal(localString) {
+    if (!localString) return null;
+    const date = new Date(localString);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+}
+
+function applyOrderSettingsToForm(settings) {
+    if (!settings) return;
+    currentOrderSettings = settings;
+    if (settingsMinOrderQty) settingsMinOrderQty.value = settings.minimumOrderQty ?? 3;
+    if (settingsDeliveryPerPlant) settingsDeliveryPerPlant.value = settings.deliveryPerPlant ?? 150;
+    if (settingsDrumMultiplier) settingsDrumMultiplier.value = settings.drumDeliveryMultiplier ?? 0.5;
+    if (settingsFreeDeliveryEnabled) settingsFreeDeliveryEnabled.checked = Boolean(settings.freeDeliveryEnabled);
+    if (settingsFreeStart) settingsFreeStart.value = toDateTimeLocal(settings.freeDeliveryStartsAt);
+    if (settingsFreeEnd) settingsFreeEnd.value = toDateTimeLocal(settings.freeDeliveryEndsAt);
+}
+
+async function fetchOrderSettings() {
+    try {
+        const res = await fetch('/api/settings/order');
+        if (!res.ok) return;
+        const data = await res.json();
+        applyOrderSettingsToForm(data);
+    } catch (err) {
+        console.error('Failed to fetch order settings', err);
+    }
+}
+
+function startOrderSettingsAutoRefresh() {
+    if (orderSettingsRefreshTimer) clearInterval(orderSettingsRefreshTimer);
+    orderSettingsRefreshTimer = setInterval(fetchOrderSettings, ORDER_SETTINGS_POLL_MS);
+}
+
+async function saveOrderSettings(e) {
+    e.preventDefault();
+    if (!settingsOrderForm) return;
+
+    if (settingsOrderError) settingsOrderError.textContent = '';
+    if (settingsOrderSuccess) settingsOrderSuccess.textContent = '';
+    if (settingsOrderSaveBtn) {
+        settingsOrderSaveBtn.disabled = true;
+        settingsOrderSaveBtn.textContent = 'SAVING...';
+    }
+
+    try {
+        const payload = {
+            minimumOrderQty: Number(settingsMinOrderQty?.value || 3),
+            deliveryPerPlant: Number(settingsDeliveryPerPlant?.value || 150),
+            drumDeliveryMultiplier: Number(settingsDrumMultiplier?.value || 0.5),
+            freeDeliveryEnabled: Boolean(settingsFreeDeliveryEnabled?.checked),
+            freeDeliveryStartsAt: fromDateTimeLocal(settingsFreeStart?.value),
+            freeDeliveryEndsAt: fromDateTimeLocal(settingsFreeEnd?.value)
+        };
+
+        const res = await fetch('/api/admin/settings/order', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update order settings');
+        }
+
+        applyOrderSettingsToForm(data.settings);
+        if (settingsOrderSuccess) settingsOrderSuccess.textContent = 'Order settings updated successfully.';
+    } catch (err) {
+        console.error('Order settings save failed:', err);
+        if (settingsOrderError) settingsOrderError.textContent = err.message || 'Network error. Try again.';
+    } finally {
+        if (settingsOrderSaveBtn) {
+            settingsOrderSaveBtn.disabled = false;
+            settingsOrderSaveBtn.textContent = 'SAVE ORDER SETTINGS';
+        }
+    }
 }
 
 function setupListeners() {
@@ -309,6 +416,10 @@ function setupListeners() {
                 if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'CHANGE PASSWORD'; }
             }
         });
+    }
+
+    if (settingsOrderForm) {
+        settingsOrderForm.addEventListener('submit', saveOrderSettings);
     }
 
     // Filter Toggle Logic
@@ -638,6 +749,7 @@ function switchView(view) {
         if (settingsPasswordForm) settingsPasswordForm.reset();
         if (settingsPasswordError) settingsPasswordError.textContent = '';
         if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = '';
+        fetchOrderSettings();
     }
 
     checkAddButtonVisibility();
