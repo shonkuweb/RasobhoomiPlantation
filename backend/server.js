@@ -49,10 +49,14 @@ const limiter = rateLimit({
     // Storefront/admin polling makes many read calls; avoid throttling these.
     skip: (req) => {
         if (req.method !== 'GET') return false;
+        const requestPath = req.path || req.originalUrl || '';
         return (
-            req.path.startsWith('/products') ||
-            req.path.startsWith('/categories') ||
-            req.path.startsWith('/orders')
+            requestPath.startsWith('/products') ||
+            requestPath.startsWith('/categories') ||
+            requestPath.startsWith('/orders') ||
+            requestPath.startsWith('/api/products') ||
+            requestPath.startsWith('/api/categories') ||
+            requestPath.startsWith('/api/orders')
         );
     }
 });
