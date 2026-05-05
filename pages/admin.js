@@ -490,6 +490,7 @@ function setupListeners() {
 
     if (delCompletedBtn) {
         delCompletedBtn.style.display = 'none';
+        delCompletedBtn.addEventListener('click', deleteCompletedOrderHistory);
     }
 
     // Modal Handlers
@@ -1093,6 +1094,28 @@ function deleteOrder(id) {
         } catch (e) {
             console.error(e);
             window.showToast('Error deleting order', 'error');
+        }
+    });
+}
+
+function deleteCompletedOrderHistory() {
+    showConfirm('Delete all completed orders from history?', async () => {
+        try {
+            const res = await fetch('/api/orders/completed', {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+            if (res.ok) {
+                closeOrderModal();
+                fetchData();
+                window.showToast(`Deleted ${data.deletedCount || 0} completed orders`, 'success');
+            } else {
+                window.showToast(data.error || 'Failed to delete completed orders', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showToast('Error deleting completed orders', 'error');
         }
     });
 }

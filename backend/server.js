@@ -1065,6 +1065,13 @@ app.delete('/api/products/:id', requireAuth, (req, res) => {
     });
 });
 
+app.delete('/api/orders/completed', requireAuth, (req, res) => {
+    db.run("DELETE FROM orders WHERE status = 'completed'", [], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Completed order history deleted', deletedCount: this.changes || 0 });
+    });
+});
+
 app.delete('/api/orders/:id', requireAuth, (req, res) => {
     db.run("DELETE FROM orders WHERE id = ?", [req.params.id], function (err) {
         if (err) return res.status(500).json({ error: err.message });
