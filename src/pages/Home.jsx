@@ -4,7 +4,6 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
-import rasobhoomiHero from '../../RasoBhoomihero.png';
 // import { categories } from '../utils/categories';
 
 const Home = () => {
@@ -71,12 +70,16 @@ const Home = () => {
                 }}
             />
             {/* Hero Section */}
-            <section className="hero-carousel">
+            <section className="hero-carousel" aria-label="Rasobhoomi Plantation">
                 <div className="carousel-track">
                     <img
-                        src={rasobhoomiHero}
+                        src="/assets/rashero.png"
                         alt="Rasobhoomi Plantation entrance — nursery and plants"
                         className="hero-slide"
+                        width="1920"
+                        height="1080"
+                        decoding="async"
+                        fetchPriority="high"
                     />
                 </div>
             </section>
