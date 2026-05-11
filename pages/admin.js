@@ -1131,7 +1131,7 @@ function render() {
 
     const btnProducts = document.getElementById('btn-products');
     if (btnProducts) {
-        btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length + 115}</span>`;
+        btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length + 142}</span>`;
     }
 
     let itemsToRender = [];
