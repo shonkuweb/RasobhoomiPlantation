@@ -4,8 +4,7 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
-import rasobhoomiHero from '../../rasobhoomihero.png';
-import rasobhoomiHeroMobile from '../../rasobhoomiHeroMobile.png';
+import rasobhoomiHero from '../../RasoBhoomihero.png';
 // import { categories } from '../utils/categories';
 
 const Home = () => {
@@ -74,11 +73,11 @@ const Home = () => {
             {/* Hero Section */}
             <section className="hero-carousel">
                 <div className="carousel-track">
-                    <picture>
-                        <source media="(max-width: 767px)" srcSet={rasobhoomiHeroMobile} />
-                        <source media="(min-width: 768px)" srcSet={rasobhoomiHero} />
-                        <img src={rasobhoomiHeroMobile} alt="Rasobhoomi Nursery & Plants" className="hero-slide" />
-                    </picture>
+                    <img
+                        src={rasobhoomiHero}
+                        alt="Rasobhoomi Plantation entrance — nursery and plants"
+                        className="hero-slide"
+                    />
                 </div>
             </section>
 
