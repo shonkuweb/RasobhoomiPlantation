@@ -75,7 +75,7 @@ function initDb() {
                 });
                 // Rename Logan → Longon for existing databases (after table exists; runs every startup, no-op if already migrated)
                 db.run(
-                    `UPDATE categories SET name = 'Longon', slug = 'longon', image = 'https://placehold.co/150?text=Longon' WHERE slug = 'logan'`,
+                    `UPDATE categories SET name = 'Longon', slug = 'longon', image = '/assets/longan.png' WHERE slug = 'logan'`,
                     (mErr) => {
                         if (mErr) console.error('Category migration (logan→longon):', mErr);
                     }
@@ -87,6 +87,8 @@ function initDb() {
                     ['indian-mangoes', '/assets/indianmango.png'],
                     ['foreigner-mango', '/assets/foreignmango.png'],
                     ['malta-orange', '/assets/maltaorange.png'],
+                    ['orange', '/assets/orange.png'],
+                    ['longon', '/assets/longan.png'],
                     ['guava', '/assets/guava.png'],
                     ['jackfruit', '/assets/jackfruit.png'],
                     ['jamun', '/assets/jamun.png'],
@@ -95,6 +97,7 @@ function initDb() {
                     ['lemon', '/assets/lemon.png'],
                     ['amloki', '/assets/amloki.png'],
                     ['litchi', '/assets/litchi.png'],
+                    ['currant', '/assets/pomegranant.png'],
                     ['fruit-tree', '/assets/fruittree.png'],
                     ['others', '/assets/others.png'],
                     ['drum-plants', '/assets/drumplants.png'],

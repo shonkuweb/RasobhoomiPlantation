@@ -6,7 +6,7 @@ const categories = [
     { id: 1, name: 'Indian Mangoes', slug: 'indian-mangoes', image: '/assets/indianmango.png' },
     { id: 2, name: 'Foreigner Mango', slug: 'foreigner-mango', image: '/assets/foreignmango.png' },
     { id: 3, name: 'Malta Orange', slug: 'malta-orange', image: '/assets/maltaorange.png' },
-    { id: 4, name: 'Orange', slug: 'orange', image: 'https://placehold.co/150?text=Orange' },
+    { id: 4, name: 'Orange', slug: 'orange', image: '/assets/orange.png' },
     { id: 5, name: 'Guava', slug: 'guava', image: '/assets/guava.png' },
     { id: 6, name: 'Jackfruit', slug: 'jackfruit', image: '/assets/jackfruit.png' },
     { id: 7, name: 'Jamun', slug: 'jamun', image: '/assets/jamun.png' },
@@ -16,9 +16,9 @@ const categories = [
     { id: 11, name: 'Betel Nut', slug: 'betel-nut', image: 'https://placehold.co/150?text=Betel+Nut' },
     { id: 12, name: 'Lemon', slug: 'lemon', image: '/assets/lemon.png' },
     { id: 13, name: 'Amloki', slug: 'amloki', image: '/assets/amloki.png' },
-    { id: 14, name: 'Longon', slug: 'longon', image: 'https://placehold.co/150?text=Longon' },
+    { id: 14, name: 'Longon', slug: 'longon', image: '/assets/longan.png' },
     { id: 15, name: 'Litchi', slug: 'litchi', image: '/assets/litchi.png' },
-    { id: 16, name: 'Currant', slug: 'currant', image: 'https://placehold.co/150?text=Currant' },
+    { id: 16, name: 'Currant', slug: 'currant', image: '/assets/pomegranant.png' },
     { id: 17, name: 'Grape', slug: 'grape', image: 'https://placehold.co/150?text=Grape' },
     { id: 18, name: 'Fruit Tree', slug: 'fruit-tree', image: '/assets/fruittree.png' },
     { id: 19, name: 'Others', slug: 'others', image: '/assets/others.png' },
@@ -140,8 +140,10 @@ function initDb() {
     ];
 
     const migrateQueries = [
-        `UPDATE categories SET name = 'Longon', slug = 'longon', image = 'https://placehold.co/150?text=Longon' WHERE slug = 'logan'`,
+        `UPDATE categories SET name = 'Longon', slug = 'longon', image = '/assets/longan.png' WHERE slug = 'logan'`,
         `UPDATE products SET category = 'Longon' WHERE category = 'Logan'`,
+        `UPDATE categories SET image = '/assets/orange.png' WHERE slug = 'orange'`,
+        `UPDATE categories SET image = '/assets/longan.png' WHERE slug = 'longon'`,
         `UPDATE categories SET image = '/assets/indianmango.png' WHERE slug = 'indian-mangoes'`,
         `UPDATE categories SET image = '/assets/foreignmango.png' WHERE slug = 'foreigner-mango'`,
         `UPDATE categories SET image = '/assets/maltaorange.png' WHERE slug = 'malta-orange'`,
@@ -153,6 +155,7 @@ function initDb() {
         `UPDATE categories SET image = '/assets/lemon.png' WHERE slug = 'lemon'`,
         `UPDATE categories SET image = '/assets/amloki.png' WHERE slug = 'amloki'`,
         `UPDATE categories SET image = '/assets/litchi.png' WHERE slug = 'litchi'`,
+        `UPDATE categories SET image = '/assets/pomegranant.png' WHERE slug = 'currant'`,
         `UPDATE categories SET image = '/assets/fruittree.png' WHERE slug = 'fruit-tree'`,
         `UPDATE categories SET image = '/assets/others.png' WHERE slug = 'others'`,
         `UPDATE categories SET image = '/assets/drumplants.png' WHERE slug = 'drum-plants'`
