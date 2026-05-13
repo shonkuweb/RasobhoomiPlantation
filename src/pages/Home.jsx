@@ -4,7 +4,7 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
-// import { categories } from '../utils/categories';
+import { resolveCategoryImageUrl } from '../utils/categories';
 
 const Home = () => {
     const { products, searchQuery } = useShop();
@@ -111,7 +111,18 @@ const Home = () => {
                     .map(cat => (
                         <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
                             <div className="cat-circle">
-                                <span className="cat-circle-text">{cat.name}</span>
+                                {resolveCategoryImageUrl(cat) ? (
+                                    <img
+                                        src={resolveCategoryImageUrl(cat)}
+                                        alt=""
+                                        className="cat-circle-img"
+                                        width={75}
+                                        height={75}
+                                        decoding="async"
+                                    />
+                                ) : (
+                                    <span className="cat-circle-text">{cat.name}</span>
+                                )}
                             </div>
                             <span className="cat-label">{cat.name}</span>
                         </Link>

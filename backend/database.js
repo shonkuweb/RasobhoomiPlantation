@@ -73,6 +73,41 @@ function initDb() {
                         console.log("Categories seeded.");
                     }
                 });
+                // Rename Logan → Longon for existing databases (after table exists; runs every startup, no-op if already migrated)
+                db.run(
+                    `UPDATE categories SET name = 'Longon', slug = 'longon', image = 'https://placehold.co/150?text=Longon' WHERE slug = 'logan'`,
+                    (mErr) => {
+                        if (mErr) console.error('Category migration (logan→longon):', mErr);
+                    }
+                );
+                db.run(`UPDATE products SET category = 'Longon' WHERE category = 'Logan'`, (mErr) => {
+                    if (mErr) console.error('Product category migration (Logan→Longon):', mErr);
+                });
+                const categoryImageBySlug = [
+                    ['indian-mangoes', '/assets/indianmango.png'],
+                    ['foreigner-mango', '/assets/foreignmango.png'],
+                    ['malta-orange', '/assets/maltaorange.png'],
+                    ['guava', '/assets/guava.png'],
+                    ['jackfruit', '/assets/jackfruit.png'],
+                    ['jamun', '/assets/jamun.png'],
+                    ['water-apple', '/assets/watterapple.png'],
+                    ['chiku', '/assets/chiku.png'],
+                    ['lemon', '/assets/lemon.png'],
+                    ['amloki', '/assets/amloki.png'],
+                    ['litchi', '/assets/litchi.png'],
+                    ['fruit-tree', '/assets/fruittree.png'],
+                    ['others', '/assets/others.png'],
+                    ['drum-plants', '/assets/drumplants.png'],
+                ];
+                categoryImageBySlug.forEach(([slug, image]) => {
+                    db.run(
+                        'UPDATE categories SET image = ? WHERE slug = ?',
+                        [image, slug],
+                        (uErr) => {
+                            if (uErr) console.error('Category image migration:', slug, uErr);
+                        }
+                    );
+                });
             }
         });
 

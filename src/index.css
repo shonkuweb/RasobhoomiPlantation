@@ -382,6 +382,13 @@ main.home-main {
   padding: 0.3rem;
 }
 
+.cat-circle-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* Product Grid */
 .product-grid {
   display: grid;
