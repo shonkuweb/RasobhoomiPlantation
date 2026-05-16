@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 // import { categories } from '../utils/categories';
 import ProductCard from '../components/ProductCard';
@@ -7,10 +7,17 @@ import SEO from '../components/SEO';
 
 const CategoryPage = () => {
     const { slug } = useParams();
+    const navigate = useNavigate();
     const { products } = useShop();
     const [categoryProducts, setCategoryProducts] = useState([]);
     const [title, setTitle] = useState('');
     const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        if (slug === 'currant') {
+            navigate('/category/anar', { replace: true });
+        }
+    }, [slug, navigate]);
 
     useEffect(() => {
         fetch('/api/categories')

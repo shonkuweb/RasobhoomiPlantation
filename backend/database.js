@@ -83,6 +83,15 @@ function initDb() {
                 db.run(`UPDATE products SET category = 'Longon' WHERE category = 'Logan'`, (mErr) => {
                     if (mErr) console.error('Product category migration (Logan→Longon):', mErr);
                 });
+                db.run(
+                    `UPDATE categories SET name = 'Anar', slug = 'anar', image = '/assets/pomegranant.png' WHERE slug = 'currant'`,
+                    (mErr) => {
+                        if (mErr) console.error('Category migration (currant→anar):', mErr);
+                    }
+                );
+                db.run(`UPDATE products SET category = 'Anar' WHERE category = 'Currant'`, (mErr) => {
+                    if (mErr) console.error('Product category migration (Currant→Anar):', mErr);
+                });
                 const categoryImageBySlug = [
                     ['indian-mangoes', '/assets/indianmango.png'],
                     ['foreigner-mango', '/assets/foreignmango.png'],
@@ -97,7 +106,7 @@ function initDb() {
                     ['lemon', '/assets/lemon.png'],
                     ['amloki', '/assets/amloki.png'],
                     ['litchi', '/assets/litchi.png'],
-                    ['currant', '/assets/pomegranant.png'],
+                    ['anar', '/assets/pomegranant.png'],
                     ['fruit-tree', '/assets/fruittree.png'],
                     ['others', '/assets/others.png'],
                     ['drum-plants', '/assets/drumplants.png'],

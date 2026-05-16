@@ -14,7 +14,7 @@ export const categories = [
     { id: 13, name: 'Amloki', slug: 'amloki', image: '/assets/amloki.png' },
     { id: 14, name: 'Longon', slug: 'longon', image: '/assets/longan.png' },
     { id: 15, name: 'Litchi', slug: 'litchi', image: '/assets/litchi.png' },
-    { id: 16, name: 'Currant', slug: 'currant', image: '/assets/pomegranant.png' },
+    { id: 16, name: 'Anar', slug: 'anar', image: '/assets/pomegranant.png' },
     { id: 17, name: 'Grape', slug: 'grape', image: 'https://placehold.co/150?text=Grape' },
     { id: 18, name: 'Fruit Tree', slug: 'fruit-tree', image: '/assets/fruittree.png' },
     { id: 19, name: 'Others', slug: 'others', image: '/assets/others.png' },
