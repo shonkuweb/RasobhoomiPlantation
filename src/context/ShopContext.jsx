@@ -1,8 +1,10 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useRef } from 'react';
 
 const ShopContext = createContext();
 
 export const useShop = () => useContext(ShopContext);
+
+const PRODUCT_BATCH_SIZE = 4;
 
 export const ShopProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
@@ -14,57 +16,53 @@ export const ShopProvider = ({ children }) => {
         }
     });
     const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    const [page, setPage] = useState(1);
+    const pageRef = useRef(0);
 
-    // We keep search query inside context as before
     const [searchQuery, setSearchQuery] = useState('');
 
-    const LIMIT = 6;
-
     useEffect(() => {
-        // Initial fetch on mount
         fetchProductsBatch(1, true);
     }, []);
 
     const fetchProductsBatch = async (pageNumber, isInitial = false) => {
+        if (!isInitial) setIsLoadingMore(true);
         try {
-            const res = await fetch(`/api/products?page=${pageNumber}&limit=${LIMIT}`);
-            if (res.ok) {
-                const raw = await res.json();
+            const res = await fetch(`/api/products?page=${pageNumber}&limit=${PRODUCT_BATCH_SIZE}`);
+            if (!res.ok) return;
+            const raw = await res.json();
 
-                // Handle both new {products, hasMore} format and old array format
-                const data = Array.isArray(raw) ? raw : (raw.products || []);
-                const serverHasMore = Array.isArray(raw) ? (data.length === LIMIT) : raw.hasMore;
+            const data = Array.isArray(raw) ? raw : (raw.products || []);
+            const serverHasMore = Array.isArray(raw)
+                ? data.length === PRODUCT_BATCH_SIZE
+                : Boolean(raw.hasMore);
 
-                setProducts(prev => {
-                    const newProducts = [...prev, ...data];
-                    const uniqueProducts = Array.from(new Map(newProducts.map(item => [item.id, item])).values());
-                    return uniqueProducts;
-                });
+            setProducts(prev => {
+                const merged = [...prev, ...data];
+                return Array.from(new Map(merged.map(item => [item.id, item])).values());
+            });
 
-                if (!serverHasMore) {
-                    setHasMore(false); // Server says no more products
-                } else {
-                    // Fetch next batch in the background
-                    setTimeout(() => {
-                        fetchProductsBatch(pageNumber + 1);
-                    }, 500);
-                }
-            }
+            pageRef.current = pageNumber;
+            setHasMore(serverHasMore);
         } catch (error) {
             console.error('Failed to fetch products', error);
         } finally {
-            if (isInitial) {
-                setIsLoadingInitial(false);
-            }
+            if (isInitial) setIsLoadingInitial(false);
+            if (!isInitial) setIsLoadingMore(false);
         }
     };
 
+    const loadMoreProducts = () => {
+        if (!hasMore || isLoadingMore || isLoadingInitial) return;
+        fetchProductsBatch(pageRef.current + 1, false);
+    };
+
     const fetchProducts = () => {
-        setProducts([]); // Clear existing to prevent duplicate appends on manual refresh
-        setPage(1);
+        setProducts([]);
+        pageRef.current = 0;
         setHasMore(true);
+        setIsLoadingInitial(true);
         fetchProductsBatch(1, true);
     };
 
@@ -72,14 +70,13 @@ export const ShopProvider = ({ children }) => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
         if (product.qty <= 0) {
-            alert('Out of stock'); // Replace with Toast later
+            alert('Out of stock');
             return;
         }
 
         setCart(prev => {
             const existing = prev.find(item => item.id === productId);
             if (existing) {
-                // Check stock limit logic if needed
                 return prev.map(item =>
                     item.id === productId ? { ...item, qty: item.qty + 1 } : item
                 );
@@ -107,7 +104,6 @@ export const ShopProvider = ({ children }) => {
     const getCartTotal = () => {
         return cart.reduce((acc, item) => {
             const product = products.find(p => p.id === item.id);
-            // Handle cost if product missing or price formatting
             const price = product ? (typeof product.price === 'number' ? product.price : parseFloat(product.price) || 0) : 0;
             return acc + (price * item.qty);
         }, 0);
@@ -123,7 +119,11 @@ export const ShopProvider = ({ children }) => {
         updateQty,
         clearCart,
         getCartTotal,
-        fetchProducts
+        fetchProducts,
+        loadMoreProducts,
+        hasMore,
+        isLoadingInitial,
+        isLoadingMore,
     };
 
     return (

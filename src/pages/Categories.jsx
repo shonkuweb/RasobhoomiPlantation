@@ -1,54 +1,86 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-// import { categories } from '../utils/categories';
+import { resolveCategoryImageUrl } from '../utils/categories';
 import { useState, useEffect } from 'react';
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
-    const [products, setProducts] = useState([]);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [catRes, prodRes] = await Promise.all([
-                    fetch('/api/categories'),
-                    fetch('/api/products')
-                ]);
-                if (catRes.ok) setCategories(await catRes.json());
-                if (prodRes.ok) setProducts(await prodRes.json());
-            } catch (err) {
-                console.error("Failed to fetch data", err);
-            }
-        };
-        fetchData();
+        fetch('/api/categories')
+            .then(res => res.json())
+            .then(data => setCategories(data))
+            .catch(err => console.error('Failed to fetch categories', err));
     }, []);
-
-    const visibleCategories = categories.filter(cat =>
-        cat.name === 'Drum Plants' || products.some(p => p.category === cat.name && p.qty > 0) || products.some(p => p.category === cat.name)
-        // Logic: Show if ANY product exists. The user said "no product... not visible". 
-        // If they meant stock > 0, I'd add p.qty > 0. For now, strict "existence" is safely matching "no product".
-        // Actually, user said "no product for that category". 
-        // So populated with 0 stock is still "has product". 
-        // I will stick to existence: products.some(p => p.category === cat.name).
-    );
 
     return (
         <main style={{ padding: '1rem' }}>
             <h1 className="text-red" style={{ textAlign: 'center', marginBottom: '2rem' }}>CATEGORIES</h1>
 
-            <div className="category-grid-page" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1.5rem', justifyContent: 'center' }}>
-                {visibleCategories.map(cat => (
-                    <Link to={`/category/${cat.slug}`} key={cat.id} className="cat-page-card" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                        <div className="cat-page-circle" style={{ overflow: 'hidden', border: '3px solid #1A4D2E', width: '120px', height: '120px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#f5f5f5' }}>
-                            {cat.image ? (
-                                <img src={cat.image} alt={cat.name} width={120} height={120} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} decoding="async" />
-                            ) : (
-                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1A4D2E', textAlign: 'center', padding: '0.5rem' }}>{cat.name}</span>
-                            )}
-                        </div>
-                        <div className="cat-page-label" style={{ textAlign: 'center', color: '#2C1B10', fontWeight: 'bold' }}>{cat.name}</div>
-                    </Link>
-                ))}
+            <div
+                className="category-grid-page"
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                    gap: '1.5rem',
+                    justifyContent: 'center',
+                }}
+            >
+                {categories.map(cat => {
+                    const imgSrc = resolveCategoryImageUrl(cat);
+                    return (
+                        <Link
+                            to={`/category/${cat.slug}`}
+                            key={cat.id}
+                            className="cat-page-card"
+                            style={{
+                                textDecoration: 'none',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                            }}
+                        >
+                            <div
+                                className="cat-page-circle"
+                                style={{
+                                    overflow: 'hidden',
+                                    border: '3px solid #1A4D2E',
+                                    width: '120px',
+                                    height: '120px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    background: '#f5f5f5',
+                                }}
+                            >
+                                {imgSrc ? (
+                                    <img
+                                        src={imgSrc}
+                                        alt={cat.name}
+                                        width={120}
+                                        height={120}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                        decoding="async"
+                                    />
+                                ) : (
+                                    <span
+                                        style={{
+                                            fontSize: '0.75rem',
+                                            fontWeight: 'bold',
+                                            color: '#1A4D2E',
+                                            textAlign: 'center',
+                                            padding: '0.5rem',
+                                        }}
+                                    >
+                                        {cat.name}
+                                    </span>
+                                )}
+                            </div>
+                        </Link>
+                    );
+                })}
             </div>
         </main>
     );

@@ -53,6 +53,9 @@ const ORDER_SETTINGS_POLL_MS = 15000;
 const PRODUCT_DISPLAY_OFFSET = 30;
 
 let productTotalCount = 0;
+let productsHasMore = false;
+let productsLoadingBatch = false;
+let productsPage = 0;
 
 function getDisplayProductCount() {
     return productTotalCount + PRODUCT_DISPLAY_OFFSET;
@@ -93,9 +96,11 @@ async function fetchData() {
         const btnOrders = document.getElementById('btn-orders');
         if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
 
-        // Start progressive product loading (badge shows offset immediately, then true total from API)
+        // Load first product batch only (4); more via Load more button
         products = [];
         productTotalCount = 0;
+        productsHasMore = false;
+        productsPage = 0;
         updateProductCounterBadge();
         await fetchProductsBatch(1);
 
@@ -106,6 +111,8 @@ async function fetchData() {
 }
 
 async function fetchProductsBatch(pageNumber) {
+    if (productsLoadingBatch) return;
+    productsLoadingBatch = true;
     try {
         const res = await fetch(`/api/products?page=${pageNumber}&limit=${ADMIN_PRODUCT_BATCH}`);
         if (!res.ok) return;
@@ -113,35 +120,33 @@ async function fetchProductsBatch(pageNumber) {
 
         // Handle both new {products, hasMore} format and old array format
         const data = Array.isArray(raw) ? raw : (raw.products || []);
-        const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : raw.hasMore;
+        const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : Boolean(raw.hasMore);
 
         if (!Array.isArray(raw) && raw.total != null) {
             productTotalCount = Number(raw.total) || 0;
             updateProductCounterBadge();
         }
 
-        if (data.length === 0 && !serverHasMore) {
-            render();
-            return;
+        productsPage = pageNumber;
+        productsHasMore = serverHasMore;
+
+        if (data.length > 0) {
+            const existingIds = new Set(products.map(p => p.id));
+            const newOnes = data.filter(p => !existingIds.has(p.id));
+            products = [...products, ...newOnes];
         }
 
-        // Merge, avoiding duplicates
-        const existingIds = new Set(products.map(p => p.id));
-        const newOnes = data.filter(p => !existingIds.has(p.id));
-        products = [...products, ...newOnes];
-
-        // Render immediately so new products appear
         if (currentView === 'products') render();
-
-        if (serverHasMore) {
-            // More batches — load next after a small delay
-            setTimeout(() => fetchProductsBatch(pageNumber + 1), 400);
-        } else {
-            render();
-        }
     } catch (e) {
         console.error('Product batch fetch failed', e);
+    } finally {
+        productsLoadingBatch = false;
     }
+}
+
+function loadMoreProducts() {
+    if (!productsHasMore || productsLoadingBatch) return;
+    fetchProductsBatch(productsPage + 1);
 }
 
 async function fetchOrders() {
@@ -636,6 +641,10 @@ function setupListeners() {
         else if (target.closest('.mark-paid-btn')) {
             const id = target.closest('.mark-paid-btn').dataset.id;
             markOrderPaid(id);
+        }
+        // Load more products (batched)
+        else if (target.closest('.load-more-products-btn')) {
+            loadMoreProducts();
         }
     });
 
@@ -1303,6 +1312,14 @@ function render() {
 
     if (itemsToRender.length === 0) {
         listContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">No items found.</p>';
+    }
+
+    if (currentView === 'products' && productsHasMore) {
+        const loadMoreWrap = document.createElement('div');
+        loadMoreWrap.style.cssText = 'width:100%; text-align:center; padding:1.5rem 1rem;';
+        const label = productsLoadingBatch ? 'Loading...' : 'LOAD MORE PRODUCTS';
+        loadMoreWrap.innerHTML = `<button type="button" class="view-btn load-more-products-btn" style="min-width:200px;" ${productsLoadingBatch ? 'disabled' : ''}>${label}</button>`;
+        listContainer.appendChild(loadMoreWrap);
     }
 }
 

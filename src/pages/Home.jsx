@@ -7,7 +7,14 @@ import SEO from '../components/SEO';
 import { resolveCategoryImageUrl } from '../utils/categories';
 
 const Home = () => {
-    const { products, searchQuery } = useShop();
+    const {
+        products,
+        searchQuery,
+        hasMore,
+        isLoadingInitial,
+        isLoadingMore,
+        loadMoreProducts,
+    } = useShop();
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState({});
@@ -131,16 +138,28 @@ const Home = () => {
 
             {/* Product Grid */}
             <section id="product-grid" className="product-grid">
-                {products.length === 0 ? (
+                {isLoadingInitial && products.length === 0 ? (
                     <p style={{ gridColumn: '1/-1', textAlign: 'center' }}>Loading products...</p>
+                ) : filteredProducts.length > 0 ? (
+                    filteredProducts.map(p => <ProductCard key={p.id} product={p} />)
                 ) : (
-                    filteredProducts.length > 0 ? (
-                        filteredProducts.map(p => <ProductCard key={p.id} product={p} />)
-                    ) : (
-                        <p style={{ gridColumn: '1/-1', textAlign: 'center' }}>No products match your filters.</p>
-                    )
+                    <p style={{ gridColumn: '1/-1', textAlign: 'center' }}>No products match your filters.</p>
                 )}
             </section>
+
+            {hasMore && (
+                <section style={{ display: 'flex', justifyContent: 'center', padding: '1rem 1rem 2rem' }}>
+                    <button
+                        type="button"
+                        className="filter-btn"
+                        onClick={loadMoreProducts}
+                        disabled={isLoadingMore}
+                        style={{ minWidth: '200px' }}
+                    >
+                        {isLoadingMore ? 'Loading...' : 'Load more products'}
+                    </button>
+                </section>
+            )}
 
             <FilterModal
                 isOpen={isFilterOpen}
