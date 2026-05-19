@@ -49,15 +49,19 @@ function getAuthHeaders() {
 
 const ADMIN_PRODUCT_BATCH = 4;
 const ORDER_SETTINGS_POLL_MS = 15000;
-/** Public-facing-style offset: badge shows actual product count + this (min display is 30 when count is 0). */
+/** Added to server total only after `productTotalKnown` is true. */
 const PRODUCT_DISPLAY_OFFSET = 30;
 
 let productTotalCount = 0;
+let productTotalKnown = false;
 let productsHasMore = false;
 let productsLoadingBatch = false;
 let productsPage = 0;
 
 function getDisplayProductCount() {
+    if (!productTotalKnown) {
+        return products.length;
+    }
     return productTotalCount + PRODUCT_DISPLAY_OFFSET;
 }
 
@@ -99,6 +103,7 @@ async function fetchData() {
         // Load first product batch only (4); more via Load more button
         products = [];
         productTotalCount = 0;
+        productTotalKnown = false;
         productsHasMore = false;
         productsPage = 0;
         updateProductCounterBadge();
@@ -122,11 +127,6 @@ async function fetchProductsBatch(pageNumber) {
         const data = Array.isArray(raw) ? raw : (raw.products || []);
         const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : Boolean(raw.hasMore);
 
-        if (!Array.isArray(raw) && raw.total != null) {
-            productTotalCount = Number(raw.total) || 0;
-            updateProductCounterBadge();
-        }
-
         productsPage = pageNumber;
         productsHasMore = serverHasMore;
 
@@ -135,6 +135,16 @@ async function fetchProductsBatch(pageNumber) {
             const newOnes = data.filter(p => !existingIds.has(p.id));
             products = [...products, ...newOnes];
         }
+
+        if (!Array.isArray(raw) && raw.total != null) {
+            productTotalCount = Number(raw.total) || 0;
+            productTotalKnown = true;
+        } else if (Array.isArray(raw) && !serverHasMore) {
+            productTotalCount = products.length;
+            productTotalKnown = true;
+        }
+
+        updateProductCounterBadge();
 
         if (currentView === 'products') render();
     } catch (e) {
@@ -874,7 +884,7 @@ function deleteProduct(id) {
             if (res.ok) {
                 const hadProduct = products.some(p => p.id === id);
                 products = products.filter(p => p.id !== id);
-                if (hadProduct) {
+                if (hadProduct && productTotalKnown) {
                     productTotalCount = Math.max(0, productTotalCount - 1);
                 }
                 updateProductCounterBadge();
@@ -977,7 +987,12 @@ async function saveProduct() {
                 }
             } else {
                 products = [savedProduct, ...products];
-                productTotalCount += 1;
+                if (productTotalKnown) {
+                    productTotalCount += 1;
+                } else {
+                    productTotalKnown = true;
+                    productTotalCount = products.length;
+                }
             }
 
             closeModal();
