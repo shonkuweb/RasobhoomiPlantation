@@ -45,6 +45,10 @@ export const ShopProvider = ({ children }) => {
 
             pageRef.current = pageNumber;
             setHasMore(serverHasMore);
+
+            if (serverHasMore) {
+                setTimeout(() => fetchProductsBatch(pageNumber + 1, false), 400);
+            }
         } catch (error) {
             console.error('Failed to fetch products', error);
         } finally {

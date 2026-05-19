@@ -7,14 +7,7 @@ import SEO from '../components/SEO';
 import { resolveCategoryImageUrl } from '../utils/categories';
 
 const Home = () => {
-    const {
-        products,
-        searchQuery,
-        hasMore,
-        isLoadingInitial,
-        isLoadingMore,
-        loadMoreProducts,
-    } = useShop();
+    const { products, searchQuery, isLoadingInitial } = useShop();
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState({});
@@ -146,20 +139,6 @@ const Home = () => {
                     <p style={{ gridColumn: '1/-1', textAlign: 'center' }}>No products match your filters.</p>
                 )}
             </section>
-
-            {hasMore && (
-                <section style={{ display: 'flex', justifyContent: 'center', padding: '1rem 1rem 2rem' }}>
-                    <button
-                        type="button"
-                        className="filter-btn"
-                        onClick={loadMoreProducts}
-                        disabled={isLoadingMore}
-                        style={{ minWidth: '200px' }}
-                    >
-                        {isLoadingMore ? 'Loading...' : 'Load more products'}
-                    </button>
-                </section>
-            )}
 
             <FilterModal
                 isOpen={isFilterOpen}
