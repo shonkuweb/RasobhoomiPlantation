@@ -74,6 +74,8 @@ app.use('/api/auth', authLimiter);
 
 // --- JWT SECRET ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+/** Admin session length (jsonwebtoken expiresIn). Default 8h; set JWT_EXPIRES_IN in .env (min 1h recommended). */
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const ORDER_SETTINGS_KEY = 'order_config';
 const DEFAULT_ORDER_CONFIG = {
     minimumOrderQty: 3,
@@ -1006,7 +1008,7 @@ app.post('/api/auth/login', (req, res) => {
             const token = jwt.sign(
                 { role: 'admin', loginTime: Date.now() },
                 JWT_SECRET,
-                { expiresIn: '2h' }
+                { expiresIn: JWT_EXPIRES_IN }
             );
             res.json({ success: true, token });
         } else {
