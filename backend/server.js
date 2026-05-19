@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import crypto from 'crypto';
 import axios from 'axios';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
@@ -194,6 +195,7 @@ const isValidPhonePeWebhookAuth = (req) => {
 };
 
 app.use(cors()); // In production, restrict this to your domain: { origin: 'https://yourdomain.com' }
+app.use(compression());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -201,7 +203,14 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // Serve built React app
 app.use(express.static(path.join(__dirname, '../dist')));
 // Serve legacy pages/public assets
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public'), {
+    maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
+    setHeaders: (res, filePath) => {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+    },
+}));
 // Serve moved static pages (for admin.html etc if not in dist)
 // Note: Vite build will put them in dist, but for dev or direct access:
 app.use(express.static(path.join(__dirname, '../pages')));
@@ -374,16 +383,31 @@ const validateOrder = (req, res, next) => {
 
 // --- HOT PATH CACHE (PRODUCTS) ---
 // Goal: avoid repeated DB + JSON parsing work on every storefront request.
-const PRODUCT_CACHE_TTL_MS = 30 * 1000;
+const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000;
 let productCacheVersion = 1;
 const productResponseCache = new Map();
 
-const buildProductCacheKey = (page, limit, isPaginated) =>
-    isPaginated ? `p:${page}:l:${limit}:v:${productCacheVersion}` : `all:v:${productCacheVersion}`;
+const buildProductCacheKey = (page, limit, isPaginated, summary) => {
+    const summaryKey = summary ? ':s1' : '';
+    return isPaginated
+        ? `p:${page}:l:${limit}${summaryKey}:v:${productCacheVersion}`
+        : `all${summaryKey}:v:${productCacheVersion}`;
+};
 
 const parseProductRows = (rows) => rows.map(p => ({
     ...p,
     images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+}));
+
+/** Lighter payload for storefront lists (no gallery array, short description). */
+const parseProductRowsSummary = (rows) => rows.map(p => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    category: p.category,
+    qty: p.qty,
+    image: p.image || '',
+    description: p.description ? String(p.description).slice(0, 160) : '',
 }));
 
 const getCachedPayload = (key) => {
@@ -406,7 +430,7 @@ const invalidateProductCache = () => {
 };
 
 const setProductResponseHeaders = (res, key) => {
-    res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
     res.set('ETag', `W/"${key}"`);
 };
 
@@ -434,12 +458,36 @@ const getPhonePeTransactionId = (payload = {}) =>
 // --- API ENDPOINTS ---
 
 // PRODUCTS
+app.get('/api/products/:id', (req, res) => {
+    const cacheKey = `one:${req.params.id}:v:${productCacheVersion}`;
+    const cachedPayload = getCachedPayload(cacheKey);
+    if (cachedPayload) {
+        setProductResponseHeaders(res, cacheKey);
+        return res.json(cachedPayload);
+    }
+
+    db.get('SELECT * FROM products WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Product not found' });
+        try {
+            const [product] = parseProductRows([row]);
+            setCachedPayload(cacheKey, product);
+            setProductResponseHeaders(res, cacheKey);
+            res.json(product);
+        } catch (parseErr) {
+            res.status(500).json({ error: 'Failed to parse product data' });
+        }
+    });
+});
+
 app.get('/api/products', (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const limit = parseInt(req.query.limit) || 0;
     const isPaginated = page > 0 && limit > 0;
-    const cacheKey = buildProductCacheKey(page, limit, isPaginated);
+    const summary = req.query.summary === '1' || req.query.summary === 'true';
+    const cacheKey = buildProductCacheKey(page, limit, isPaginated, summary);
     const cachedPayload = getCachedPayload(cacheKey);
+    const parseRows = summary ? parseProductRowsSummary : parseProductRows;
 
     if (cachedPayload) {
         setProductResponseHeaders(res, cacheKey);
@@ -458,8 +506,7 @@ app.get('/api/products', (req, res) => {
             db.all("SELECT * FROM products ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset], (err, rows) => {
                 if (err) return res.status(500).json({ error: err.message });
                 try {
-                    const products = parseProductRows(rows);
-                    console.log(`Fetched ${products.length} products (Page: ${page}, Limit: ${limit}, Total: ${total})`);
+                    const products = parseRows(rows);
                     const payload = { products, hasMore, total, page };
                     setCachedPayload(cacheKey, payload);
                     setProductResponseHeaders(res, cacheKey);
@@ -474,7 +521,7 @@ app.get('/api/products', (req, res) => {
         db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             try {
-                const products = parseProductRows(rows);
+                const products = parseRows(rows);
                 setCachedPayload(cacheKey, products);
                 setProductResponseHeaders(res, cacheKey);
                 res.json(products);

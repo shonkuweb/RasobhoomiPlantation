@@ -1,10 +1,8 @@
-import { createContext, useState, useEffect, useContext, useRef } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 
 const ShopContext = createContext();
 
 export const useShop = () => useContext(ShopContext);
-
-const PRODUCT_BATCH_SIZE = 4;
 
 export const ShopProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
@@ -16,58 +14,46 @@ export const ShopProvider = ({ children }) => {
         }
     });
     const [isLoadingInitial, setIsLoadingInitial] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const pageRef = useRef(0);
-
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        fetchProductsBatch(1, true);
+        let cancelled = false;
+
+        const loadProducts = async () => {
+            try {
+                const res = await fetch('/api/products?summary=1');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (cancelled) return;
+                const list = Array.isArray(data) ? data : (data.products || []);
+                setProducts(list);
+            } catch (error) {
+                console.error('Failed to fetch products', error);
+            } finally {
+                if (!cancelled) setIsLoadingInitial(false);
+            }
+        };
+
+        loadProducts();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
-    const fetchProductsBatch = async (pageNumber, isInitial = false) => {
-        if (!isInitial) setIsLoadingMore(true);
+    const fetchProducts = async () => {
+        setIsLoadingInitial(true);
         try {
-            const res = await fetch(`/api/products?page=${pageNumber}&limit=${PRODUCT_BATCH_SIZE}`);
-            if (!res.ok) return;
-            const raw = await res.json();
-
-            const data = Array.isArray(raw) ? raw : (raw.products || []);
-            const serverHasMore = Array.isArray(raw)
-                ? data.length === PRODUCT_BATCH_SIZE
-                : Boolean(raw.hasMore);
-
-            setProducts(prev => {
-                const merged = [...prev, ...data];
-                return Array.from(new Map(merged.map(item => [item.id, item])).values());
-            });
-
-            pageRef.current = pageNumber;
-            setHasMore(serverHasMore);
-
-            if (serverHasMore) {
-                setTimeout(() => fetchProductsBatch(pageNumber + 1, false), 400);
+            const res = await fetch('/api/products?summary=1');
+            if (res.ok) {
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data.products || []);
+                setProducts(list);
             }
         } catch (error) {
             console.error('Failed to fetch products', error);
         } finally {
-            if (isInitial) setIsLoadingInitial(false);
-            if (!isInitial) setIsLoadingMore(false);
+            setIsLoadingInitial(false);
         }
-    };
-
-    const loadMoreProducts = () => {
-        if (!hasMore || isLoadingMore || isLoadingInitial) return;
-        fetchProductsBatch(pageRef.current + 1, false);
-    };
-
-    const fetchProducts = () => {
-        setProducts([]);
-        pageRef.current = 0;
-        setHasMore(true);
-        setIsLoadingInitial(true);
-        fetchProductsBatch(1, true);
     };
 
     const addToCart = (productId) => {
@@ -124,10 +110,7 @@ export const ShopProvider = ({ children }) => {
         clearCart,
         getCartTotal,
         fetchProducts,
-        loadMoreProducts,
-        hasMore,
         isLoadingInitial,
-        isLoadingMore,
     };
 
     return (

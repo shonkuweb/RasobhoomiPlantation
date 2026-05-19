@@ -47,7 +47,6 @@ function getAuthHeaders() {
     };
 }
 
-const ADMIN_PRODUCT_BATCH = 4;
 const ORDER_SETTINGS_POLL_MS = 15000;
 /** Added to server total only after `productTotalKnown` is true. */
 const PRODUCT_DISPLAY_OFFSET = 30;
@@ -100,14 +99,14 @@ async function fetchData() {
         const btnOrders = document.getElementById('btn-orders');
         if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
 
-        // Load first product batch only (4); more via Load more button
+        // Load all products in one request (server-cached)
         products = [];
         productTotalCount = 0;
         productTotalKnown = false;
         productsHasMore = false;
         productsPage = 0;
         updateProductCounterBadge();
-        await fetchProductsBatch(1);
+        await fetchAllProducts();
 
     } catch (e) {
         console.error('Admin Fetch Failed', e);
@@ -115,48 +114,28 @@ async function fetchData() {
     }
 }
 
-async function fetchProductsBatch(pageNumber) {
+async function fetchAllProducts() {
     if (productsLoadingBatch) return;
     productsLoadingBatch = true;
     try {
-        const res = await fetch(`/api/products?page=${pageNumber}&limit=${ADMIN_PRODUCT_BATCH}`);
+        const res = await fetch('/api/products');
         if (!res.ok) return;
         const raw = await res.json();
-
-        // Handle both new {products, hasMore} format and old array format
         const data = Array.isArray(raw) ? raw : (raw.products || []);
-        const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : Boolean(raw.hasMore);
 
-        productsPage = pageNumber;
-        productsHasMore = serverHasMore;
-
-        if (data.length > 0) {
-            const existingIds = new Set(products.map(p => p.id));
-            const newOnes = data.filter(p => !existingIds.has(p.id));
-            products = [...products, ...newOnes];
-        }
-
-        if (!Array.isArray(raw) && raw.total != null) {
-            productTotalCount = Number(raw.total) || 0;
-            productTotalKnown = true;
-        } else if (Array.isArray(raw) && !serverHasMore) {
-            productTotalCount = products.length;
-            productTotalKnown = true;
-        }
+        products = data;
+        productTotalCount = products.length;
+        productTotalKnown = true;
+        productsHasMore = false;
+        productsPage = 1;
 
         updateProductCounterBadge();
-
         if (currentView === 'products') render();
     } catch (e) {
-        console.error('Product batch fetch failed', e);
+        console.error('Product fetch failed', e);
     } finally {
         productsLoadingBatch = false;
     }
-}
-
-function loadMoreProducts() {
-    if (!productsHasMore || productsLoadingBatch) return;
-    fetchProductsBatch(productsPage + 1);
 }
 
 async function fetchOrders() {
@@ -651,10 +630,6 @@ function setupListeners() {
         else if (target.closest('.mark-paid-btn')) {
             const id = target.closest('.mark-paid-btn').dataset.id;
             markOrderPaid(id);
-        }
-        // Load more products (batched)
-        else if (target.closest('.load-more-products-btn')) {
-            loadMoreProducts();
         }
     });
 

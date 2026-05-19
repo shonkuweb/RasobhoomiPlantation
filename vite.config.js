@@ -5,7 +5,13 @@ import { resolve } from 'path';
 export default defineConfig({
     plugins: [react()],
     build: {
+        chunkSizeWarningLimit: 600,
         rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                },
+            },
             input: {
                 main: resolve(__dirname, 'index.html'),
                 // admin: resolve(__dirname, 'pages/admin.html'), // Legacy

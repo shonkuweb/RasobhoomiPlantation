@@ -10,7 +10,13 @@ const ProductCard = ({ product }) => {
             <Link to={`/product/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <div className="product-image-placeholder">
                     {product.image ? (
-                        <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img
+                            src={product.image}
+                            alt={product.name}
+                            loading="lazy"
+                            decoding="async"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
                     ) : (
                         <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>IMG</div>
                     )}

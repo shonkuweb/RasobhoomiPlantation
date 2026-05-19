@@ -118,6 +118,7 @@ const Home = () => {
                                         className="cat-circle-img"
                                         width={75}
                                         height={75}
+                                        loading="lazy"
                                         decoding="async"
                                     />
                                 ) : (

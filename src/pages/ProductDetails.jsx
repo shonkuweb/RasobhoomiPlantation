@@ -8,25 +8,60 @@ const ProductDetails = () => {
     const navigate = useNavigate();
     const { products, addToCart } = useShop();
     const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
-        if (products.length > 0) {
-            const found = products.find(p => p.id === id);
-            setProduct(found);
-        }
-    }, [products, id]);
+        let cancelled = false;
+        setLoading(true);
+        setCurrentImageIndex(0);
 
-    if (!product) {
+        const fromContext = products.find(p => p.id === id);
+
+        const loadFullProduct = async () => {
+            try {
+                const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
+                if (!res.ok) {
+                    if (!cancelled && !fromContext) setProduct(null);
+                    return;
+                }
+                const full = await res.json();
+                if (!cancelled) setProduct(full);
+            } catch (err) {
+                console.error('Failed to load product', err);
+                if (!cancelled && !fromContext) setProduct(null);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        if (fromContext) {
+            setProduct(fromContext);
+        }
+
+        loadFullProduct();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, products]);
+
+    if (loading && !product) {
         return (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
                 <p>Loading product details...</p>
-                {products.length > 0 && <p>Product not found.</p>}
             </div>
         );
     }
 
-    // Prepare images array
+    if (!product) {
+        return (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <p>Product not found.</p>
+            </div>
+        );
+    }
+
     const images = product.images && product.images.length > 0
         ? product.images
         : (product.image ? [product.image] : []);
@@ -64,12 +99,13 @@ const ProductDetails = () => {
                 }}
             />
             <div className="product-detail-container">
-                {/* Image Gallery */}
                 <div className="detail-image-container">
                     {images.length > 0 ? (
                         <img
                             src={images[currentImageIndex]}
                             alt={product.name}
+                            loading="eager"
+                            decoding="async"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                     ) : (
@@ -77,7 +113,6 @@ const ProductDetails = () => {
                     )}
                 </div>
 
-                {/* Dots */}
                 {images.length > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
                         {images.map((_, idx) => (
@@ -96,7 +131,6 @@ const ProductDetails = () => {
                     </div>
                 )}
 
-                {/* Info */}
                 <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', textTransform: 'uppercase' }}>{product.name}</h1>
@@ -108,7 +142,6 @@ const ProductDetails = () => {
                     </p>
                 </div>
 
-                {/* Additional Info (Static for now as per HTML) */}
                 <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <span style={{ color: '#666' }}>Category</span>
@@ -122,7 +155,6 @@ const ProductDetails = () => {
                     </div>
                 </div>
 
-                {/* Sticky Action Bar */}
                 <div style={{
                     position: 'fixed',
                     bottom: 0,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ShopProvider } from './context/ShopContext';
 import Navbar from './components/Navbar';
@@ -8,26 +8,25 @@ import Footer from './components/Footer';
 import WhatsAppButton from './components/WhatsAppButton';
 import Home from './pages/Home';
 
-import ProductDetails from './pages/ProductDetails';
-import CategoryPage from './pages/CategoryPage';
-import Checkout from './pages/Checkout';
-import PaymentSuccess from './pages/PaymentSuccess';
-import PaymentFailure from './pages/PaymentFailure';
-import PaymentPending from './pages/PaymentPending';
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const CategoryPage = lazy(() => import('./pages/CategoryPage'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
+const PaymentFailure = lazy(() => import('./pages/PaymentFailure'));
+const PaymentPending = lazy(() => import('./pages/PaymentPending'));
+const Categories = lazy(() => import('./pages/Categories'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Refund = lazy(() => import('./pages/Refund'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Return = lazy(() => import('./pages/Return'));
+const Shipping = lazy(() => import('./pages/Shipping'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 
-// New Pages
-import Categories from './pages/Categories';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Refund from './pages/Refund';
-import TrackOrder from './pages/TrackOrder';
-
-import Terms from './pages/Terms';
-import Return from './pages/Return';
-import Shipping from './pages/Shipping';
-import Privacy from './pages/Privacy';
-
-
+const PageFallback = () => (
+    <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
+);
 
 const ScrollToTop = () => {
     const { pathname } = useLocation();
@@ -42,8 +41,6 @@ function AppContent() {
     const [cartOpen, setCartOpen] = useState(false);
     const location = useLocation();
 
-    // Determine if Footer should be hidden (e.g. Admin?)
-    // Keeping it simple for now, show everywhere except maybe Checkout if desired.
     const showFooter = !location.pathname.includes('/admin');
 
     return (
@@ -57,7 +54,6 @@ function AppContent() {
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <CartSidebar isOpen={cartOpen} onClose={() => setCartOpen(false)} />
 
-            {/* Overlay for sidebars */}
             {(sidebarOpen || cartOpen) && (
                 <div
                     className="overlay active"
@@ -68,26 +64,26 @@ function AppContent() {
                 ></div>
             )}
 
-            <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/categories" element={<Categories />} />
-                <Route path="/category/:slug" element={<CategoryPage />} />
-                <Route path="/product/:id" element={<ProductDetails />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/payment/success" element={<PaymentSuccess />} />
-                <Route path="/payment/failure" element={<PaymentFailure />} />
-                <Route path="/payment/pending" element={<PaymentPending />} />
-                <Route path="/track-order" element={<TrackOrder />} />
-
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/refund" element={<Refund />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/return" element={<Return />} />
-                <Route path="/shipping" element={<Shipping />} />
-                <Route path="/privacy" element={<Privacy />} />
-            </Routes>
-
+            <Suspense fallback={<PageFallback />}>
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/categories" element={<Categories />} />
+                    <Route path="/category/:slug" element={<CategoryPage />} />
+                    <Route path="/product/:id" element={<ProductDetails />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/payment/success" element={<PaymentSuccess />} />
+                    <Route path="/payment/failure" element={<PaymentFailure />} />
+                    <Route path="/payment/pending" element={<PaymentPending />} />
+                    <Route path="/track-order" element={<TrackOrder />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/refund" element={<Refund />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/return" element={<Return />} />
+                    <Route path="/shipping" element={<Shipping />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                </Routes>
+            </Suspense>
 
             {showFooter && <Footer />}
             <WhatsAppButton />
