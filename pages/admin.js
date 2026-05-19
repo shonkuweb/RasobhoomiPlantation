@@ -49,6 +49,21 @@ function getAuthHeaders() {
 
 const ADMIN_PRODUCT_BATCH = 4;
 const ORDER_SETTINGS_POLL_MS = 15000;
+/** Public-facing-style offset: badge shows actual product count + this (min display is 30 when count is 0). */
+const PRODUCT_DISPLAY_OFFSET = 30;
+
+let productTotalCount = 0;
+
+function getDisplayProductCount() {
+    return productTotalCount + PRODUCT_DISPLAY_OFFSET;
+}
+
+function updateProductCounterBadge() {
+    const btnProducts = document.getElementById('btn-products');
+    if (btnProducts) {
+        btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${getDisplayProductCount()}</span>`;
+    }
+}
 
 async function fetchData() {
     try {
@@ -78,8 +93,10 @@ async function fetchData() {
         const btnOrders = document.getElementById('btn-orders');
         if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
 
-        // Start progressive product loading
+        // Start progressive product loading (badge shows offset immediately, then true total from API)
         products = [];
+        productTotalCount = 0;
+        updateProductCounterBadge();
         await fetchProductsBatch(1);
 
     } catch (e) {
@@ -98,6 +115,11 @@ async function fetchProductsBatch(pageNumber) {
         const data = Array.isArray(raw) ? raw : (raw.products || []);
         const serverHasMore = Array.isArray(raw) ? (data.length === ADMIN_PRODUCT_BATCH) : raw.hasMore;
 
+        if (!Array.isArray(raw) && raw.total != null) {
+            productTotalCount = Number(raw.total) || 0;
+            updateProductCounterBadge();
+        }
+
         if (data.length === 0 && !serverHasMore) {
             render();
             return;
@@ -107,10 +129,6 @@ async function fetchProductsBatch(pageNumber) {
         const existingIds = new Set(products.map(p => p.id));
         const newOnes = data.filter(p => !existingIds.has(p.id));
         products = [...products, ...newOnes];
-
-        // Update count badge
-        const btnProducts = document.getElementById('btn-products');
-        if (btnProducts) btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length}</span>`;
 
         // Render immediately so new products appear
         if (currentView === 'products') render();
@@ -845,7 +863,14 @@ function deleteProduct(id) {
         try {
             const res = await fetch(`/api/products/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
             if (res.ok) {
-                fetchData();
+                const hadProduct = products.some(p => p.id === id);
+                products = products.filter(p => p.id !== id);
+                if (hadProduct) {
+                    productTotalCount = Math.max(0, productTotalCount - 1);
+                }
+                updateProductCounterBadge();
+                if (currentView === 'products') render();
+                window.showToast('Product deleted', 'success');
             } else {
                 window.showToast('Failed to delete', 'error');
             }
@@ -925,8 +950,30 @@ async function saveProduct() {
 
         if (res.ok) {
             console.log('Save Success:', data);
+            const savedProduct = {
+                id: editingId || data.id,
+                name,
+                description,
+                price,
+                category,
+                qty,
+                image,
+                images
+            };
+
+            if (editingId) {
+                const idx = products.findIndex(p => p.id === editingId);
+                if (idx !== -1) {
+                    products[idx] = { ...products[idx], ...savedProduct };
+                }
+            } else {
+                products = [savedProduct, ...products];
+                productTotalCount += 1;
+            }
+
             closeModal();
-            fetchData();
+            updateProductCounterBadge();
+            if (currentView === 'products') render();
             window.showToast('Product Saved Successfully!', 'success');
         } else {
             console.error('Save Failed:', data);
@@ -1129,10 +1176,7 @@ function render() {
         btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
     }
 
-    const btnProducts = document.getElementById('btn-products');
-    if (btnProducts) {
-        btnProducts.innerHTML = `PRODUCTS <span class="order-counter">${products.length}</span>`;
-    }
+    updateProductCounterBadge();
 
     let itemsToRender = [];
 
