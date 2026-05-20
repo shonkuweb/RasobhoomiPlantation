@@ -410,6 +410,9 @@ const parseProductRowsSummary = (rows) => rows.map(p => ({
     description: p.description ? String(p.description).slice(0, 160) : '',
 }));
 
+/** Avoid reading huge `images` JSON blobs from disk when building summary lists. */
+const PRODUCT_LIST_SELECT_SUMMARY = 'id, name, description, price, category, qty, image';
+
 const getCachedPayload = (key) => {
     const entry = productResponseCache.get(key);
     if (!entry) return null;
@@ -488,6 +491,7 @@ app.get('/api/products', (req, res) => {
     const cacheKey = buildProductCacheKey(page, limit, isPaginated, summary);
     const cachedPayload = getCachedPayload(cacheKey);
     const parseRows = summary ? parseProductRowsSummary : parseProductRows;
+    const listSelect = summary ? PRODUCT_LIST_SELECT_SUMMARY : '*';
 
     if (cachedPayload) {
         setProductResponseHeaders(res, cacheKey);
@@ -503,7 +507,7 @@ app.get('/api/products', (req, res) => {
             const offset = (page - 1) * limit;
             const hasMore = offset + limit < total;
 
-            db.all("SELECT * FROM products ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset], (err, rows) => {
+            db.all(`SELECT ${listSelect} FROM products ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset], (err, rows) => {
                 if (err) return res.status(500).json({ error: err.message });
                 try {
                     const products = parseRows(rows);
@@ -518,7 +522,7 @@ app.get('/api/products', (req, res) => {
         });
     } else {
         // Return all products (non-paginated, legacy)
-        db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
+        db.all(`SELECT ${listSelect} FROM products ORDER BY id DESC`, [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             try {
                 const products = parseRows(rows);
