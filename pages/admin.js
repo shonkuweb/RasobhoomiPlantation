@@ -71,23 +71,44 @@ function updateProductCounterBadge() {
     }
 }
 
+/** Apply product list from /api/products (summary or full). */
+function applyProductListFromApiPayload(raw) {
+    const data = Array.isArray(raw) ? raw : (raw.products || []);
+    products = sortProductsWithMangoFirst(data);
+    productTotalCount = products.length;
+    productTotalKnown = true;
+    productsHasMore = false;
+    productsPage = 1;
+    updateProductCounterBadge();
+}
+
 async function fetchData() {
     try {
-        // Fetch orders and categories in parallel
-        const [oRes, cRes] = await Promise.all([
+        products = [];
+        productTotalCount = 0;
+        productTotalKnown = false;
+        productsHasMore = false;
+        productsPage = 0;
+        updateProductCounterBadge();
+
+        const [oRes, cRes, pRes] = await Promise.all([
             fetch('/api/orders'),
-            fetch('/api/categories')
+            fetch('/api/categories'),
+            fetch('/api/products?summary=1'),
         ]);
 
-        const oData = await oRes.json();
+        const [oData, catData, pRaw] = await Promise.all([
+            oRes.json(),
+            cRes.ok ? cRes.json() : Promise.resolve([]),
+            pRes.ok ? pRes.json() : Promise.resolve(null),
+        ]);
 
-        if (cRes.ok) {
-            categories = await cRes.json();
+        if (cRes.ok && Array.isArray(catData)) {
+            categories = catData;
             renderCategories();
         }
 
         if (Array.isArray(oData)) {
-            // Admin order list should include only successfully paid orders.
             orders = oData.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
         } else {
             console.error('Orders API Error:', oData);
@@ -95,19 +116,23 @@ async function fetchData() {
             orders = [];
         }
 
-        // Update order count button
         const btnOrders = document.getElementById('btn-orders');
         if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
 
-        // Load all products in one request (server-cached)
-        products = [];
-        productTotalCount = 0;
-        productTotalKnown = false;
-        productsHasMore = false;
-        productsPage = 0;
-        updateProductCounterBadge();
-        await fetchAllProducts();
+        if (pRes.ok && pRaw != null) {
+            applyProductListFromApiPayload(pRaw);
+        } else {
+            console.error('Products API error', pRes?.status);
+            products = [];
+            productTotalCount = 0;
+            productTotalKnown = true;
+            productsHasMore = false;
+            productsPage = 0;
+            updateProductCounterBadge();
+            if (!pRes.ok) window.showToast('Error loading products', 'error');
+        }
 
+        if (currentView === 'products') render();
     } catch (e) {
         console.error('Admin Fetch Failed', e);
         window.showToast('Failed to load data from server', 'error');
@@ -118,21 +143,12 @@ async function fetchAllProducts() {
     if (productsLoadingBatch) return;
     productsLoadingBatch = true;
     try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products?summary=1');
         if (!res.ok) return;
-        const raw = await res.json();
-        const data = Array.isArray(raw) ? raw : (raw.products || []);
-
-        products = sortProductsWithMangoFirst(data);
-        productTotalCount = products.length;
-        productTotalKnown = true;
-        productsHasMore = false;
-        productsPage = 1;
-
-        updateProductCounterBadge();
+        applyProductListFromApiPayload(await res.json());
         if (currentView === 'products') render();
     } catch (e) {
-        console.error('Product fetch failed', e);
+        console.error('Product fetch failed:', e);
     } finally {
         productsLoadingBatch = false;
     }
@@ -875,21 +891,44 @@ function deleteProduct(id) {
     });
 }
 
-function openModal(id = null) {
-    productModal.style.display = 'flex';
-    productModal.classList.add('active');
-    editingId = id;
-
+async function openModal(id = null) {
     if (id) {
-        const product = products.find(p => p.id === id);
+        let product = null;
+        try {
+            const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
+            if (res.ok) {
+                product = await res.json();
+                const idx = products.findIndex(p => p.id === id);
+                if (idx !== -1) {
+                    products[idx] = { ...products[idx], ...product };
+                }
+            }
+        } catch (e) {
+            console.warn('Full product fetch failed', e);
+        }
+        if (!product) {
+            product = products.find(p => p.id === id);
+        }
+        if (!product) {
+            window.showToast('Product not found', 'error');
+            return;
+        }
+        productModal.style.display = 'flex';
+        productModal.classList.add('active');
+        editingId = id;
         modalTitle.textContent = 'EDIT PRODUCT';
         document.getElementById('product-name').value = product.name;
         document.getElementById('product-desc').value = product.description || '';
         document.getElementById('product-price').value = product.price;
         document.getElementById('product-category').value = product.category || '';
         document.getElementById('product-qty').value = product.qty;
-        currentImages = product.images || (product.image ? [product.image] : []);
+        currentImages = Array.isArray(product.images) && product.images.length > 0
+            ? product.images
+            : (product.image ? [product.image] : []);
     } else {
+        productModal.style.display = 'flex';
+        productModal.classList.add('active');
+        editingId = null;
         modalTitle.textContent = 'ADD PRODUCT';
         productForm.reset();
         currentImages = [];
