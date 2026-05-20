@@ -48,8 +48,6 @@ function getAuthHeaders() {
 }
 
 const ORDER_SETTINGS_POLL_MS = 15000;
-/** Added to server total only after `productTotalKnown` is true. */
-const PRODUCT_DISPLAY_OFFSET = 30;
 
 let productTotalCount = 0;
 let productTotalKnown = false;
@@ -61,7 +59,7 @@ function getDisplayProductCount() {
     if (!productTotalKnown) {
         return products.length;
     }
-    return productTotalCount + PRODUCT_DISPLAY_OFFSET;
+    return productTotalCount;
 }
 
 function updateProductCounterBadge() {
