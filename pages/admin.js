@@ -1,3 +1,5 @@
+import { sortProductsWithMangoFirst, sortCategoriesWithMangoFirst } from './storefrontMangoSort.js';
+
 // Authentication - Redirect to login page if not authenticated
 async function checkAuth() {
     const token = sessionStorage.getItem('adminToken');
@@ -121,7 +123,7 @@ async function fetchAllProducts() {
         const raw = await res.json();
         const data = Array.isArray(raw) ? raw : (raw.products || []);
 
-        products = data;
+        products = sortProductsWithMangoFirst(data);
         productTotalCount = products.length;
         productTotalKnown = true;
         productsHasMore = false;
@@ -785,8 +787,8 @@ function renderCategories() {
         allItem.textContent = 'ALL';
         filterDropdown.appendChild(allItem);
 
-        // Add Categories
-        categories.forEach(cat => {
+        // Add Categories (Foreigner / Indian mango first, same as storefront)
+        sortCategoriesWithMangoFirst(categories).forEach(cat => {
             const item = document.createElement('div');
             item.className = `dropdown-item ${currentProductFilter === cat.name ? 'active' : ''}`;
             item.dataset.filter = cat.name;
@@ -807,7 +809,7 @@ function renderCategories() {
     const categorySelect = document.getElementById('product-category');
     if (categorySelect) {
         categorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
-        categories.forEach(cat => {
+        sortCategoriesWithMangoFirst(categories).forEach(cat => {
             const option = document.createElement('option');
             option.value = cat.name;
             option.textContent = cat.name;
@@ -856,7 +858,7 @@ function deleteProduct(id) {
             const res = await fetch(`/api/products/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
             if (res.ok) {
                 const hadProduct = products.some(p => p.id === id);
-                products = products.filter(p => p.id !== id);
+                products = sortProductsWithMangoFirst(products.filter(p => p.id !== id));
                 if (hadProduct && productTotalKnown) {
                     productTotalCount = Math.max(0, productTotalCount - 1);
                 }
@@ -967,6 +969,8 @@ async function saveProduct() {
                     productTotalCount = products.length;
                 }
             }
+
+            products = sortProductsWithMangoFirst(products);
 
             closeModal();
             updateProductCounterBadge();
@@ -1188,6 +1192,7 @@ function render() {
 
             return nameMatch && categoryMatch;
         });
+        itemsToRender = sortProductsWithMangoFirst(itemsToRender);
     } else {
         itemsToRender = orders.filter(o => {
             const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch);
