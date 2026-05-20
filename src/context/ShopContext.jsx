@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useContext } from 'react';
+import { sortProductsWithMangoFirst } from '../utils/categories';
 
 const ShopContext = createContext();
 
@@ -26,7 +27,7 @@ export const ShopProvider = ({ children }) => {
                 const data = await res.json();
                 if (cancelled) return;
                 const list = Array.isArray(data) ? data : (data.products || []);
-                setProducts(list);
+                setProducts(sortProductsWithMangoFirst(list));
             } catch (error) {
                 console.error('Failed to fetch products', error);
             } finally {
@@ -47,7 +48,7 @@ export const ShopProvider = ({ children }) => {
             if (res.ok) {
                 const data = await res.json();
                 const list = Array.isArray(data) ? data : (data.products || []);
-                setProducts(list);
+                setProducts(sortProductsWithMangoFirst(list));
             }
         } catch (error) {
             console.error('Failed to fetch products', error);

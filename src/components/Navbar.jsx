@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
+import { sortProductsWithMangoFirst } from '../utils/categories';
 
 const Navbar = ({ onMenuClick, onCartClick }) => {
     const { cart, products, searchQuery, setSearchQuery } = useShop();
@@ -11,13 +12,13 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const searchResults = useMemo(() => {
         if (!normalizedQuery) return [];
-        return products
-            .filter((p) =>
+        return sortProductsWithMangoFirst(
+            products.filter((p) =>
                 (p.name || '').toLowerCase().includes(normalizedQuery) ||
                 (p.description || '').toLowerCase().includes(normalizedQuery) ||
                 (p.category || '').toLowerCase().includes(normalizedQuery)
             )
-            .slice(0, 8);
+        ).slice(0, 8);
     }, [normalizedQuery, products]);
 
     const showDropdown = normalizedQuery.length > 0 && searchOpen;

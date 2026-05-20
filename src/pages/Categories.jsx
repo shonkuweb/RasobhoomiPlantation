@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { resolveCategoryImageUrl } from '../utils/categories';
+import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst } from '../utils/categories';
 import { useState, useEffect } from 'react';
 
 const Categories = () => {
@@ -26,7 +26,7 @@ const Categories = () => {
                     justifyContent: 'center',
                 }}
             >
-                {categories.map(cat => {
+                {sortCategoriesWithMangoFirst(categories).map(cat => {
                     const imgSrc = resolveCategoryImageUrl(cat);
                     return (
                         <Link

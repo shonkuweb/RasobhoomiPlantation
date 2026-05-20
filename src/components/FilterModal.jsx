@@ -1,31 +1,31 @@
 import React, { useState } from 'react';
-import { categories } from '../utils/categories';
+import { categories as allCategories, sortCategoriesWithMangoFirst } from '../utils/categories';
 
 const FilterModal = ({ isOpen, onClose, onApply }) => {
     const [sort, setSort] = useState('default');
-    const [categories, setCategories] = useState([]);
+    const [selectedCategoryNames, setSelectedCategoryNames] = useState([]);
     const [stock, setStock] = useState(false);
 
     if (!isOpen) return null;
 
     const handleCategoryChange = (cat) => {
-        setCategories(prev =>
+        setSelectedCategoryNames(prev =>
             prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
         );
     };
 
     const handleApply = () => {
-        onApply({ sort, categories, stock });
+        onApply({ sort, categories: selectedCategoryNames, stock });
         onClose();
     };
 
     const handleReset = () => {
         setSort('default');
-        setCategories([]);
+        setSelectedCategoryNames([]);
         setStock(false);
     };
 
-    const categoryOptions = categories.map(cat => cat.name);
+    const categoryOptions = sortCategoriesWithMangoFirst(allCategories).map(cat => cat.name);
 
 
     return (
@@ -79,7 +79,7 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
                             <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <input
                                     type="checkbox"
-                                    checked={categories.includes(cat)}
+                                    checked={selectedCategoryNames.includes(cat)}
                                     onChange={() => handleCategoryChange(cat)}
                                 />
                                 {cat}

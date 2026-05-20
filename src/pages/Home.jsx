@@ -4,7 +4,7 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
-import { resolveCategoryImageUrl } from '../utils/categories';
+import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst, sortProductsWithMangoFirst } from '../utils/categories';
 
 const Home = () => {
     const { products, searchQuery, isLoadingInitial } = useShop();
@@ -47,7 +47,7 @@ const Home = () => {
             result.sort((a, b) => b.price - a.price);
         }
 
-        setFilteredProducts(result);
+        setFilteredProducts(sortProductsWithMangoFirst(result));
     }, [products, searchQuery, activeFilters]);
 
     const handleApplyFilter = (filters) => {
@@ -106,9 +106,9 @@ const Home = () => {
             {/* Categories */}
             {/* Categories */}
             <section className="category-list">
-                {categories
-                    .filter(cat => cat.name === 'Drum Plants' || products.some(p => p.category === cat.name))
-                    .map(cat => (
+                {sortCategoriesWithMangoFirst(
+                    categories.filter(cat => cat.name === 'Drum Plants' || products.some(p => p.category === cat.name))
+                ).map(cat => (
                         <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
                             <div className="cat-circle">
                                 {resolveCategoryImageUrl(cat) ? (
