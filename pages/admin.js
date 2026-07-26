@@ -714,6 +714,12 @@ function setupListeners() {
                     footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }
                 });
                 
+                const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+                const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text('Developed by ShonkuWEB', pageWidth / 2, pageHeight - 10, { align: 'center' });
+                
                 doc.save(`Rasobhoomi_Sales_Report_${startDate}_${endDate}.pdf`);
                 window.showToast('Report downloaded successfully!', 'success');
             } catch (err) {
