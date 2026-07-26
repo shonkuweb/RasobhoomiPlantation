@@ -647,36 +647,7 @@ function setupListeners() {
     if (modalUpdateStatusBtn) {
         modalUpdateStatusBtn.addEventListener('click', updateOrderStatus);
     }
-}
 
-// Confirmation helper
-function showConfirm(msg, onConfirm) {
-    const modal = document.getElementById('confirm-modal');
-    const msgEl = document.getElementById('confirm-msg');
-    const yesBtn = document.getElementById('confirm-yes');
-    const cancelBtn = document.getElementById('confirm-cancel');
-
-    if (!modal) {
-        if (confirm(msg)) onConfirm();
-        return;
-    }
-
-    msgEl.textContent = msg;
-    modal.classList.add('active');
-
-    const close = () => {
-        modal.classList.remove('active');
-        yesBtn.removeEventListener('click', handleYes);
-        cancelBtn.removeEventListener('click', close);
-    };
-
-    const handleYes = () => {
-        onConfirm();
-        close();
-    };
-
-    yesBtn.addEventListener('click', handleYes);
-    cancelBtn.addEventListener('click', close);
     const btnGenerateReport = document.getElementById('btn-generate-report');
     if (btnGenerateReport) {
         btnGenerateReport.addEventListener('click', async () => {
@@ -746,6 +717,36 @@ function showConfirm(msg, onConfirm) {
             }
         });
     }
+}
+
+// Confirmation helper
+function showConfirm(msg, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    const msgEl = document.getElementById('confirm-msg');
+    const yesBtn = document.getElementById('confirm-yes');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    if (!modal) {
+        if (confirm(msg)) onConfirm();
+        return;
+    }
+
+    msgEl.textContent = msg;
+    modal.classList.add('active');
+
+    const close = () => {
+        modal.classList.remove('active');
+        yesBtn.removeEventListener('click', handleYes);
+        cancelBtn.removeEventListener('click', close);
+    };
+
+    const handleYes = () => {
+        onConfirm();
+        close();
+    };
+
+    yesBtn.addEventListener('click', handleYes);
+    cancelBtn.addEventListener('click', close);
 }
 
 // Helper: Compress Image using Canvas
