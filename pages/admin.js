@@ -533,23 +533,7 @@ function setupListeners() {
         console.error('Product form not found');
     }
 
-    // Auto-calculate discount
-    const comparePriceInput = document.getElementById('product-compare-price');
-    const discountPercentInput = document.getElementById('product-discount-percent');
-    const priceInput = document.getElementById('product-price');
-    
-    if (comparePriceInput && discountPercentInput && priceInput) {
-        const calculatePrice = () => {
-            const cp = parseFloat(comparePriceInput.value) || 0;
-            const pct = parseFloat(discountPercentInput.value) || 0;
-            if (cp > 0 && pct >= 0) {
-                const sp = cp - (cp * (pct / 100));
-                priceInput.value = Math.round(sp);
-            }
-        };
-        comparePriceInput.addEventListener('input', calculatePrice);
-        discountPercentInput.addEventListener('input', calculatePrice);
-    }
+    // Removed auto-calculate event listeners since there is only one price input now
 
     // Drag and Drop Logic
     const dropZone = document.getElementById('drop-zone');
@@ -903,8 +887,9 @@ function openModal(id = null) {
         modalTitle.textContent = 'EDIT PRODUCT';
         document.getElementById('product-name').value = product.name;
         document.getElementById('product-desc').value = product.description || '';
-        document.getElementById('product-compare-price').value = product.compare_price || '';
-        document.getElementById('product-price').value = product.price;
+        
+        const cp = product.compare_price > product.price ? product.compare_price : product.price;
+        document.getElementById('product-price').value = cp;
         
         if (product.compare_price > product.price) {
             const diff = product.compare_price - product.price;
@@ -940,8 +925,18 @@ async function saveProduct() {
     try {
         const name = document.getElementById('product-name').value;
         const description = document.getElementById('product-desc').value;
-        const compare_price = parseFloat(document.getElementById('product-compare-price').value) || 0;
-        const price = parseFloat(document.getElementById('product-price').value) || 0;
+        const inputPrice = parseFloat(document.getElementById('product-price').value) || 0;
+        const discountPct = parseFloat(document.getElementById('product-discount-percent').value) || 0;
+        
+        let compare_price = 0;
+        let price = inputPrice;
+        
+        if (discountPct > 0) {
+            price = inputPrice - (inputPrice * (discountPct / 100));
+            compare_price = inputPrice;
+        } else {
+            compare_price = inputPrice;
+        }
         const category = document.getElementById('product-category').value;
         const qty = parseInt(document.getElementById('product-qty').value) || 0;
         const image = currentImages.length > 0 ? currentImages[0] : '';
