@@ -1158,15 +1158,9 @@ function openOrderModal(id) {
     const select = document.getElementById('modal-status-select');
     select.value = order.status;
 
-    // Disable options that are backward in the flow
-    const currentIdx = STATUS_FLOW.indexOf(order.status);
+    // Allow selecting any status, forward or backward
     Array.from(select.options).forEach(option => {
-        const optionIdx = STATUS_FLOW.indexOf(option.value);
-        if (optionIdx < currentIdx) {
-            option.disabled = true;
-        } else {
-            option.disabled = false;
-        }
+        option.disabled = false;
     });
 
     const delBtn = document.getElementById('delete-order-btn');
