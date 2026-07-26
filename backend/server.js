@@ -1027,6 +1027,28 @@ app.post('/api/orders/:id/mark-paid', requireAuth, (req, res) => {
     });
 });
 
+// ADMIN: Generate Sales Report
+app.get('/api/orders/report', requireAuth, (req, res) => {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate required' });
+
+    const start = startDate + ' 00:00:00';
+    const end = endDate + ' 23:59:59';
+    const sql = `
+        SELECT * FROM orders 
+        WHERE created_at >= ? AND created_at <= ?
+        ORDER BY created_at ASC
+    `;
+    db.all(sql, [start, end], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const orders = rows.map(o => ({
+            ...o,
+            items: o.items ? JSON.parse(o.items) : []
+        }));
+        res.json(orders);
+    });
+});
+
 app.get('/api/orders/:id', (req, res) => {
     db.get("SELECT * FROM orders WHERE id = ?", [req.params.id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -1140,27 +1162,6 @@ app.delete('/api/orders/:id', requireAuth, (req, res) => {
     });
 });
 
-// ADMIN: Generate Sales Report
-app.get('/api/orders/report', requireAuth, (req, res) => {
-    const { startDate, endDate } = req.query;
-    if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate required' });
-
-    const start = startDate + ' 00:00:00';
-    const end = endDate + ' 23:59:59';
-    const sql = `
-        SELECT * FROM orders 
-        WHERE created_at >= ? AND created_at <= ?
-        ORDER BY created_at ASC
-    `;
-    db.all(sql, [start, end], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        const orders = rows.map(o => ({
-            ...o,
-            items: o.items ? JSON.parse(o.items) : []
-        }));
-        res.json(orders);
-    });
-});
 
 // Fallback for SPA
 app.get(/.*/, (req, res) => {
