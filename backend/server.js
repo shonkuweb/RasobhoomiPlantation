@@ -1037,7 +1037,7 @@ app.get('/api/orders/report', requireAuth, (req, res) => {
     const sql = `
         SELECT * FROM orders 
         WHERE created_at >= ? AND created_at <= ?
-          AND (payment_status = 'paid' OR status IN ('new', 'shipped', 'delivered', 'completed'))
+          AND LOWER(status) = 'completed'
         ORDER BY created_at ASC
     `;
     db.all(sql, [start, end], (err, rows) => {
