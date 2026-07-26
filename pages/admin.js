@@ -533,6 +533,24 @@ function setupListeners() {
         console.error('Product form not found');
     }
 
+    // Auto-calculate discount
+    const comparePriceInput = document.getElementById('product-compare-price');
+    const discountPercentInput = document.getElementById('product-discount-percent');
+    const priceInput = document.getElementById('product-price');
+    
+    if (comparePriceInput && discountPercentInput && priceInput) {
+        const calculatePrice = () => {
+            const cp = parseFloat(comparePriceInput.value) || 0;
+            const pct = parseFloat(discountPercentInput.value) || 0;
+            if (cp > 0 && pct >= 0) {
+                const sp = cp - (cp * (pct / 100));
+                priceInput.value = Math.round(sp);
+            }
+        };
+        comparePriceInput.addEventListener('input', calculatePrice);
+        discountPercentInput.addEventListener('input', calculatePrice);
+    }
+
     // Drag and Drop Logic
     const dropZone = document.getElementById('drop-zone');
     if (dropZone) {
@@ -887,6 +905,13 @@ function openModal(id = null) {
         document.getElementById('product-desc').value = product.description || '';
         document.getElementById('product-compare-price').value = product.compare_price || '';
         document.getElementById('product-price').value = product.price;
+        
+        if (product.compare_price > product.price) {
+            const diff = product.compare_price - product.price;
+            document.getElementById('product-discount-percent').value = Math.round((diff / product.compare_price) * 100);
+        } else {
+            document.getElementById('product-discount-percent').value = '';
+        }
         document.getElementById('product-category').value = product.category || '';
         document.getElementById('product-qty').value = product.qty;
         currentImages = product.images || (product.image ? [product.image] : []);
