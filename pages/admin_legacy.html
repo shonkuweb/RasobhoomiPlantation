@@ -548,6 +548,28 @@
         <div id="settings-view" class="admin-settings" style="display: none; max-width: 600px; margin: 0 auto;">
             <div
                 style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                <h2 style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 1rem;">
+                    Generate Sales Report
+                </h2>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.5rem; background: #fafafa; border-radius: 8px; border: 1px solid #eaeaea;">
+                    <p style="color: #555; font-size: 0.9rem; text-align: center;">Generate a PDF of all orders within a date range.</p>
+                    <div style="display: flex; gap: 1rem;">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label for="report-start-date" style="font-weight: 600; color: #555; font-size: 0.9rem;">Start Date</label>
+                            <input type="date" id="report-start-date" class="modern-input" style="padding: 0.8rem; width: 100%;">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label for="report-end-date" style="font-weight: 600; color: #555; font-size: 0.9rem;">End Date</label>
+                            <input type="date" id="report-end-date" class="modern-input" style="padding: 0.8rem; width: 100%;">
+                        </div>
+                    </div>
+                    <button id="btn-generate-report" class="btn-save-modern" style="padding: 1rem; font-size: 1rem; border-radius: 8px; font-weight: bold; background: #2563eb; margin-top: 1rem;">
+                        GENERATE PDF REPORT
+                    </button>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #eaeaea; margin: 2rem 0;">
+
                 <h2
                     style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 1rem;">
                     Order Rules & Delivery
@@ -868,6 +890,11 @@
                         id="confirm-yes" class="auth-btn" style="background: #ef4444;">DELETE</button></div>
             </div>
         </div>
+        
+        <!-- jsPDF and jsPDF-AutoTable CDNs -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+        
         <script type="module" src="admin.js"></script>
 </body>
 

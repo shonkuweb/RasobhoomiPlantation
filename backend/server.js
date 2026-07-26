@@ -988,7 +988,7 @@ app.post('/api/phonepe/callback', async (req, res) => {
 });
 
 app.get('/api/orders', (req, res) => {
-    db.all("SELECT * FROM orders ORDER BY created_at DESC", [], (err, rows) => {
+    db.all("SELECT * FROM orders WHERE is_deleted = FALSE OR is_deleted IS NULL ORDER BY created_at DESC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         const orders = rows.map(o => ({
             ...o,
@@ -1126,16 +1126,39 @@ app.delete('/api/products/:id', requireAuth, (req, res) => {
 });
 
 app.delete('/api/orders/completed', requireAuth, (req, res) => {
-    db.run("DELETE FROM orders WHERE status = 'completed'", [], function (err) {
+    db.run("UPDATE orders SET is_deleted = TRUE WHERE status = 'completed'", [], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Completed order history deleted', deletedCount: this.changes || 0 });
+        res.json({ message: 'Completed orders deleted (soft)' });
     });
 });
 
+// ADMIN: Delete a specific order
 app.delete('/api/orders/:id', requireAuth, (req, res) => {
-    db.run("DELETE FROM orders WHERE id = ?", [req.params.id], function (err) {
+    db.run("UPDATE orders SET is_deleted = TRUE WHERE id = ?", [req.params.id], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Deleted' });
+        res.json({ message: 'Order deleted (soft)' });
+    });
+});
+
+// ADMIN: Generate Sales Report
+app.get('/api/orders/report', requireAuth, (req, res) => {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate required' });
+
+    const start = startDate + ' 00:00:00';
+    const end = endDate + ' 23:59:59';
+    const sql = `
+        SELECT * FROM orders 
+        WHERE created_at >= ? AND created_at <= ?
+        ORDER BY created_at ASC
+    `;
+    db.all(sql, [start, end], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const orders = rows.map(o => ({
+            ...o,
+            items: o.items ? JSON.parse(o.items) : []
+        }));
+        res.json(orders);
     });
 });
 

@@ -677,6 +677,75 @@ function showConfirm(msg, onConfirm) {
 
     yesBtn.addEventListener('click', handleYes);
     cancelBtn.addEventListener('click', close);
+    const btnGenerateReport = document.getElementById('btn-generate-report');
+    if (btnGenerateReport) {
+        btnGenerateReport.addEventListener('click', async () => {
+            const startDate = document.getElementById('report-start-date').value;
+            const endDate = document.getElementById('report-end-date').value;
+            if (!startDate || !endDate) {
+                window.showToast('Please select both Start and End Dates', 'error');
+                return;
+            }
+            btnGenerateReport.disabled = true;
+            btnGenerateReport.textContent = 'GENERATING...';
+            try {
+                const token = sessionStorage.getItem('adminToken');
+                const res = await fetch(`/api/orders/report?startDate=${startDate}&endDate=${endDate}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to fetch report data');
+                const data = await res.json();
+                
+                if (data.length === 0) {
+                    window.showToast('No orders found in this date range', 'error');
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('landscape');
+                
+                doc.setFontSize(18);
+                doc.text('PDF Report of RasobhoomiPlantation', 14, 22);
+                
+                doc.setFontSize(11);
+                doc.text(`Date Range: ${startDate} to ${endDate}`, 14, 30);
+                
+                const tableColumn = ["Date", "Order ID", "Customer Name", "Phone", "Total (Rs)", "Status"];
+                const tableRows = [];
+                
+                data.forEach(order => {
+                    const orderDate = new Date(order.created_at).toLocaleDateString();
+                    const rowData = [
+                        orderDate,
+                        order.id.slice(-6).toUpperCase(),
+                        order.name,
+                        order.phone,
+                        order.total,
+                        order.status.toUpperCase()
+                    ];
+                    tableRows.push(rowData);
+                });
+                
+                doc.autoTable({
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: 35,
+                    theme: 'striped',
+                    styles: { fontSize: 9 },
+                    headStyles: { fillColor: [37, 99, 235] }
+                });
+                
+                doc.save(`Rasobhoomi_Sales_Report_${startDate}_${endDate}.pdf`);
+                window.showToast('Report downloaded successfully!', 'success');
+            } catch (err) {
+                console.error(err);
+                window.showToast('Error generating report', 'error');
+            } finally {
+                btnGenerateReport.disabled = false;
+                btnGenerateReport.textContent = 'GENERATE PDF REPORT';
+            }
+        });
+    }
 }
 
 // Helper: Compress Image using Canvas

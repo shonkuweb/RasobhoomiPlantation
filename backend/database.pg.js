@@ -124,6 +124,7 @@ function initDb() {
             items TEXT,
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
+            is_deleted BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         `CREATE TABLE IF NOT EXISTS categories (
@@ -164,7 +165,8 @@ function initDb() {
         `UPDATE categories SET image = '/assets/pomegranant.png' WHERE slug = 'anar'`,
         `UPDATE categories SET image = '/assets/fruittree.png' WHERE slug = 'fruit-tree'`,
         `UPDATE categories SET image = '/assets/others.png' WHERE slug = 'others'`,
-        `UPDATE categories SET image = '/assets/drumplants.png' WHERE slug = 'drum-plants'`
+        `UPDATE categories SET image = '/assets/drumplants.png' WHERE slug = 'drum-plants'`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`
     ];
 
     Promise.all(schemaQueries.map((q) => pool.query(q)))
