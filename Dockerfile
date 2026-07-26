@@ -29,6 +29,9 @@ RUN npm ci --only=production --legacy-peer-deps
 # Copy backend files
 COPY backend ./backend
 
+# Copy scripts folder
+COPY scripts ./scripts
+
 # Copy static pages (legacy)
 COPY pages ./pages
 
