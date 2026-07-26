@@ -683,8 +683,10 @@ function setupListeners() {
                 
                 const tableColumn = ["Date", "Order ID", "Customer Name", "Phone", "Total (Rs)", "Status"];
                 const tableRows = [];
+                let totalAmount = 0;
                 
                 data.forEach(order => {
+                    totalAmount += Number(order.total) || 0;
                     const orderDate = new Date(order.created_at).toLocaleDateString();
                     const rowData = [
                         orderDate,
@@ -696,14 +698,20 @@ function setupListeners() {
                     ];
                     tableRows.push(rowData);
                 });
+
+                const tableFoot = [
+                    ["", "", "", `TOTAL ORDERS: ${data.length}`, `${totalAmount}`, ""]
+                ];
                 
                 doc.autoTable({
                     head: [tableColumn],
                     body: tableRows,
+                    foot: tableFoot,
                     startY: 35,
                     theme: 'striped',
                     styles: { fontSize: 9 },
-                    headStyles: { fillColor: [37, 99, 235] }
+                    headStyles: { fillColor: [37, 99, 235] },
+                    footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' }
                 });
                 
                 doc.save(`Rasobhoomi_Sales_Report_${startDate}_${endDate}.pdf`);
