@@ -105,6 +105,7 @@ function initDb() {
             name TEXT NOT NULL,
             description TEXT,
             price REAL NOT NULL,
+            compare_price REAL DEFAULT 0,
             category TEXT,
             qty INTEGER DEFAULT 0,
             image TEXT,

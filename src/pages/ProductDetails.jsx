@@ -76,6 +76,9 @@ const ProductDetails = () => {
         navigate('/checkout');
     };
 
+    const hasDiscount = product.compare_price > product.price;
+    const discountPercent = hasDiscount ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100) : 0;
+
     return (
         <main style={{ padding: '1rem', paddingBottom: '5rem' }}>
             <SEO
@@ -99,7 +102,16 @@ const ProductDetails = () => {
                 }}
             />
             <div className="product-detail-container">
-                <div className="detail-image-container">
+                <div className="detail-image-container" style={{ position: 'relative' }}>
+                    {hasDiscount && (
+                        <div style={{
+                            position: 'absolute', top: '15px', left: '15px', background: '#e11d48',
+                            color: 'white', padding: '6px 12px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', zIndex: 10,
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                        }}>
+                            {discountPercent}% OFF
+                        </div>
+                    )}
                     {images.length > 0 ? (
                         <img
                             src={images[currentImageIndex]}
@@ -134,7 +146,10 @@ const ProductDetails = () => {
                 <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', textTransform: 'uppercase' }}>{product.name}</h1>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>₹{product.price}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            {hasDiscount && <span style={{ textDecoration: 'line-through', color: '#888', fontSize: '1rem', lineHeight: '1' }}>₹{product.compare_price}</span>}
+                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', lineHeight: '1', marginTop: hasDiscount ? '4px' : '0' }}>₹{product.price}</div>
+                        </div>
                     </div>
 
                     <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: '1.6' }}>

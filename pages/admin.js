@@ -885,6 +885,7 @@ function openModal(id = null) {
         modalTitle.textContent = 'EDIT PRODUCT';
         document.getElementById('product-name').value = product.name;
         document.getElementById('product-desc').value = product.description || '';
+        document.getElementById('product-compare-price').value = product.compare_price || '';
         document.getElementById('product-price').value = product.price;
         document.getElementById('product-category').value = product.category || '';
         document.getElementById('product-qty').value = product.qty;
@@ -914,13 +915,14 @@ async function saveProduct() {
     try {
         const name = document.getElementById('product-name').value;
         const description = document.getElementById('product-desc').value;
+        const compare_price = parseFloat(document.getElementById('product-compare-price').value) || 0;
         const price = parseFloat(document.getElementById('product-price').value) || 0;
         const category = document.getElementById('product-category').value;
         const qty = parseInt(document.getElementById('product-qty').value) || 0;
         const image = currentImages.length > 0 ? currentImages[0] : '';
         const images = currentImages;
 
-        const payload = { name, description, price, category, qty, image, images };
+        const payload = { name, description, price, compare_price, category, qty, image, images };
         console.log('Sending Payload:', payload);
 
         let res;

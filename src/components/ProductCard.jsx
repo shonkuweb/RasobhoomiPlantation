@@ -5,9 +5,21 @@ import { Link } from 'react-router-dom';
 const ProductCard = ({ product }) => {
     const { addToCart } = useShop();
 
+    const hasDiscount = product.compare_price > product.price;
+    const discountPercent = hasDiscount ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100) : 0;
+
     return (
         <div className="product-card">
-            <Link to={`/product/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <Link to={`/product/${product.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', flex: 1, position: 'relative' }}>
+                {hasDiscount && (
+                    <div style={{
+                        position: 'absolute', top: '10px', left: '10px', background: '#e11d48',
+                        color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10,
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                    }}>
+                        {discountPercent}% OFF
+                    </div>
+                )}
                 <div className="product-image-placeholder">
                     {product.image ? (
                         <img
@@ -25,8 +37,15 @@ const ProductCard = ({ product }) => {
 
             <div className="product-info">
                 <h3>{product.name}</h3>
-                <div className="product-row">
-                    <span className="product-price">{product.price}</span>
+                <div className="product-row" style={{ alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        {hasDiscount && (
+                            <span style={{ textDecoration: 'line-through', color: '#888', fontSize: '0.75rem', lineHeight: '1' }}>
+                                Rs {product.compare_price}
+                            </span>
+                        )}
+                        <span className="product-price" style={{ lineHeight: '1', marginTop: hasDiscount ? '2px' : '0' }}>Rs {product.price}</span>
+                    </div>
                     <button className="add-cart-pill" onClick={(e) => {
                         e.preventDefault();
                         addToCart(product.id);

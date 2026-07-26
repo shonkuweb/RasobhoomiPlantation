@@ -348,7 +348,7 @@ async function getPhonePeAuthToken() {
 
 // --- VALIDATION MIDDLEWARE ---
 const validateProduct = (req, res, next) => {
-    const { name, price, qty, category } = req.body;
+    const { name, price, compare_price, qty, category } = req.body;
     const errors = [];
     if (!name || typeof name !== 'string' || name.trim() === '') errors.push('Name is required');
     if (price === undefined || isNaN(parseFloat(price)) || parseFloat(price) < 0) errors.push('Valid price is required');
@@ -406,6 +406,7 @@ const parseProductRowsSummary = (rows) => rows.map(p => ({
     id: p.id,
     name: p.name,
     price: p.price,
+    compare_price: p.compare_price || 0,
     category: p.category,
     qty: p.qty,
     image: p.image || '',
@@ -536,8 +537,9 @@ app.get('/api/products', (req, res) => {
 
 
 app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
-    const { id, name, description, price, category, qty, image, images } = req.body;
+    const { id, name, description, price, compare_price, category, qty, image, images } = req.body;
     const finalId = id || crypto.randomUUID();
+    const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
     
     // Process images via R2 if they are base64
     const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
@@ -545,15 +547,15 @@ app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
 
     db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
         if (row) {
-            const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-            db.run(sql, [name, description, price, category, qty, newImage, imagesStr, finalId], function (err) {
+            const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
+            db.run(sql, [name, description, price, finalComparePrice, category, qty, newImage, imagesStr, finalId], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 invalidateProductCache();
                 res.json({ message: 'Product updated', id: finalId });
             });
         } else {
-            const sql = `INSERT INTO products (id, name, description, price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(sql, [finalId, name, description, price, category, qty, newImage, imagesStr], function (err) {
+            const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            db.run(sql, [finalId, name, description, price, finalComparePrice, category, qty, newImage, imagesStr], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 invalidateProductCache();
                 res.json({ message: 'Product created', id: finalId });
@@ -563,15 +565,16 @@ app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
 });
 
 app.put('/api/products/:id', requireAuth, validateProduct, async (req, res) => {
-    const { name, description, price, category, qty, image, images } = req.body;
+    const { name, description, price, compare_price, category, qty, image, images } = req.body;
     const finalId = req.params.id;
+    const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
 
     // Process images via R2 if they are base64
     const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
     const imagesStr = JSON.stringify(newImagesArray || []);
 
-    const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-    db.run(sql, [name, description, price, category, qty, newImage, imagesStr, finalId], function (err) {
+    const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
+    db.run(sql, [name, description, price, finalComparePrice, category, qty, newImage, imagesStr, finalId], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         invalidateProductCache();
         res.json({ message: 'Product updated', id: finalId });
