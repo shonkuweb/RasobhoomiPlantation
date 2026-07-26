@@ -27,6 +27,8 @@ if (process.env.DB_TYPE === 'postgres') {
 }
 console.log(`[INFO] Server starting with DB_TYPE: ${process.env.DB_TYPE || 'sqlite'}`);
 
+import { processProductImagesForR2 } from './r2_helper.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -533,22 +535,25 @@ app.get('/api/products', (req, res) => {
 });
 
 
-app.post('/api/products', requireAuth, validateProduct, (req, res) => {
+app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
     const { id, name, description, price, category, qty, image, images } = req.body;
-    const finalId = id || 'P' + Date.now();
-    const imagesStr = JSON.stringify(images || []);
+    const finalId = id || crypto.randomUUID();
+    
+    // Process images via R2 if they are base64
+    const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
+    const imagesStr = JSON.stringify(newImagesArray || []);
 
     db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
         if (row) {
             const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-            db.run(sql, [name, description, price, category, qty, image, imagesStr, finalId], function (err) {
+            db.run(sql, [name, description, price, category, qty, newImage, imagesStr, finalId], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 invalidateProductCache();
                 res.json({ message: 'Product updated', id: finalId });
             });
         } else {
             const sql = `INSERT INTO products (id, name, description, price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(sql, [finalId, name, description, price, category, qty, image, imagesStr], function (err) {
+            db.run(sql, [finalId, name, description, price, category, qty, newImage, imagesStr], function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 invalidateProductCache();
                 res.json({ message: 'Product created', id: finalId });
@@ -557,13 +562,16 @@ app.post('/api/products', requireAuth, validateProduct, (req, res) => {
     });
 });
 
-app.put('/api/products/:id', requireAuth, validateProduct, (req, res) => {
+app.put('/api/products/:id', requireAuth, validateProduct, async (req, res) => {
     const { name, description, price, category, qty, image, images } = req.body;
     const finalId = req.params.id;
-    const imagesStr = JSON.stringify(images || []);
+
+    // Process images via R2 if they are base64
+    const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
+    const imagesStr = JSON.stringify(newImagesArray || []);
 
     const sql = `UPDATE products SET name = ?, description = ?, price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-    db.run(sql, [name, description, price, category, qty, image, imagesStr, finalId], function (err) {
+    db.run(sql, [name, description, price, category, qty, newImage, imagesStr, finalId], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         invalidateProductCache();
         res.json({ message: 'Product updated', id: finalId });
