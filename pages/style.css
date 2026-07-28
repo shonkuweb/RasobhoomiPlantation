@@ -506,15 +506,15 @@ main.home-main {
   background-color: var(--color-white);
   border: 2px solid var(--color-black);
   border-radius: 50px;
-  display: flex;
+  display: inline-flex;
   overflow: hidden;
-  width: 300px;
   max-width: 100%;
+  width: auto;
 }
 
 .toggle-btn {
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.25rem;
   text-align: center;
   background: white;
   color: var(--color-black);
@@ -523,6 +523,7 @@ main.home-main {
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
 .toggle-btn.active {
