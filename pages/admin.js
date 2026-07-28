@@ -1254,6 +1254,9 @@ function openOrderModal(id) {
     const trackingInput = document.getElementById('modal-tracking-id');
     if (trackingInput) trackingInput.value = order.tracking_id || '';
 
+    const invoiceBtn = document.getElementById('modal-download-invoice-btn');
+    if (invoiceBtn) invoiceBtn.href = `/api/orders/${order.id}/invoice`;
+
     // Allow selecting any status, forward or backward
     if (select) {
         Array.from(select.options).forEach(option => {

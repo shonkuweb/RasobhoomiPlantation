@@ -11,6 +11,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
+import { generateInvoicePdf } from './invoice_generator.js';
 import {
     initWhatsApp,
     getWhatsAppStatus,
@@ -1392,6 +1393,23 @@ app.get('/api/orders/:id', (req, res) => {
             items: row.items ? JSON.parse(row.items) : []
         };
         res.json(order);
+    });
+});
+
+app.get('/api/orders/:id/invoice', (req, res) => {
+    db.get("SELECT * FROM orders WHERE id = ?", [req.params.id], async (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Order not found' });
+
+        try {
+            const pdfBuffer = await generateInvoicePdf(row);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="Invoice_${row.id}.pdf"`);
+            res.send(pdfBuffer);
+        } catch (pdfErr) {
+            console.error('Invoice generation error:', pdfErr);
+            res.status(500).json({ error: 'Failed to generate PDF invoice' });
+        }
     });
 });
 

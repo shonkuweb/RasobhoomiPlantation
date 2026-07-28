@@ -1,9 +1,10 @@
 import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth } = pkg;
+const { Client, LocalAuth, MessageMedia } = pkg;
 import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { generateInvoicePdf } from './invoice_generator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -292,13 +293,40 @@ export async function sendOrderPaymentNotification(order) {
     }
 
     try {
-        const recipientJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
-        const message = buildOrderNotificationMessage(order);
+        const textMessage = buildOrderNotificationMessage(order);
+        
+        // Generate PDF Invoice
+        let pdfMedia = null;
+        try {
+            const pdfBuffer = await generateInvoicePdf(order);
+            pdfMedia = new MessageMedia('application/pdf', pdfBuffer.toString('base64'), `Invoice_${order.id}.pdf`);
+        } catch (pdfErr) {
+            console.error('[WHATSAPP] Failed to generate PDF invoice:', pdfErr);
+        }
 
-        console.log(`[WHATSAPP] Sending order notification for #${order.id} to ${recipientJid}...`);
-        await client.sendMessage(recipientJid, message);
+        // 1. Send to Admin / Notification Number
+        const adminJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
+        if (adminJid) {
+            console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
+            await client.sendMessage(adminJid, textMessage);
+            if (pdfMedia) {
+                await client.sendMessage(adminJid, pdfMedia, { caption: `📄 Tax Invoice PDF - Order #${order.id}` });
+            }
+        }
+
+        // 2. Send to Customer's WhatsApp Number (if phone provided)
+        const customerJid = formatWhatsAppJid(order.phone);
+        if (customerJid && customerJid !== adminJid) {
+            console.log(`[WHATSAPP] Sending order confirmation & PDF invoice for #${order.id} to Customer (${customerJid})...`);
+            const customerMsg = `🌿 *RASOBHOOMI PLANTATION - ORDER CONFIRMATION* 🌿\n\nDear *${order.name || 'Customer'}*,\nThank you for your order! Your payment of *₹${order.total || 0}* was received successfully.\n\n🆔 *Order ID:* #${order.id}\n📍 *Delivery Address:* ${order.address || ''}, ${order.city || ''}\n\n📄 We have attached your official Tax Invoice PDF below.\nThank you for shopping with us! 🌱`;
+            await client.sendMessage(customerJid, customerMsg);
+            if (pdfMedia) {
+                await client.sendMessage(customerJid, pdfMedia, { caption: `📄 Tax Invoice PDF - Order #${order.id}` });
+            }
+        }
+
         notifiedOrderIds.add(order.id);
-        console.log(`[WHATSAPP] Order notification successfully sent for #${order.id}!`);
+        console.log(`[WHATSAPP] Order notification & invoice PDF sent for #${order.id}!`);
         return { success: true };
     } catch (err) {
         console.error(`[WHATSAPP] Failed to send notification for order #${order.id}:`, err);
