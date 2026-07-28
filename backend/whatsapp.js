@@ -104,6 +104,27 @@ ${itemsText}
 }
 
 /**
+ * Clean Chromium lock files recursively without removing session data
+ */
+function cleanChromiumLocks(dirPath) {
+    if (!fs.existsSync(dirPath)) return;
+    try {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                cleanChromiumLocks(fullPath);
+            } else if (['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile', 'LOCK', 'DevToolsActivePort'].includes(entry.name)) {
+                try {
+                    fs.unlinkSync(fullPath);
+                    console.log(`[WHATSAPP] Cleaned stale lock file: ${entry.name}`);
+                } catch (e) {}
+            }
+        }
+    } catch (e) {}
+}
+
+/**
  * Initialize WhatsApp Client
  */
 export function initWhatsApp() {
@@ -121,19 +142,8 @@ export function initWhatsApp() {
         fs.mkdirSync(authPath, { recursive: true });
     }
 
-    // Clean stale Chromium lock files from previous process crashes
-    try {
-        const sessionPath = path.join(authPath, 'session');
-        if (fs.existsSync(sessionPath)) {
-            const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile'];
-            for (const file of lockFiles) {
-                const target = path.join(sessionPath, file);
-                if (fs.existsSync(target)) {
-                    try { fs.unlinkSync(target); } catch (e) {}
-                }
-            }
-        }
-    } catch (e) {}
+    // Clean ONLY stale lock files (never delete saved session credentials!)
+    cleanChromiumLocks(authPath);
 
     const execPath = getChromiumExecutablePath();
     console.log(`[WHATSAPP] Initializing client... Chromium path: ${execPath || 'Puppeteer default'}`);
@@ -151,6 +161,7 @@ export function initWhatsApp() {
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
+                '--no-zygote',
                 '--disable-gpu'
             ]
         }
@@ -218,12 +229,7 @@ export function initWhatsApp() {
             if (initRetryCount < MAX_INIT_RETRIES) {
                 initRetryCount++;
                 console.log(`[WHATSAPP] Cleaning session locks and retrying initialization (${initRetryCount}/${MAX_INIT_RETRIES})...`);
-                try {
-                    const sessionPath = path.join(authPath, 'session');
-                    if (fs.existsSync(sessionPath)) {
-                        fs.rmSync(sessionPath, { recursive: true, force: true });
-                    }
-                } catch (e) {}
+                cleanChromiumLocks(authPath);
                 setTimeout(() => {
                     client = null;
                     initWhatsApp();
@@ -240,12 +246,33 @@ export function initWhatsApp() {
  * Get Current Status and QR Code
  */
 export function getWhatsAppStatus() {
+    // If client was destroyed or disconnected, attempt soft auto-init
+    if (!client && connectionState === 'DISCONNECTED' && initRetryCount === 0) {
+        console.log('[WHATSAPP] Status checked while disconnected. Auto-triggering init...');
+        initWhatsApp();
+    }
     return {
         status: connectionState,
         qrCode: currentQrDataUrl,
         user: userInfo,
         targetNumber: `+91 ${DEFAULT_NOTIFICATION_NUMBER}`
     };
+}
+
+/**
+ * Reconnect / Re-initialize WhatsApp Client
+ */
+export function reconnectWhatsApp() {
+    console.log('[WHATSAPP] Explicit reconnect requested...');
+    initRetryCount = 0;
+    if (client) {
+        try {
+            client.destroy();
+        } catch (e) {}
+        client = null;
+    }
+    initWhatsApp();
+    return getWhatsAppStatus();
 }
 
 /**

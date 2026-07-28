@@ -14,6 +14,7 @@ import fs from 'fs';
 import {
     initWhatsApp,
     getWhatsAppStatus,
+    reconnectWhatsApp,
     sendOrderPaymentNotification,
     sendTestMessage,
     logoutWhatsApp
@@ -1489,6 +1490,15 @@ app.delete('/api/orders/:id', requireAuth, (req, res) => {
 app.get('/api/whatsapp/status', (req, res) => {
     try {
         const statusData = getWhatsAppStatus();
+        res.json(statusData);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/whatsapp/connect', (req, res) => {
+    try {
+        const statusData = reconnectWhatsApp();
         res.json(statusData);
     } catch (err) {
         res.status(500).json({ error: err.message });

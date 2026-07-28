@@ -33,6 +33,20 @@ const WhatsAppQR = () => {
         return () => clearInterval(interval);
     }, []);
 
+    const [connectLoading, setConnectLoading] = useState(false);
+
+    const handleConnect = async () => {
+        setConnectLoading(true);
+        try {
+            await axios.post('/api/whatsapp/connect');
+            await fetchStatus();
+        } catch (err) {
+            alert('Failed to start WhatsApp engine: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setConnectLoading(false);
+        }
+    };
+
     const handleSendTest = async () => {
         setTestLoading(true);
         setTestResult('');
@@ -91,12 +105,12 @@ const WhatsAppQR = () => {
                             🟡 Ready for QR Scan
                         </span>
                     )}
-                    {(statusData.status === 'INITIALIZING' || loading) && (
+                    {statusData.status === 'INITIALIZING' && (
                         <span style={{ ...styles.badge, ...styles.badgeInitializing }}>
                             🔵 Initializing Client...
                         </span>
                     )}
-                    {statusData.status === 'DISCONNECTED' && !loading && (
+                    {statusData.status === 'DISCONNECTED' && (
                         <span style={{ ...styles.badge, ...styles.badgeDisconnected }}>
                             🔴 Disconnected
                         </span>
@@ -137,7 +151,7 @@ const WhatsAppQR = () => {
                                 onClick={handleLogout}
                                 disabled={logoutLoading}
                             >
-                                {logoutLoading ? 'Disconnecting...' : '🔒 Disconnect WhatsApp'}
+                                {logoutLoading ? 'Disconnecting...' : '🔒 Disconnect & Reset Session'}
                             </button>
                         </div>
 
@@ -166,11 +180,30 @@ const WhatsAppQR = () => {
                     </div>
                 )}
 
-                {/* INITIALIZING / LOADING STATE */}
-                {(statusData.status === 'INITIALIZING' || (statusData.status === 'DISCONNECTED' && loading)) && (
+                {/* INITIALIZING STATE */}
+                {statusData.status === 'INITIALIZING' && (
                     <div style={styles.loadingSection}>
                         <div style={styles.spinner}></div>
-                        <p style={styles.loadingText}>Initializing WhatsApp Web engine... Please wait a moment.</p>
+                        <p style={styles.loadingText}>Initializing WhatsApp Web engine... Please wait 10-15 seconds.</p>
+                    </div>
+                )}
+
+                {/* DISCONNECTED STATE */}
+                {statusData.status === 'DISCONNECTED' && (
+                    <div style={styles.connectedCard}>
+                        <h2 style={{ ...styles.connectedTitle, color: '#b91c1c' }}>WhatsApp Engine Offline</h2>
+                        <p style={styles.connectedText}>
+                            Click the button below to launch the engine and restore your persistent session.
+                        </p>
+                        <div style={styles.actionButtons}>
+                            <button
+                                style={{ ...styles.testBtn, backgroundColor: '#2563eb' }}
+                                onClick={handleConnect}
+                                disabled={connectLoading}
+                            >
+                                {connectLoading ? 'Launching Engine...' : '⚡ Connect WhatsApp / Generate QR'}
+                            </button>
+                        </div>
                     </div>
                 )}
 
