@@ -1463,10 +1463,22 @@ app.post('/api/admin/change-password', requireAuth, (req, res) => {
 });
 
 app.delete('/api/products/:id', requireAuth, (req, res) => {
-    db.run("DELETE FROM products WHERE id = ?", [req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+    const rawId = req.params.id;
+    const cleanId = String(rawId || '').trim();
+    const numId = Number(cleanId);
+
+    const query = isNaN(numId)
+        ? "DELETE FROM products WHERE id = ?"
+        : "DELETE FROM products WHERE id = ? OR id = ?";
+    const params = isNaN(numId) ? [cleanId] : [cleanId, numId];
+
+    db.run(query, params, function (err) {
+        if (err) {
+            console.error("Delete product error:", err);
+            return res.status(500).json({ error: 'Failed to delete product: ' + err.message });
+        }
         invalidateProductCache();
-        res.json({ message: 'Deleted' });
+        res.json({ success: true, message: 'Product deleted successfully' });
     });
 });
 

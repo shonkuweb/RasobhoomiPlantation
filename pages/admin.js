@@ -998,24 +998,26 @@ function updateFilterUI() {
 
 // CRUD Operations
 function deleteProduct(id) {
+    if (!id) return;
     showConfirm('Are you sure you want to delete this product?', async () => {
         try {
-            const res = await fetch(`/api/products/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+            const res = await fetch(`/api/products/${encodeURIComponent(id)}`, { method: 'DELETE', headers: getAuthHeaders() });
+            const data = await res.json().catch(() => ({}));
             if (res.ok) {
-                const hadProduct = products.some(p => p.id === id);
-                products = sortProductsWithMangoFirst(products.filter(p => p.id !== id));
+                const hadProduct = products.some(p => String(p.id) === String(id));
+                products = sortProductsWithMangoFirst(products.filter(p => String(p.id) !== String(id)));
                 if (hadProduct && productTotalKnown) {
                     productTotalCount = Math.max(0, productTotalCount - 1);
                 }
                 updateProductCounterBadge();
                 if (currentView === 'products') render();
-                window.showToast('Product deleted', 'success');
+                if (window.showToast) window.showToast('Product deleted successfully', 'success');
             } else {
-                window.showToast('Failed to delete', 'error');
+                if (window.showToast) window.showToast(data.error || 'Failed to delete product', 'error');
             }
         } catch (e) {
-            console.error(e);
-            window.showToast('Error deleting product', 'error');
+            console.error('Delete product error:', e);
+            if (window.showToast) window.showToast('Error deleting product', 'error');
         }
     });
 }
