@@ -378,7 +378,7 @@ app.post('/api/admin/discounts', requireAuth, (req, res) => {
     }
 
     const id = 'DISC-' + Date.now();
-    const isEnabledVal = Boolean(is_enabled !== false && is_enabled !== 0 && is_enabled !== '0');
+    const isEnabledVal = is_enabled !== false && is_enabled !== 0 && is_enabled !== '0' ? 1 : 0;
 
     db.run(
         `INSERT INTO discounts (id, name, amount1, operator, amount2, discount_type, discount_value, is_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -401,7 +401,7 @@ app.put('/api/admin/discounts/:id', requireAuth, (req, res) => {
     const validOperators = ['>', '<', '>=', '<='];
     const selectedOp = validOperators.includes(operator) ? operator : '>=';
 
-    const isEnabledVal = Boolean(is_enabled !== false && is_enabled !== 0 && is_enabled !== '0');
+    const isEnabledVal = is_enabled !== false && is_enabled !== 0 && is_enabled !== '0' ? 1 : 0;
 
     db.run(
         `UPDATE discounts SET name = ?, amount1 = ?, operator = ?, amount2 = ?, discount_type = ?, discount_value = ?, is_enabled = ? WHERE id = ?`,
@@ -417,7 +417,7 @@ app.patch('/api/admin/discounts/:id/toggle', requireAuth, (req, res) => {
     const { id } = req.params;
     const { is_enabled } = req.body;
 
-    const isEnabledVal = Boolean(is_enabled);
+    const isEnabledVal = is_enabled ? 1 : 0;
 
     db.run(
         `UPDATE discounts SET is_enabled = ? WHERE id = ?`,
@@ -844,7 +844,7 @@ function getAllDiscountsFromDb() {
 
 function getActiveDiscountsFromDb() {
     return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM discounts WHERE is_enabled = true OR is_enabled = 1 ORDER BY created_at DESC", [], (err, rows) => {
+        db.all("SELECT * FROM discounts WHERE is_enabled = 1 OR is_enabled = true OR is_enabled = '1' ORDER BY created_at DESC", [], (err, rows) => {
             if (err) reject(err); else resolve(rows || []);
         });
     });
@@ -856,21 +856,25 @@ function evaluateDiscounts(subtotal, deliveryCharge, discountRules) {
     const appliedDiscounts = [];
 
     for (const rule of discountRules) {
-        if (!rule.is_enabled) continue;
+        const isEnabled = rule.is_enabled === true || rule.is_enabled === 1 || rule.is_enabled === '1';
+        if (!isEnabled) continue;
 
         const amount1 = Number(rule.amount1 || 0);
         const amount2 = Number(rule.amount2 || 0);
         const op = rule.operator || '>=';
 
         let matches = false;
-        if (op === '>') {
-            matches = subtotal > amount1 && (amount2 > 0 ? subtotal < amount2 : true);
-        } else if (op === '<') {
-            matches = subtotal < (amount2 > 0 ? amount2 : amount1) && (amount1 > 0 ? subtotal > amount1 : true);
-        } else if (op === '>=') {
-            matches = subtotal >= amount1 && (amount2 > 0 ? subtotal <= amount2 : true);
-        } else if (op === '<=') {
-            matches = subtotal <= (amount2 > 0 ? amount2 : amount1) && (amount1 > 0 ? subtotal >= amount1 : true);
+        if (amount2 > 0) {
+            if (op === '>' || op === '<') {
+                matches = subtotal > amount1 && subtotal < amount2;
+            } else {
+                matches = subtotal >= amount1 && subtotal <= amount2;
+            }
+        } else {
+            if (op === '>') matches = subtotal > amount1;
+            else if (op === '>=') matches = subtotal >= amount1;
+            else if (op === '<') matches = subtotal < amount1;
+            else if (op === '<=') matches = subtotal <= amount1;
         }
 
         if (matches) {

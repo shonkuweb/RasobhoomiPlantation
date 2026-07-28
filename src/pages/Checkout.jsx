@@ -126,16 +126,25 @@ const Checkout = () => {
         const applied = [];
 
         for (const rule of discounts) {
-            if (!rule.is_enabled) continue;
+            const isEnabled = rule.is_enabled === true || rule.is_enabled === 1 || rule.is_enabled === '1';
+            if (!isEnabled) continue;
             const amt1 = Number(rule.amount1 || 0);
             const amt2 = Number(rule.amount2 || 0);
             const op = rule.operator || '>=';
 
             let matches = false;
-            if (op === '>') matches = subtotal > amt1 && (amt2 > 0 ? subtotal < amt2 : true);
-            else if (op === '<') matches = subtotal < (amt2 > 0 ? amt2 : amt1) && (amt1 > 0 ? subtotal > amt1 : true);
-            else if (op === '>=') matches = subtotal >= amt1 && (amt2 > 0 ? subtotal <= amt2 : true);
-            else if (op === '<=') matches = subtotal <= (amt2 > 0 ? amt2 : amt1) && (amt1 > 0 ? subtotal >= amt1 : true);
+            if (amt2 > 0) {
+                if (op === '>' || op === '<') {
+                    matches = subtotal > amt1 && subtotal < amt2;
+                } else {
+                    matches = subtotal >= amt1 && subtotal <= amt2;
+                }
+            } else {
+                if (op === '>') matches = subtotal > amt1;
+                else if (op === '>=') matches = subtotal >= amt1;
+                else if (op === '<') matches = subtotal < amt1;
+                else if (op === '<=') matches = subtotal <= amt1;
+            }
 
             if (matches) {
                 if (rule.discount_type === 'free_delivery') {
@@ -420,9 +429,22 @@ const Checkout = () => {
                                     {orderSettings.freeDeliveryActive || deliveryCharge === 0 ? 'FREE' : `+ ₹${deliveryCharge}`}
                                 </span>
                             </div>
+                            {appliedDiscounts.length > 0 && (
+                                <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #bbf7d0', margin: '0.5rem 0' }}>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#166534', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                        🎉 Applied Discounts:
+                                    </div>
+                                    {appliedDiscounts.map((disc, idx) => (
+                                        <div key={disc.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#15803d', fontWeight: '500' }}>
+                                            <span>• {disc.name}</span>
+                                            <span>{disc.type === 'free_delivery' ? 'FREE DELIVERY' : `- ₹${disc.amount}`}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             {discountAmount > 0 && (
                                 <div className="summary-row" style={{ fontSize: '0.95rem', color: '#059669', fontWeight: '600' }}>
-                                    <span>Discount Applied</span>
+                                    <span>Total Savings</span>
                                     <span>- ₹{discountAmount}</span>
                                 </div>
                             )}
