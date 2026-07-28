@@ -1132,7 +1132,14 @@ async function saveProduct() {
             });
         }
 
-        const data = await res.json();
+        let data;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await res.json();
+        } else {
+            const text = await res.text();
+            data = { error: text || `HTTP error ${res.status}` };
+        }
 
         if (res.ok) {
             console.log('Save Success:', data);
