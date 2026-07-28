@@ -378,7 +378,7 @@ app.post('/api/admin/discounts', requireAuth, (req, res) => {
     }
 
     const id = 'DISC-' + Date.now();
-    const isEnabledVal = is_enabled === false || is_enabled === 0 ? 0 : 1;
+    const isEnabledVal = Boolean(is_enabled !== false && is_enabled !== 0 && is_enabled !== '0');
 
     db.run(
         `INSERT INTO discounts (id, name, amount1, operator, amount2, discount_type, discount_value, is_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -401,7 +401,7 @@ app.put('/api/admin/discounts/:id', requireAuth, (req, res) => {
     const validOperators = ['>', '<', '>=', '<='];
     const selectedOp = validOperators.includes(operator) ? operator : '>=';
 
-    const isEnabledVal = is_enabled === false || is_enabled === 0 ? 0 : 1;
+    const isEnabledVal = Boolean(is_enabled !== false && is_enabled !== 0 && is_enabled !== '0');
 
     db.run(
         `UPDATE discounts SET name = ?, amount1 = ?, operator = ?, amount2 = ?, discount_type = ?, discount_value = ?, is_enabled = ? WHERE id = ?`,
@@ -417,7 +417,7 @@ app.patch('/api/admin/discounts/:id/toggle', requireAuth, (req, res) => {
     const { id } = req.params;
     const { is_enabled } = req.body;
 
-    const isEnabledVal = is_enabled ? 1 : 0;
+    const isEnabledVal = Boolean(is_enabled);
 
     db.run(
         `UPDATE discounts SET is_enabled = ? WHERE id = ?`,
@@ -844,7 +844,7 @@ function getAllDiscountsFromDb() {
 
 function getActiveDiscountsFromDb() {
     return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM discounts WHERE is_enabled = 1 ORDER BY created_at DESC", [], (err, rows) => {
+        db.all("SELECT * FROM discounts WHERE is_enabled = true OR is_enabled = 1 ORDER BY created_at DESC", [], (err, rows) => {
             if (err) reject(err); else resolve(rows || []);
         });
     });
