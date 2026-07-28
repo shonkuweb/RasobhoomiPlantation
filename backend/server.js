@@ -533,16 +533,19 @@ async function getPhonePeAuthToken() {
 
 // --- VALIDATION MIDDLEWARE ---
 const validateProduct = (req, res, next) => {
-    const { name, price, compare_price, qty, category } = req.body;
+    let { name, price, compare_price, qty, category } = req.body;
     const errors = [];
     if (!name || typeof name !== 'string' || name.trim() === '') errors.push('Name is required');
-    if (price === undefined || isNaN(parseFloat(price)) || parseFloat(price) < 0) errors.push('Valid price is required');
-    if (qty === undefined || isNaN(parseInt(qty)) || parseInt(qty) < 0) errors.push('Valid quantity is required');
-    // Category optional logic if needed, but assuming required
-    if (!category || typeof category !== 'string') errors.push('Category is required');
+    if (price === undefined || price === null || isNaN(parseFloat(price)) || parseFloat(price) < 0) errors.push('Valid price is required');
+    if (qty === undefined || qty === null || isNaN(parseInt(qty)) || parseInt(qty) < 0) errors.push('Valid quantity is required');
+    
+    // Default category to 'Others' if missing or blank
+    if (!category || typeof category !== 'string' || category.trim() === '') {
+        req.body.category = 'Others';
+    }
 
     if (errors.length > 0) {
-        console.error("Validation Failed:", errors, "Body:", req.body); // Debugging
+        console.error("Product Validation Failed:", errors, "Body:", req.body);
         return res.status(400).json({ error: 'Validation Failed', details: errors });
     }
     next();
@@ -722,48 +725,93 @@ app.get('/api/products', (req, res) => {
 
 
 app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
-    const { id, name, description, price, compare_price, category, qty, image, images } = req.body;
-    const finalId = id || crypto.randomUUID();
-    const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
-    
-    // Process images via R2 if they are base64
-    const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
-    const imagesStr = JSON.stringify(newImagesArray || []);
+    try {
+        const { id, name, description, price, compare_price, category, qty, image, images } = req.body;
+        const finalId = id ? String(id).trim() : crypto.randomUUID();
+        const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
+        const finalCategory = category && typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Others';
+        
+        // Process images via R2 if they are base64
+        const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
+        const imagesStr = JSON.stringify(newImagesArray || []);
 
-    db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
-        if (row) {
-            const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-            db.run(sql, [name, description, price, finalComparePrice, category, qty, newImage, imagesStr, finalId], function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                invalidateProductCache();
-                res.json({ message: 'Product updated', id: finalId });
-            });
-        } else {
-            const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(sql, [finalId, name, description, price, finalComparePrice, category, qty, newImage, imagesStr], function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                invalidateProductCache();
-                res.json({ message: 'Product created', id: finalId });
-            });
-        }
-    });
+        db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
+            if (err) {
+                console.error("DB SELECT Error in POST /api/products:", err);
+                return res.status(500).json({ error: err.message });
+            }
+
+            if (row) {
+                const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
+                db.run(sql, [name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, finalId], function (uErr) {
+                    if (uErr) {
+                        console.error("DB UPDATE Error in POST /api/products:", uErr);
+                        return res.status(500).json({ error: uErr.message });
+                    }
+                    invalidateProductCache();
+                    res.json({ message: 'Product updated', id: finalId });
+                });
+            } else {
+                const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                db.run(sql, [finalId, name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr], function (iErr) {
+                    if (iErr) {
+                        console.error("DB INSERT Error in POST /api/products:", iErr);
+                        return res.status(500).json({ error: iErr.message });
+                    }
+                    invalidateProductCache();
+                    res.json({ message: 'Product created', id: finalId });
+                });
+            }
+        });
+    } catch (err) {
+        console.error("Server Exception in POST /api/products:", err);
+        res.status(500).json({ error: err.message || 'Internal Server Error' });
+    }
 });
 
 app.put('/api/products/:id', requireAuth, validateProduct, async (req, res) => {
-    const { name, description, price, compare_price, category, qty, image, images } = req.body;
-    const finalId = req.params.id;
-    const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
+    try {
+        const { name, description, price, compare_price, category, qty, image, images } = req.body;
+        const finalId = String(req.params.id).trim();
+        const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
+        const finalCategory = category && typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Others';
 
-    // Process images via R2 if they are base64
-    const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
-    const imagesStr = JSON.stringify(newImagesArray || []);
+        // Process images via R2 if they are base64
+        const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
+        const imagesStr = JSON.stringify(newImagesArray || []);
 
-    const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-    db.run(sql, [name, description, price, finalComparePrice, category, qty, newImage, imagesStr, finalId], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        invalidateProductCache();
-        res.json({ message: 'Product updated', id: finalId });
-    });
+        db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
+            if (err) {
+                console.error("DB SELECT Error in PUT /api/products/:id:", err);
+                return res.status(500).json({ error: err.message });
+            }
+
+            if (!row) {
+                const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                db.run(sql, [finalId, name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr], function (iErr) {
+                    if (iErr) {
+                        console.error("DB INSERT Error in PUT /api/products/:id:", iErr);
+                        return res.status(500).json({ error: iErr.message });
+                    }
+                    invalidateProductCache();
+                    res.json({ message: 'Product created', id: finalId });
+                });
+            } else {
+                const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
+                db.run(sql, [name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, finalId], function (uErr) {
+                    if (uErr) {
+                        console.error("DB UPDATE Error in PUT /api/products/:id:", uErr);
+                        return res.status(500).json({ error: uErr.message });
+                    }
+                    invalidateProductCache();
+                    res.json({ message: 'Product updated', id: finalId });
+                });
+            }
+        });
+    } catch (err) {
+        console.error("Server Exception in PUT /api/products/:id:", err);
+        res.status(500).json({ error: err.message || 'Internal Server Error' });
+    }
 });
 
 // CATEGORIES

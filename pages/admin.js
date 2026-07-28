@@ -1026,9 +1026,15 @@ function openModal(id = null) {
     editingId = id;
 
     if (id) {
-        const product = products.find(p => p.id === id);
+        const product = products.find(p => String(p.id) === String(id));
+        if (!product) {
+            console.error("Product not found for ID:", id);
+            window.showToast('Product not found', 'error');
+            closeModal();
+            return;
+        }
         modalTitle.textContent = 'EDIT PRODUCT';
-        document.getElementById('product-name').value = product.name;
+        document.getElementById('product-name').value = product.name || '';
         document.getElementById('product-desc').value = product.description || '';
         
         const cp = product.compare_price > product.price ? product.compare_price : product.price;
@@ -1040,8 +1046,20 @@ function openModal(id = null) {
         } else {
             document.getElementById('product-discount-percent').value = '';
         }
-        document.getElementById('product-category').value = product.category || '';
-        document.getElementById('product-qty').value = product.qty;
+
+        const catSelect = document.getElementById('product-category');
+        if (catSelect) {
+            const catVal = product.category || 'Others';
+            if (!Array.from(catSelect.options).some(opt => opt.value === catVal)) {
+                const opt = document.createElement('option');
+                opt.value = catVal;
+                opt.textContent = catVal;
+                catSelect.appendChild(opt);
+            }
+            catSelect.value = catVal;
+        }
+
+        document.getElementById('product-qty').value = product.qty !== undefined ? product.qty : 0;
         currentImages = product.images || (product.image ? [product.image] : []);
     } else {
         modalTitle.textContent = 'ADD PRODUCT';
@@ -1121,7 +1139,7 @@ async function saveProduct() {
             };
 
             if (editingId) {
-                const idx = products.findIndex(p => p.id === editingId);
+                const idx = products.findIndex(p => String(p.id) === String(editingId));
                 if (idx !== -1) {
                     products[idx] = { ...products[idx], ...savedProduct };
                 }
