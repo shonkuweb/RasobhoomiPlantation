@@ -1240,14 +1240,19 @@ function openOrderModal(id) {
 
     document.getElementById('view-order-total').textContent = '₹' + (order.total || 0);
 
-    // Set Status Dropdown
+    // Set Status Dropdown & DTDC Tracking ID Input
     const select = document.getElementById('modal-status-select');
-    select.value = order.status;
+    if (select) select.value = order.status || 'new';
+
+    const trackingInput = document.getElementById('modal-tracking-id');
+    if (trackingInput) trackingInput.value = order.tracking_id || '';
 
     // Allow selecting any status, forward or backward
-    Array.from(select.options).forEach(option => {
-        option.disabled = false;
-    });
+    if (select) {
+        Array.from(select.options).forEach(option => {
+            option.disabled = false;
+        });
+    }
 
     const delBtn = document.getElementById('delete-order-btn');
     // Ensure we handle delete button event properly if it exists in modal
@@ -1265,30 +1270,31 @@ function closeOrderModal() {
 async function updateOrderStatus() {
     if (!editingId) return;
 
-    const newStatus = document.getElementById('modal-status-select').value;
+    const newStatus = document.getElementById('modal-status-select')?.value;
+    const trackingId = document.getElementById('modal-tracking-id')?.value?.trim() || '';
 
     try {
         const res = await fetch(`/api/orders/${editingId}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus, tracking_id: trackingId })
         });
 
         if (res.ok) {
             const statusEl = document.getElementById('view-order-status');
             if (statusEl) {
                 statusEl.textContent = newStatus;
-                // color update logic...
             }
+            if (window.showToast) window.showToast('Order details updated successfully');
             closeOrderModal();
             fetchData();
         } else {
-            window.showToast('Failed to update status', 'error');
+            if (window.showToast) window.showToast('Failed to update order', 'error');
         }
 
     } catch (e) {
         console.error(e);
-        window.showToast('Error updating status', 'error');
+        if (window.showToast) window.showToast('Error updating order', 'error');
     }
 }
 

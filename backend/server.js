@@ -1392,11 +1392,25 @@ app.get('/api/orders/:id', (req, res) => {
 
 
 app.put('/api/orders/:id', requireAuth, (req, res) => {
-    const { status } = req.body;
-    db.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Order status updated' });
-    });
+    const { status, tracking_id } = req.body;
+    const trackingVal = tracking_id !== undefined ? String(tracking_id).trim() : null;
+
+    if (tracking_id !== undefined && status !== undefined) {
+        db.run("UPDATE orders SET status = ?, tracking_id = ? WHERE id = ?", [status, trackingVal, req.params.id], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Order updated successfully' });
+        });
+    } else if (tracking_id !== undefined) {
+        db.run("UPDATE orders SET tracking_id = ? WHERE id = ?", [trackingVal, req.params.id], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Tracking ID updated successfully' });
+        });
+    } else {
+        db.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Order status updated' });
+        });
+    }
 });
 
 app.post('/api/auth/login', (req, res) => {

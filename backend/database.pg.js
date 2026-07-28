@@ -124,9 +124,11 @@ function initDb() {
             items TEXT,
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
+            tracking_id TEXT,
             is_deleted BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_id TEXT`,
         `CREATE TABLE IF NOT EXISTS categories (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,

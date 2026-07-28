@@ -817,18 +817,23 @@
                         <span>Total:</span><span id="view-order-total"></span>
                     </div>
                 </div>
-                <!-- Action: Change Status -->
+                <!-- Action: Change Status & DTDC Tracking ID -->
                 <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.8rem; color: #666;">UPDATE
-                        STATUS</label>
-                    <div style="display: flex; gap: 0.5rem;"><select id="modal-status-select" class="modern-input"
-                            style="flex: 1; margin: 0; background: white;">
-                            <option value="new">NEW</option>
-                            <option value="in-process">IN-PROCESS</option>
-                            <option value="in-transit">IN-TRANSIT</option>
-                            <option value="completed">COMPLETED</option>
-                        </select><button id="modal-update-status-btn" class="btn-save-modern"
-                            style="width: auto; margin: 0; padding: 0 1.5rem;">UPDATE</button>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; font-weight: 600; color: #374151;">UPDATE STATUS</label>
+                            <select id="modal-status-select" class="modern-input" style="width: 100%; background: white; margin: 0;">
+                                <option value="new">NEW</option>
+                                <option value="in-process">IN-PROCESS</option>
+                                <option value="in-transit">IN-TRANSIT</option>
+                                <option value="completed">COMPLETED</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; font-weight: 600; color: #374151;">DTDC TRACKING ID (AWB)</label>
+                            <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0;">
+                        </div>
+                        <button id="modal-update-status-btn" class="btn-save-modern" style="width: 100%; margin-top: 0.25rem; padding: 0.75rem; font-weight: bold;">UPDATE ORDER</button>
                     </div>
                 </div>
             </div>

@@ -51,9 +51,14 @@ function initDb() {
             items TEXT, -- JSON string
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
+            tracking_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating orders table:", err);
+        });
+
+        db.run(`ALTER TABLE orders ADD COLUMN tracking_id TEXT`, (mErr) => {
+            // Column might already exist, safe to ignore
         });
 
         // Categories Table

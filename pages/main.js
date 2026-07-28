@@ -985,9 +985,38 @@ async function initTrackOrder() {
       };
     }
 
-    document.getElementById('display-status').textContent = 'PREPARING'; // Default status for demo
-    document.getElementById('display-date').textContent = new Date(order.date).toLocaleDateString();
+    document.getElementById('display-date').textContent = new Date(order.created_at || order.date || Date.now()).toLocaleDateString();
     document.getElementById('display-total').textContent = '₹' + order.total;
+
+    const dtdcContainer = document.getElementById('dtdc-tracking-container');
+    if (dtdcContainer) {
+      if (order.tracking_id) {
+        dtdcContainer.innerHTML = `
+          <div style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: #ffffff; border-radius: 16px; padding: 1.25rem 1.5rem; margin: 1.25rem 0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 0.85rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div style="background: #dc2626; color: white; padding: 0.4rem 0.75rem; border-radius: 8px; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; display: inline-flex; align-items: center; gap: 0.35rem;">
+                          🚚 DTDC
+                      </div>
+                      <div>
+                          <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;">Shipment Tracking Number</div>
+                          <div style="font-size: 1.1rem; font-weight: 700; color: #f9fafb; font-family: monospace; letter-spacing: 0.5px;">${order.tracking_id}</div>
+                      </div>
+                  </div>
+                  <a href="https://www.dtdc.com/track-your-shipment/?awb=${encodeURIComponent(order.tracking_id)}" target="_blank" rel="noopener noreferrer" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 0.65rem 1.15rem; border-radius: 10px; font-weight: 700; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                      <span>Track Live on DTDC</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                  </a>
+              </div>
+              <div style="font-size: 0.75rem; color: #9ca3af; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.6rem;">
+                  💡 Click the button above to view live courier tracking & real-time updates directly on DTDC's official portal.
+              </div>
+          </div>
+        `;
+      } else {
+        dtdcContainer.innerHTML = '';
+      }
+    }
 
     // Reset Steps
     ['step-1', 'step-2', 'step-3', 'step-4'].forEach(s => {
