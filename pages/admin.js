@@ -790,26 +790,33 @@ function showConfirm(msg, onConfirm) {
     const cancelBtn = document.getElementById('confirm-cancel');
 
     if (!modal) {
-        if (confirm(msg)) onConfirm();
+        if (window.confirm(msg)) onConfirm();
         return;
     }
 
-    msgEl.textContent = msg;
+    if (msgEl) msgEl.textContent = msg;
+    modal.style.display = 'flex';
     modal.classList.add('active');
 
     const close = () => {
+        modal.style.display = 'none';
         modal.classList.remove('active');
-        yesBtn.removeEventListener('click', handleYes);
-        cancelBtn.removeEventListener('click', close);
+        if (yesBtn) yesBtn.onclick = null;
+        if (cancelBtn) cancelBtn.onclick = null;
     };
 
-    const handleYes = () => {
-        onConfirm();
-        close();
-    };
+    if (yesBtn) {
+        yesBtn.onclick = () => {
+            onConfirm();
+            close();
+        };
+    }
 
-    yesBtn.addEventListener('click', handleYes);
-    cancelBtn.addEventListener('click', close);
+    if (cancelBtn) {
+        cancelBtn.onclick = () => {
+            close();
+        };
+    }
 }
 
 // Helper: Compress Image using Canvas
@@ -1596,15 +1603,15 @@ function renderDiscounts() {
     // Attach row button listeners
     discountsTableBody.querySelectorAll('.btn-toggle-disc').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.target.getAttribute('data-id');
-            const currentEnabled = e.target.getAttribute('data-enabled') === '1';
+            const id = e.currentTarget.getAttribute('data-id');
+            const currentEnabled = e.currentTarget.getAttribute('data-enabled') === '1';
             toggleDiscount(id, currentEnabled);
         });
     });
 
     discountsTableBody.querySelectorAll('.btn-edit-disc').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.target.getAttribute('data-id');
+            const id = e.currentTarget.getAttribute('data-id');
             const rule = discounts.find(d => String(d.id) === String(id));
             if (rule) openDiscountModal(rule);
         });
@@ -1612,7 +1619,7 @@ function renderDiscounts() {
 
     discountsTableBody.querySelectorAll('.btn-del-disc').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.target.getAttribute('data-id');
+            const id = e.currentTarget.getAttribute('data-id');
             deleteDiscount(id);
         });
     });
