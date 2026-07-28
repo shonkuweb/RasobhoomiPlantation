@@ -218,13 +218,15 @@
         const loginBtn = document.getElementById('login-btn');
 
         // Check if already logged in
-        const existingToken = sessionStorage.getItem('adminToken');
+        const existingToken = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
         if (existingToken) {
             // Verify token is still valid
             fetch('/api/auth/verify', {
                 headers: { 'Authorization': `Bearer ${existingToken}` }
             }).then(res => {
                 if (res.ok) {
+                    localStorage.setItem('adminToken', existingToken);
+                    sessionStorage.setItem('adminToken', existingToken);
                     window.location.href = '/admin';
                 }
             });
@@ -251,6 +253,7 @@
                 const data = await res.json();
 
                 if (data.success) {
+                    localStorage.setItem('adminToken', data.token);
                     sessionStorage.setItem('adminToken', data.token);
                     window.location.href = '/admin';
                 } else {

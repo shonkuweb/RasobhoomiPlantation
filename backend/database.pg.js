@@ -137,6 +137,17 @@ function initDb() {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         )`,
+        `CREATE TABLE IF NOT EXISTS discounts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            amount1 REAL DEFAULT 0,
+            operator TEXT DEFAULT '>=',
+            amount2 REAL DEFAULT 0,
+            discount_type TEXT NOT NULL,
+            discount_value REAL DEFAULT 0,
+            is_enabled BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
         `CREATE INDEX IF NOT EXISTS idx_products_created_at_desc ON products (created_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_orders_created_at_desc ON orders (created_at DESC)`
     ];

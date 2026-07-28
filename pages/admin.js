@@ -1,8 +1,24 @@
 import { sortProductsWithMangoFirst, sortCategoriesWithMangoFirst } from './storefrontMangoSort.js';
 
+function getAdminToken() {
+    return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+}
+
+function setAdminToken(token) {
+    if (token) {
+        localStorage.setItem('adminToken', token);
+        sessionStorage.setItem('adminToken', token);
+    }
+}
+
+function clearAdminToken() {
+    localStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminToken');
+}
+
 // Authentication - Redirect to login page if not authenticated
 async function checkAuth() {
-    const token = sessionStorage.getItem('adminToken');
+    const token = getAdminToken();
 
     if (!token) {
         // No token, redirect to login
@@ -17,17 +33,17 @@ async function checkAuth() {
         });
 
         if (res.ok) {
-            // Token is valid, fetch data
+            setAdminToken(token);
             fetchData();
-        } else {
-            // Token invalid, clear and redirect
-            sessionStorage.removeItem('adminToken');
+        } else if (res.status === 401) {
+            clearAdminToken();
             window.location.href = '/admin-login';
+        } else {
+            fetchData();
         }
     } catch (err) {
-        console.error('Auth verification failed:', err);
-        sessionStorage.removeItem('adminToken');
-        window.location.href = '/admin-login';
+        console.error('Auth verification network failed:', err);
+        fetchData();
     }
 }
 
@@ -42,7 +58,7 @@ let currentOrderSettings = null;
 
 // Helper function to get auth headers
 function getAuthHeaders() {
-    const token = sessionStorage.getItem('adminToken');
+    const token = getAdminToken();
     return {
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : ''
@@ -215,6 +231,33 @@ const settingsOrderError = document.getElementById('settings-order-error');
 const settingsOrderSuccess = document.getElementById('settings-order-success');
 const settingsOrderSaveBtn = document.getElementById('settings-order-save-btn');
 
+// Discount Elements
+const discountsBtn = document.getElementById('btn-discounts');
+const discountsView = document.getElementById('discounts-view');
+const addDiscountBtn = document.getElementById('add-discount-btn');
+const discountsTable = document.getElementById('discounts-table');
+const discountsTableBody = document.getElementById('discounts-table-body');
+const discountsLoading = document.getElementById('discounts-loading');
+const discountsEmpty = document.getElementById('discounts-empty');
+const discountModal = document.getElementById('discount-modal');
+const closeDiscountModalBtn = document.getElementById('close-discount-modal');
+const cancelDiscountBtn = document.getElementById('cancel-discount-btn');
+const discountForm = document.getElementById('discount-form');
+const discountModalTitle = document.getElementById('discount-modal-title');
+const discountNameInput = document.getElementById('discount-name');
+const discountAmount1Input = document.getElementById('discount-amount1');
+const discountOperatorSelect = document.getElementById('discount-operator');
+const discountAmount2Input = document.getElementById('discount-amount2');
+const discountTypeSelect = document.getElementById('discount-type');
+const discountValueWrapper = document.getElementById('discount-value-wrapper');
+const discountValueLabel = document.getElementById('discount-value-label');
+const discountValueInput = document.getElementById('discount-value');
+const discountEnabledCheckbox = document.getElementById('discount-enabled');
+const discountFormError = document.getElementById('discount-form-error');
+
+let discounts = [];
+let editingDiscountId = null;
+
 // State for image handling
 let currentImages = [];
 
@@ -350,13 +393,19 @@ function setupListeners() {
     productsBtn.addEventListener('click', () => switchView('products'));
     ordersBtn.addEventListener('click', () => switchView('orders'));
     if (settingsBtn) settingsBtn.addEventListener('click', () => switchView('settings'));
+    if (discountsBtn) discountsBtn.addEventListener('click', () => switchView('discounts'));
+    if (addDiscountBtn) addDiscountBtn.addEventListener('click', () => openDiscountModal());
+    if (closeDiscountModalBtn) closeDiscountModalBtn.addEventListener('click', closeDiscountModal);
+    if (cancelDiscountBtn) cancelDiscountBtn.addEventListener('click', closeDiscountModal);
+    if (discountTypeSelect) discountTypeSelect.addEventListener('change', handleDiscountTypeChange);
+    if (discountForm) discountForm.addEventListener('submit', saveDiscount);
 
     // Logout
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to logout?')) {
-                sessionStorage.removeItem('adminToken');
+                clearAdminToken();
                 window.location.href = '/admin-login';
             }
         });
@@ -821,11 +870,13 @@ function switchView(view) {
     if (productToolbar) productToolbar.style.display = 'none';
     if (orderFilterSection) orderFilterSection.style.display = 'none';
     if (settingsView) settingsView.style.display = 'none';
-    if (listContainer) listContainer.style.display = 'block'; // Block by default unless settings
+    if (discountsView) discountsView.style.display = 'none';
+    if (listContainer) listContainer.style.display = 'block'; // Block by default unless settings/discounts
 
     productsBtn.classList.remove('active');
     ordersBtn.classList.remove('active');
     if (settingsBtn) settingsBtn.classList.remove('active');
+    if (discountsBtn) discountsBtn.classList.remove('active');
 
     if (view === 'products') {
         productsBtn.classList.add('active');
@@ -849,10 +900,18 @@ function switchView(view) {
         if (settingsPasswordError) settingsPasswordError.textContent = '';
         if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = '';
         fetchOrderSettings();
+    } else if (view === 'discounts') {
+        if (discountsBtn) discountsBtn.classList.add('active');
+        if (listContainer) listContainer.style.display = 'none';
+        if (discountsView) discountsView.style.display = 'block';
+        if (resetDbBtn) resetDbBtn.style.display = 'none';
+        if (delCompletedBtn) delCompletedBtn.style.display = 'none';
+
+        fetchDiscounts();
     }
 
     checkAddButtonVisibility();
-    if (view !== 'settings') {
+    if (view !== 'settings' && view !== 'discounts') {
         render();
     }
 }
@@ -1419,5 +1478,269 @@ function render() {
 // Real-time updates
 // Real-time updates - Removed localStorage listener as we use API now
 // implementation detail: could use polling or websockets, but for now manual refresh or page reload is expected.
+
+// --- DISCOUNT MANAGEMENT FUNCTIONS ---
+async function fetchDiscounts() {
+    if (!discountsLoading || !discountsEmpty || !discountsTable) return;
+    discountsLoading.style.display = 'block';
+    discountsEmpty.style.display = 'none';
+    discountsTable.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/admin/discounts', {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) throw new Error('Failed to fetch discount rules');
+        const data = await res.json();
+        discounts = Array.isArray(data) ? data : [];
+        renderDiscounts();
+    } catch (err) {
+        console.error('Fetch discounts failed:', err);
+        if (window.showToast) window.showToast(err.message || 'Error loading discounts', 'error');
+        discountsLoading.style.display = 'none';
+        discountsEmpty.style.display = 'block';
+    }
+}
+
+function renderDiscounts() {
+    if (!discountsLoading || !discountsEmpty || !discountsTable || !discountsTableBody) return;
+    discountsLoading.style.display = 'none';
+
+    if (discounts.length === 0) {
+        discountsEmpty.style.display = 'block';
+        discountsTable.style.display = 'none';
+        return;
+    }
+
+    discountsEmpty.style.display = 'none';
+    discountsTable.style.display = 'table';
+    discountsTableBody.innerHTML = '';
+
+    discounts.forEach(rule => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f3f4f6';
+
+        // Format Condition
+        let conditionText = '';
+        const amt1 = Number(rule.amount1 || 0);
+        const amt2 = Number(rule.amount2 || 0);
+        const op = rule.operator || '>=';
+
+        if (amt2 > 0) {
+            conditionText = `₹${amt1} ${op} Subtotal and Subtotal <= ₹${amt2}`;
+        } else {
+            conditionText = `Subtotal ${op} ₹${amt1}`;
+        }
+
+        // Format Type & Value
+        let typeText = 'Percentage';
+        let valText = `${rule.discount_value}%`;
+
+        if (rule.discount_type === 'fixed') {
+            typeText = 'Fixed Amount';
+            valText = `₹${rule.discount_value}`;
+        } else if (rule.discount_type === 'free_delivery') {
+            typeText = 'Free Delivery';
+            valText = 'Free Delivery';
+        }
+
+        const isEnabled = Boolean(rule.is_enabled);
+        const statusBadge = isEnabled
+            ? `<span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Active</span>`
+            : `<span style="background: #f3f4f6; color: #6b7280; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Disabled</span>`;
+
+        tr.innerHTML = `
+            <td style="padding: 0.85rem; font-weight: 600; color: #111827;">${rule.name}</td>
+            <td style="padding: 0.85rem; color: #4b5563; font-size: 0.85rem; font-family: monospace;">${conditionText}</td>
+            <td style="padding: 0.85rem; color: #374151; font-size: 0.85rem;">${typeText}</td>
+            <td style="padding: 0.85rem; font-weight: 600; color: #059669;">${valText}</td>
+            <td style="padding: 0.85rem;">${statusBadge}</td>
+            <td style="padding: 0.85rem; text-align: right;">
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                    <button class="btn-toggle-disc" data-id="${rule.id}" data-enabled="${isEnabled ? '1' : '0'}" style="background: none; border: 1px solid #d1d5db; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #374151;">
+                        ${isEnabled ? 'Disable' : 'Enable'}
+                    </button>
+                    <button class="btn-edit-disc" data-id="${rule.id}" style="background: #f3f4f6; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #1f2937; font-weight: 600;">
+                        Edit
+                    </button>
+                    <button class="btn-del-disc" data-id="${rule.id}" style="background: #fee2e2; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #dc2626; font-weight: 600;">
+                        Delete
+                    </button>
+                </div>
+            </td>
+        `;
+
+        discountsTableBody.appendChild(tr);
+    });
+
+    // Attach row button listeners
+    discountsTableBody.querySelectorAll('.btn-toggle-disc').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.getAttribute('data-id');
+            const currentEnabled = e.target.getAttribute('data-enabled') === '1';
+            toggleDiscount(id, currentEnabled);
+        });
+    });
+
+    discountsTableBody.querySelectorAll('.btn-edit-disc').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.getAttribute('data-id');
+            const rule = discounts.find(d => String(d.id) === String(id));
+            if (rule) openDiscountModal(rule);
+        });
+    });
+
+    discountsTableBody.querySelectorAll('.btn-del-disc').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.getAttribute('data-id');
+            deleteDiscount(id);
+        });
+    });
+}
+
+function handleDiscountTypeChange() {
+    if (!discountTypeSelect || !discountValueWrapper || !discountValueLabel) return;
+    const type = discountTypeSelect.value;
+    if (type === 'free_delivery') {
+        discountValueWrapper.style.display = 'none';
+        if (discountValueInput) discountValueInput.required = false;
+    } else {
+        discountValueWrapper.style.display = 'block';
+        if (discountValueInput) discountValueInput.required = true;
+        if (type === 'percentage') {
+            discountValueLabel.textContent = 'Discount Percentage (%)';
+            if (discountValueInput) discountValueInput.placeholder = 'e.g. 10';
+        } else if (type === 'fixed') {
+            discountValueLabel.textContent = 'Discount Amount (₹)';
+            if (discountValueInput) discountValueInput.placeholder = 'e.g. 150';
+        }
+    }
+}
+
+function openDiscountModal(discountToEdit = null) {
+    if (!discountModal || !discountForm) return;
+    discountForm.reset();
+    if (discountFormError) discountFormError.textContent = '';
+
+    if (discountToEdit) {
+        editingDiscountId = discountToEdit.id;
+        if (discountModalTitle) discountModalTitle.textContent = 'EDIT DISCOUNT RULE';
+        if (discountNameInput) discountNameInput.value = discountToEdit.name || '';
+        if (discountAmount1Input) discountAmount1Input.value = discountToEdit.amount1 ?? 0;
+        if (discountOperatorSelect) discountOperatorSelect.value = discountToEdit.operator || '>=';
+        if (discountAmount2Input) discountAmount2Input.value = discountToEdit.amount2 || '';
+        if (discountTypeSelect) discountTypeSelect.value = discountToEdit.discount_type || 'percentage';
+        if (discountValueInput) discountValueInput.value = discountToEdit.discount_value ?? 0;
+        if (discountEnabledCheckbox) discountEnabledCheckbox.checked = Boolean(discountToEdit.is_enabled);
+    } else {
+        editingDiscountId = null;
+        if (discountModalTitle) discountModalTitle.textContent = 'CREATE DISCOUNT RULE';
+        if (discountOperatorSelect) discountOperatorSelect.value = '>=';
+        if (discountEnabledCheckbox) discountEnabledCheckbox.checked = true;
+    }
+
+    handleDiscountTypeChange();
+    discountModal.style.display = 'flex';
+}
+
+function closeDiscountModal() {
+    if (discountModal) discountModal.style.display = 'none';
+    editingDiscountId = null;
+}
+
+async function saveDiscount(e) {
+    e.preventDefault();
+    if (!discountForm) return;
+    if (discountFormError) discountFormError.textContent = '';
+
+    const name = discountNameInput?.value?.trim();
+    const amount1 = Number(discountAmount1Input?.value || 0);
+    const operator = discountOperatorSelect?.value || '>=';
+    const amount2 = Number(discountAmount2Input?.value || 0);
+    const discount_type = discountTypeSelect?.value || 'percentage';
+    const discount_value = Number(discountValueInput?.value || 0);
+    const is_enabled = Boolean(discountEnabledCheckbox?.checked);
+
+    if (!name) {
+        if (discountFormError) discountFormError.textContent = 'Please enter a rule name.';
+        return;
+    }
+
+    if (discount_type !== 'free_delivery' && (isNaN(discount_value) || discount_value <= 0)) {
+        if (discountFormError) discountFormError.textContent = 'Please enter a valid positive discount value.';
+        return;
+    }
+
+    const payload = {
+        name,
+        amount1,
+        operator,
+        amount2,
+        discount_type,
+        discount_value: discount_type === 'free_delivery' ? 0 : discount_value,
+        is_enabled
+    };
+
+    try {
+        const url = editingDiscountId ? `/api/admin/discounts/${editingDiscountId}` : '/api/admin/discounts';
+        const method = editingDiscountId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to save discount rule');
+        }
+
+        if (window.showToast) window.showToast(data.message || 'Discount rule saved successfully');
+        closeDiscountModal();
+        fetchDiscounts();
+    } catch (err) {
+        console.error('Save discount failed:', err);
+        if (discountFormError) discountFormError.textContent = err.message || 'Failed to save discount rule';
+    }
+}
+
+async function toggleDiscount(id, currentEnabledStatus) {
+    try {
+        const res = await fetch(`/api/admin/discounts/${id}/toggle`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ is_enabled: !currentEnabledStatus })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to toggle discount rule status');
+        }
+        if (window.showToast) window.showToast(`Discount rule ${!currentEnabledStatus ? 'enabled' : 'disabled'}`);
+        fetchDiscounts();
+    } catch (err) {
+        console.error('Toggle discount failed:', err);
+        if (window.showToast) window.showToast(err.message || 'Failed to update status', 'error');
+    }
+}
+
+async function deleteDiscount(id) {
+    if (!confirm('Are you sure you want to delete this discount rule?')) return;
+    try {
+        const res = await fetch(`/api/admin/discounts/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to delete discount rule');
+        }
+        if (window.showToast) window.showToast('Discount rule deleted successfully');
+        fetchDiscounts();
+    } catch (err) {
+        console.error('Delete discount failed:', err);
+        if (window.showToast) window.showToast(err.message || 'Failed to delete discount rule', 'error');
+    }
+}
 
 init();

@@ -24,6 +24,7 @@ function initDb() {
             name TEXT NOT NULL,
             description TEXT,
             price REAL NOT NULL,
+            compare_price REAL DEFAULT 0,
             category TEXT,
             qty INTEGER DEFAULT 0,
             image TEXT,
@@ -31,6 +32,10 @@ function initDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating products table:", err);
+            // Migration for existing sqlite databases
+            db.run(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT 0`, (mErr) => {
+                // Column might already exist, safe to ignore error
+            });
         });
 
         // Orders Table
@@ -132,6 +137,21 @@ function initDb() {
             value TEXT NOT NULL
         )`, (err) => {
             if (err) console.error("Error creating admin_settings table:", err);
+        });
+
+        // Discounts Table
+        db.run(`CREATE TABLE IF NOT EXISTS discounts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            amount1 REAL DEFAULT 0,
+            operator TEXT DEFAULT '>=',
+            amount2 REAL DEFAULT 0,
+            discount_type TEXT NOT NULL,
+            discount_value REAL DEFAULT 0,
+            is_enabled INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error("Error creating discounts table:", err);
         });
 
         console.log('Database tables initialized.');

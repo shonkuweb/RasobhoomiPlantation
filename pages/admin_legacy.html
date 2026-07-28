@@ -489,11 +489,12 @@
                 </svg></a></div>
     </aside>
     <main style="padding: 1rem; padding-top: 2rem;">
-        <!-- Toggle (Products | Orders | Settings) -->
+        <!-- Toggle (Products | Orders | Discounts | Settings) -->
         <div class="admin-toggle-container">
             <div class="toggle-wrapper">
                 <button id="btn-products" class="toggle-btn active">Products</button>
                 <button id="btn-orders" class="toggle-btn">Orders</button>
+                <button id="btn-discounts" class="toggle-btn">Discounts</button>
                 <button id="btn-settings" class="toggle-btn">Settings</button>
             </div>
         </div>
@@ -684,6 +685,39 @@
             </div>
         </div>
 
+        <!-- Discounts View -->
+        <div id="discounts-view" style="display: none; max-width: 950px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 style="font-size: 1.5rem; color: #2C1B10; margin: 0; font-weight: 700;">Discount Rules</h2>
+                    <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 0 0;">Create and manage automatic discounts based on customer purchase amounts.</p>
+                </div>
+                <button id="add-discount-btn" class="btn-add-product-modern" style="margin: 0; padding: 0.75rem 1.25rem;">+ ADD DISCOUNT RULE</button>
+            </div>
+
+            <div id="discounts-list-container" class="card-modern" style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                <div id="discounts-loading" style="text-align: center; color: #666; padding: 2rem;">Loading discount rules...</div>
+                <div id="discounts-empty" style="display: none; text-align: center; color: #666; padding: 2rem;">No discount rules found. Click <strong>+ ADD DISCOUNT RULE</strong> to create one.</div>
+                <div id="discounts-table-wrapper" style="overflow-x: auto;">
+                    <table id="discounts-table" style="width: 100%; border-collapse: collapse; display: none;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 0.85rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">
+                                <th style="padding: 0.75rem;">Rule Name</th>
+                                <th style="padding: 0.75rem;">Purchase Condition</th>
+                                <th style="padding: 0.75rem;">Discount Type</th>
+                                <th style="padding: 0.75rem;">Value</th>
+                                <th style="padding: 0.75rem;">Status</th>
+                                <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="discounts-table-body">
+                            <!-- Populated by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Danger Zone -->
         <div
             style="margin-top: 3rem; text-align: center; border-top: 1px solid #ccc; padding-top: 1rem; display:flex; flex-direction:column; gap:1rem; align-items:center;">
@@ -840,37 +874,8 @@
                 </p>
             </div>
         </div>
-        <!-- Auth Modal -->
-        <div id="auth-modal" class="auth-overlay">
-            <div class="auth-card">
-                <div class="auth-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2">
-                        </rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg></div>
-                <div
-                    style="font-family: 'Great Vibes', cursive; font-size: 2rem; color: #2C1B10; margin-bottom: 0.5rem;">
-                    Rasobhoomi</div>
-                <h2 style="text-transform: uppercase; font-size: 1.2rem; letter-spacing: 1px;">
-                    ADMIN ACCESS</h2>
-                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">
-                    Please enter your passcode to continue </p>
-                <form id="auth-form" style="width: 100%;">
-                    <div class="input-group"><input type="password" id="auth-pass" placeholder="Enter Passcode" required
-                            inputmode="numeric" pattern="[0-9]*"
-                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                    </div><button type="submit" class="auth-btn">UNLOCK
-                        ACCESS</button>
-                </form>
-                <p id="auth-error"
-                    style="color: red; font-size: 0.8rem; margin-top: 1rem; min-height: 1.2em; font-weight: bold;">
-                </p>
-            </div>
-        </div>
         <!-- Confirm Modal -->
-        <div id="confirm-modal" class="auth-overlay">
+        <div id="confirm-modal" class="auth-overlay" style="display: none; z-index: 4000;">
             <div class="auth-card">
                 <div class="auth-icon" style="background-color: #ef4444;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
@@ -889,8 +894,72 @@
                         style="background: transparent; border: 2px solid #2C1B10; color: #2C1B10;">CANCEL</button><button
                         id="confirm-yes" class="auth-btn" style="background: #ef4444;">DELETE</button></div>
             </div>
+        <!-- Discount Modal -->
+        <div id="discount-modal" class="overlay modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+            <div class="modal-modern" style="max-width: 520px; width: 90%;">
+                <button id="close-discount-modal" class="close-modal-modern">&times;</button>
+                <h2 id="discount-modal-title" style="margin-top: 0; color: #2C1B10; font-size: 1.25rem;">CREATE DISCOUNT RULE</h2>
+                
+                <form id="discount-form" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                    <div>
+                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Rule Name</label>
+                        <input type="text" id="discount-name" placeholder="e.g. Festival 10% Off" required class="modern-input" style="width: 100%; box-sizing: border-box;">
+                    </div>
+
+                    <div style="background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Purchase Amount Condition</label>
+                        <p style="font-size: 0.75rem; color: #6b7280; margin: 0 0 0.75rem 0;">Condition is evaluated against customer's subtotal amount.</p>
+                        
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 90px;">
+                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Amount 1 (₹)</label>
+                                <input type="number" id="discount-amount1" min="0" step="1" placeholder="0" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
+                            </div>
+                            <div style="width: 90px;">
+                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Operator</label>
+                                <select id="discount-operator" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem; font-weight: bold;">
+                                    <option value=">=">&gt;=</option>
+                                    <option value=">">&gt;</option>
+                                    <option value="<=">&lt;=</option>
+                                    <option value="<">&lt;</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; min-width: 90px;">
+                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Amount 2 (₹) (Opt.)</label>
+                                <input type="number" id="discount-amount2" min="0" step="1" placeholder="Max/Upper" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Discount Type</label>
+                        <select id="discount-type" class="modern-input" style="width: 100%; box-sizing: border-box;">
+                            <option value="percentage">Percentage Discount on Total Spend</option>
+                            <option value="fixed">Fixed Amount Discount on Total Spend</option>
+                            <option value="free_delivery">Free Delivery</option>
+                        </select>
+                    </div>
+
+                    <div id="discount-value-wrapper">
+                        <label id="discount-value-label" style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Discount Percentage (%)</label>
+                        <input type="number" id="discount-value" min="0" step="0.01" placeholder="e.g. 10" class="modern-input" style="width: 100%; box-sizing: border-box;">
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input type="checkbox" id="discount-enabled" checked style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="discount-enabled" style="font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #374151;">Enable Discount Rule</label>
+                    </div>
+
+                    <div id="discount-form-error" style="color: red; font-size: 0.85rem;"></div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="button" id="cancel-discount-btn" class="btn-save-modern" style="background: #e5e7eb; color: #374151; flex: 1;">CANCEL</button>
+                        <button type="submit" id="save-discount-btn" class="btn-save-modern" style="flex: 1;">SAVE RULE</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        
+
         <!-- jsPDF and jsPDF-AutoTable CDNs -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
         <script>window.jsPDF = window.jspdf.jsPDF;</script>

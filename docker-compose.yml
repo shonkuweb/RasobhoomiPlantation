@@ -28,6 +28,8 @@ services:
       - APP_FE_URL=${APP_FE_URL:-${APP_BE_URL}}
     depends_on:
       - db
+    volumes:
+      - wwebjs-auth:/app/.wwebjs_auth
     networks:
       - app-network
 
@@ -50,3 +52,4 @@ networks:
 
 volumes:
   db-data:
+  wwebjs-auth:

@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 .env
 backend/ecommerce.db
+ecommerce.db
+.wwebjs_auth
+.wwebjs_cache
+scripts/test_*.js
+

@@ -25,24 +25,82 @@ const Checkout = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showMinOrderNotice, setShowMinOrderNotice] = useState(false);
     const [orderSettings, setOrderSettings] = useState(DEFAULT_ORDER_SETTINGS);
+    const [discounts, setDiscounts] = useState([]);
+    const [pincodeState, setPincodeState] = useState({
+        loading: false,
+        checkedZip: '',
+        result: null,
+        error: null
+    });
+
+    const checkPincodeServiceability = async (zipToCheck) => {
+        const cleanZip = (zipToCheck || formData.zip || '').trim();
+        if (!cleanZip || !/^\d{6}$/.test(cleanZip)) {
+            setPincodeState({
+                loading: false,
+                checkedZip: cleanZip,
+                result: null,
+                error: 'Please enter a valid 6-digit PIN code'
+            });
+            return;
+        }
+
+        setPincodeState(prev => ({ ...prev, loading: true, error: null }));
+        try {
+            const res = await fetch(`/api/shipping/check-pincode?pincode=${cleanZip}`);
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setPincodeState({
+                    loading: false,
+                    checkedZip: cleanZip,
+                    result: data,
+                    error: null
+                });
+            } else {
+                setPincodeState({
+                    loading: false,
+                    checkedZip: cleanZip,
+                    result: null,
+                    error: data.error || 'Failed to check pincode serviceability'
+                });
+            }
+        } catch (err) {
+            console.error('Pincode check error:', err);
+            setPincodeState({
+                loading: false,
+                checkedZip: cleanZip,
+                result: null,
+                error: 'Network error checking pincode'
+            });
+        }
+    };
 
     useEffect(() => {
         let isMounted = true;
         let timer;
 
-        const fetchOrderSettings = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch('/api/settings/order');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (isMounted) setOrderSettings({ ...DEFAULT_ORDER_SETTINGS, ...data });
+                const [sRes, dRes] = await Promise.all([
+                    fetch('/api/settings/order'),
+                    fetch('/api/discounts')
+                ]);
+
+                if (sRes.ok) {
+                    const data = await sRes.json();
+                    if (isMounted) setOrderSettings({ ...DEFAULT_ORDER_SETTINGS, ...data });
+                }
+                if (dRes.ok) {
+                    const dData = await dRes.json();
+                    if (isMounted) setDiscounts(Array.isArray(dData) ? dData : []);
+                }
             } catch (err) {
-                console.error('Failed to load order settings:', err);
+                console.error('Failed to load checkout settings/discounts:', err);
             }
         };
 
-        fetchOrderSettings();
-        timer = setInterval(fetchOrderSettings, 15000);
+        fetchData();
+        timer = setInterval(fetchData, 15000);
 
         return () => {
             isMounted = false;
@@ -52,9 +110,9 @@ const Checkout = () => {
 
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     const subtotal = getCartTotal();
-    const deliveryCharge = useMemo(() => {
-        if (orderSettings.freeDeliveryActive) return 0;
-        return cart.reduce((sum, item) => {
+
+    const { discountAmount, finalDeliveryCharge, appliedDiscounts } = useMemo(() => {
+        let baseDelivery = orderSettings.freeDeliveryActive ? 0 : cart.reduce((sum, item) => {
             const product = products.find(p => p.id === item.id);
             if (!product) return sum;
             if (product.category === 'Drum Plants') {
@@ -62,11 +120,61 @@ const Checkout = () => {
             }
             return sum + (orderSettings.deliveryPerPlant * item.qty);
         }, 0);
-    }, [cart, products, orderSettings]);
-    const total = subtotal + deliveryCharge;
+
+        let dAmount = 0;
+        let fDelivery = baseDelivery;
+        const applied = [];
+
+        for (const rule of discounts) {
+            if (!rule.is_enabled) continue;
+            const amt1 = Number(rule.amount1 || 0);
+            const amt2 = Number(rule.amount2 || 0);
+            const op = rule.operator || '>=';
+
+            let matches = false;
+            if (op === '>') matches = subtotal > amt1 && (amt2 > 0 ? subtotal < amt2 : true);
+            else if (op === '<') matches = subtotal < (amt2 > 0 ? amt2 : amt1) && (amt1 > 0 ? subtotal > amt1 : true);
+            else if (op === '>=') matches = subtotal >= amt1 && (amt2 > 0 ? subtotal <= amt2 : true);
+            else if (op === '<=') matches = subtotal <= (amt2 > 0 ? amt2 : amt1) && (amt1 > 0 ? subtotal >= amt1 : true);
+
+            if (matches) {
+                if (rule.discount_type === 'free_delivery') {
+                    fDelivery = 0;
+                    applied.push({ id: rule.id, name: rule.name, type: 'free_delivery', amount: baseDelivery });
+                } else if (rule.discount_type === 'percentage') {
+                    const pAmt = Math.round((subtotal * Number(rule.discount_value || 0)) / 100);
+                    dAmount += pAmt;
+                    applied.push({ id: rule.id, name: rule.name, type: 'percentage', value: rule.discount_value, amount: pAmt });
+                } else if (rule.discount_type === 'fixed') {
+                    const fAmt = Math.min(subtotal, Number(rule.discount_value || 0));
+                    dAmount += fAmt;
+                    applied.push({ id: rule.id, name: rule.name, type: 'fixed', value: rule.discount_value, amount: fAmt });
+                }
+            }
+        }
+
+        return {
+            discountAmount: dAmount,
+            finalDeliveryCharge: fDelivery,
+            appliedDiscounts: applied
+        };
+    }, [cart, products, orderSettings, subtotal, discounts]);
+
+    const deliveryCharge = finalDeliveryCharge;
+    const total = Math.max(0, subtotal - discountAmount) + deliveryCharge;
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'zip') {
+            const cleanVal = value.trim();
+            if (cleanVal.length === 6 && /^\d{6}$/.test(cleanVal)) {
+                checkPincodeServiceability(cleanVal);
+            } else if (pincodeState.result || pincodeState.error) {
+                setPincodeState({ loading: false, checkedZip: '', result: null, error: null });
+            }
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -213,13 +321,51 @@ const Checkout = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <input
-                                type="text" name="zip" placeholder="Zip Code" required
-                                value={formData.zip} onChange={handleChange}
-                                className="modern-input"
-                            />
+                            <div className="zip-input-wrapper">
+                                <input
+                                    type="text" name="zip" placeholder="Pincode" required
+                                    value={formData.zip} onChange={handleChange}
+                                    maxLength={6}
+                                    className="modern-input zip-input"
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-check-pincode"
+                                    onClick={() => checkPincodeServiceability(formData.zip)}
+                                    disabled={pincodeState.loading || !formData.zip}
+                                >
+                                    {pincodeState.loading ? 'Checking...' : 'Check Service'}
+                                </button>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Delivery Serviceability Status Box */}
+                    {pincodeState.loading && (
+                        <div className="pincode-status-box loading">
+                            <span className="pincode-spinner">🔄</span> Checking delivery service for {formData.zip}...
+                        </div>
+                    )}
+
+                    {!pincodeState.loading && pincodeState.result && (
+                        <div className="pincode-status-box available">
+                            <div className="pincode-status-header">
+                                <span className="pincode-icon">🚚</span>
+                                <strong className="pincode-status-title">
+                                    Delivery Service Available
+                                </strong>
+                            </div>
+                            <p className="pincode-status-msg">
+                                Delivery service is available for pincode <strong>{pincodeState.result.pincode}</strong>. Your order will be safely dispatched to this address.
+                            </p>
+                        </div>
+                    )}
+
+                    {!pincodeState.loading && pincodeState.error && (
+                        <div className="pincode-status-box error">
+                            ⚠️ {pincodeState.error}
+                        </div>
+                    )}
 
                     {totalQty < orderSettings.minimumOrderQty && (
                         <div className="min-order-inline-warning">
@@ -271,9 +417,15 @@ const Checkout = () => {
                             <div className="summary-row" style={{ fontSize: '1rem' }}>
                                 <span>Delivery Charges</span>
                                 <span style={{ color: '#059669' }}>
-                                    {orderSettings.freeDeliveryActive ? 'FREE' : `+ ₹${deliveryCharge}`}
+                                    {orderSettings.freeDeliveryActive || deliveryCharge === 0 ? 'FREE' : `+ ₹${deliveryCharge}`}
                                 </span>
                             </div>
+                            {discountAmount > 0 && (
+                                <div className="summary-row" style={{ fontSize: '0.95rem', color: '#059669', fontWeight: '600' }}>
+                                    <span>Discount Applied</span>
+                                    <span>- ₹{discountAmount}</span>
+                                </div>
+                            )}
                             <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
                                 <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>
                                 <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#2C1B10' }}>₹{total}</span>
