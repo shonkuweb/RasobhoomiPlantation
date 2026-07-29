@@ -696,6 +696,84 @@
             color: #15803d;
             border: 1px solid #86efac;
         }
+
+        /* --- CATEGORY FILTER DROPDOWN POPUP MENU --- */
+        .filter-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: white;
+            border-radius: var(--radius-md, 12px);
+            border: 1px solid var(--admin-border, #e2e8f0);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            min-width: 220px;
+            max-height: 340px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            padding: 0.5rem;
+            animation: dropdownFade 0.18s ease-out;
+        }
+
+        .filter-dropdown.active {
+            display: block;
+        }
+
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+            padding: 0.65rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dropdown-item:hover {
+            background: #f1f5f9;
+            color: var(--admin-primary, #1A4D2E);
+        }
+
+        .dropdown-item.active {
+            background: #e6f4ea;
+            color: var(--admin-primary, #1A4D2E);
+            font-weight: 800;
+        }
+
+        @media (max-width: 640px) {
+            .filter-dropdown {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-height: 65vh;
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.25);
+                padding: 1rem 0.75rem 1.75rem 0.75rem;
+                z-index: 9999;
+                animation: sheetUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .filter-dropdown::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: #cbd5e1;
+                border-radius: 4px;
+                margin: 0 auto 0.75rem auto;
+            }
+        }
     </style>
 </head>
 
