@@ -1432,24 +1432,28 @@ app.get('/api/orders/:id/invoice', (req, res) => {
 
 
 app.put('/api/orders/:id', requireAuth, (req, res) => {
-    const { status, tracking_id } = req.body;
+    const { status, tracking_id, courier_name } = req.body;
     const trackingVal = tracking_id !== undefined ? String(tracking_id).trim() : null;
+    const courierVal = courier_name !== undefined ? String(courier_name).trim().toLowerCase() : 'dtdc';
 
-    if (tracking_id !== undefined && status !== undefined) {
-        db.run("UPDATE orders SET status = ?, tracking_id = ? WHERE id = ?", [status, trackingVal, req.params.id], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Order updated successfully' });
-        });
-    } else if (tracking_id !== undefined) {
-        db.run("UPDATE orders SET tracking_id = ? WHERE id = ?", [trackingVal, req.params.id], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Tracking ID updated successfully' });
-        });
+    if (status !== undefined) {
+        db.run(
+            "UPDATE orders SET status = ?, tracking_id = ?, courier_name = ? WHERE id = ?",
+            [status, trackingVal, courierVal, req.params.id],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: 'Order updated successfully' });
+            }
+        );
     } else {
-        db.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'Order status updated' });
-        });
+        db.run(
+            "UPDATE orders SET tracking_id = ?, courier_name = ? WHERE id = ?",
+            [trackingVal, courierVal, req.params.id],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: 'Order tracking updated successfully' });
+            }
+        );
     }
 });
 

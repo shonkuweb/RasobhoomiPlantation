@@ -1161,12 +1161,12 @@
                 </div>
             </div>
 
-            <!-- Action: Update Status & Tracking -->
+            <!-- Action: Update Status & Delivery Courier -->
             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <div>
-                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 700; color: #475569;">UPDATE ORDER STATUS</label>
-                        <select id="modal-status-select" class="modern-input" style="width: 100%; background: white; margin: 0; font-weight: 700;">
+                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 800; color: #334155;">UPDATE ORDER STATUS</label>
+                        <select id="modal-status-select" class="modern-input" style="width: 100%; background: white; margin: 0; font-weight: 700; border-radius: 10px;">
                             <option value="new">NEW</option>
                             <option value="in-process">IN-PROCESS</option>
                             <option value="in-transit">IN-TRANSIT</option>
@@ -1174,12 +1174,22 @@
                         </select>
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 700; color: #475569;">DTDC TRACKING ID (AWB)</label>
-                        <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0;">
+                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 800; color: #334155;">DELIVERY METHOD / COURIER *</label>
+                        <select id="modal-courier-select" class="modern-input" style="width: 100%; background: white; margin: 0; font-weight: 700; border-radius: 10px; border: 1.5px solid var(--admin-primary, #1A4D2E);">
+                            <option value="dtdc">🚚 1. By DTDC</option>
+                            <option value="amazon">📦 2. By Amazon Delivery</option>
+                            <option value="rail">🚆 3. By Rail/train</option>
+                            <option value="bus">🚌 4. By BUS</option>
+                        </select>
+                    </div>
+                    <div id="modal-tracking-wrapper" style="background: #f8fafc; padding: 0.85rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                        <label id="modal-tracking-label" style="display: block; margin-bottom: 0.35rem; font-size: 0.78rem; font-weight: 800; color: #1e293b;">DTDC TRACKING ID (AWB) *</label>
+                        <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0; background: white;">
+                        <p id="modal-courier-hint" style="margin: 0.4rem 0 0 0; font-size: 0.72rem; color: #64748b; font-weight: 600;"></p>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
-                        <button id="modal-update-status-btn" class="btn-add-product-modern" style="flex: 1; margin: 0;">UPDATE ORDER</button>
-                        <a id="modal-download-invoice-btn" href="#" target="_blank" class="view-btn" style="background: #0f172a; color: white;">📄 INVOICE PDF</a>
+                        <button id="modal-update-status-btn" class="btn-add-product-modern" style="flex: 1; margin: 0; padding: 0.85rem;">UPDATE ORDER</button>
+                        <a id="modal-download-invoice-btn" href="#" target="_blank" class="view-btn" style="background: #0f172a; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;">📄 INVOICE PDF</a>
                     </div>
                 </div>
             </div>

@@ -127,10 +127,12 @@ function initDb() {
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
             tracking_id TEXT,
+            courier_name TEXT DEFAULT 'dtdc',
             is_deleted BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_id TEXT`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_name TEXT DEFAULT 'dtdc'`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_charge REAL DEFAULT 0`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount REAL DEFAULT 0`,
         `CREATE TABLE IF NOT EXISTS categories (

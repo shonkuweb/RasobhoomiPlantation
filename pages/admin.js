@@ -424,6 +424,14 @@ function setupListeners() {
     if (discountTypeSelect) discountTypeSelect.addEventListener('change', handleDiscountTypeChange);
     if (discountForm) discountForm.addEventListener('submit', saveDiscount);
 
+    // Modal Courier Dropdown Change Listener
+    const modalCourierSelect = document.getElementById('modal-courier-select');
+    if (modalCourierSelect) {
+        modalCourierSelect.addEventListener('change', (e) => {
+            updateCourierFields(e.target.value);
+        });
+    }
+
     // Logout
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -1314,17 +1322,19 @@ function openOrderModal(id) {
 
     document.getElementById('view-order-total').textContent = '₹' + (order.total || 0);
 
-    // Set Status Dropdown & DTDC Tracking ID Input
+    // Set Status Dropdown & Courier Method Selection
     const select = document.getElementById('modal-status-select');
     if (select) select.value = order.status || 'new';
 
-    const trackingInput = document.getElementById('modal-tracking-id');
-    if (trackingInput) trackingInput.value = order.tracking_id || '';
+    const courierSelect = document.getElementById('modal-courier-select');
+    const currentCourier = (order.courier_name || 'dtdc').toLowerCase();
+    if (courierSelect) courierSelect.value = currentCourier;
+
+    updateCourierFields(currentCourier, order.tracking_id);
 
     const invoiceBtn = document.getElementById('modal-download-invoice-btn');
     if (invoiceBtn) invoiceBtn.href = `/api/orders/${order.id}/invoice`;
 
-    // Allow selecting any status, forward or backward
     if (select) {
         Array.from(select.options).forEach(option => {
             option.disabled = false;
@@ -1332,9 +1342,51 @@ function openOrderModal(id) {
     }
 
     const delBtn = document.getElementById('delete-order-btn');
-    // Ensure we handle delete button event properly if it exists in modal
     if (delBtn) {
         delBtn.onclick = () => deleteOrder(order.id);
+    }
+}
+
+function updateCourierFields(courier, existingTrackingId = '') {
+    const courierSelect = document.getElementById('modal-courier-select');
+    const trackingWrapper = document.getElementById('modal-tracking-wrapper');
+    const trackingLabel = document.getElementById('modal-tracking-label');
+    const trackingInput = document.getElementById('modal-tracking-id');
+    const courierHint = document.getElementById('modal-courier-hint');
+
+    const selectedCourier = (courier || courierSelect?.value || 'dtdc').toLowerCase();
+
+    if (trackingWrapper) {
+        if (selectedCourier === 'dtdc') {
+            trackingWrapper.style.display = 'block';
+            if (trackingLabel) trackingLabel.textContent = 'DTDC TRACKING ID (AWB) *';
+            if (trackingInput) {
+                trackingInput.placeholder = 'e.g. D12345678';
+                if (existingTrackingId !== null && existingTrackingId !== undefined && existingTrackingId !== '') {
+                    trackingInput.value = existingTrackingId;
+                }
+            }
+            if (courierHint) courierHint.textContent = '💡 Direct tracking link will be generated for DTDC official tracking portal.';
+        } else if (selectedCourier === 'amazon') {
+            trackingWrapper.style.display = 'block';
+            if (trackingLabel) trackingLabel.textContent = 'AMAZON TRACKING ID *';
+            if (trackingInput) {
+                trackingInput.placeholder = 'e.g. 402-1234567-8901234';
+                if (existingTrackingId !== null && existingTrackingId !== undefined && existingTrackingId !== '') {
+                    trackingInput.value = existingTrackingId;
+                }
+            }
+            if (courierHint) courierHint.textContent = '💡 Direct tracking link (https://track.amazon.in/tracking/...) will be provided to customer.';
+        } else {
+            trackingWrapper.style.display = 'block';
+            if (trackingLabel) trackingLabel.textContent = 'DELIVERY METHOD NOTE';
+            if (trackingInput) {
+                trackingInput.placeholder = 'N/A (Hand Delivery)';
+                trackingInput.value = '';
+            }
+            const methodLabel = selectedCourier === 'rail' ? 'Rail / Train' : 'BUS Service';
+            if (courierHint) courierHint.textContent = `ℹ️ Selected: ${methodLabel}. Customer will see: "Delivery will be done by Rasobhoomi in hand."`;
+        }
     }
 }
 
@@ -1348,13 +1400,31 @@ async function updateOrderStatus() {
     if (!editingId) return;
 
     const newStatus = document.getElementById('modal-status-select')?.value;
-    const trackingId = document.getElementById('modal-tracking-id')?.value?.trim() || '';
+    const courierName = document.getElementById('modal-courier-select')?.value || 'dtdc';
+    const trackingInput = document.getElementById('modal-tracking-id');
+    const trackingId = trackingInput?.value?.trim() || '';
+
+    // Validation for DTDC and Amazon
+    if (courierName === 'dtdc' && !trackingId) {
+        if (window.showToast) window.showToast('Please enter DTDC Tracking / AWB Number', 'error');
+        if (trackingInput) trackingInput.focus();
+        return;
+    }
+    if (courierName === 'amazon' && !trackingId) {
+        if (window.showToast) window.showToast('Please enter Amazon Tracking ID', 'error');
+        if (trackingInput) trackingInput.focus();
+        return;
+    }
 
     try {
         const res = await fetch(`/api/orders/${editingId}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ status: newStatus, tracking_id: trackingId })
+            body: JSON.stringify({
+                status: newStatus,
+                tracking_id: (courierName === 'dtdc' || courierName === 'amazon') ? trackingId : '',
+                courier_name: courierName
+            })
         });
 
         if (res.ok) {

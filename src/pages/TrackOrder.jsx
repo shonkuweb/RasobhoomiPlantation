@@ -90,8 +90,102 @@ const TrackOrder = () => {
                             <span style={{ fontWeight: 'bold' }}>₹{orderData.total}</span>
                         </div>
                     </div>
+                    {/* Tracking Section */}
+                    {orderData.courier_name === 'amazon' && orderData.tracking_id ? (
+                        <div style={{
+                            background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
+                            color: '#ffffff',
+                            borderRadius: '16px',
+                            padding: '1.25rem 1.5rem',
+                            margin: '1.25rem 0',
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.85rem'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{
+                                        background: '#FF9900',
+                                        color: '#111827',
+                                        padding: '0.4rem 0.75rem',
+                                        borderRadius: '8px',
+                                        fontWeight: '800',
+                                        fontSize: '0.85rem',
+                                        letterSpacing: '0.5px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem'
+                                    }}>
+                                        📦 Amazon Delivery
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amazon Tracking Number</div>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#f9fafb', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                                            {orderData.tracking_id}
+                                        </div>
+                                    </div>
+                                </div>
 
-                    {orderData.tracking_id && (
+                                <a
+                                    href={`https://track.amazon.in/tracking/${encodeURIComponent(orderData.tracking_id)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #ff9900 0%, #ffb84d 100%)',
+                                        color: '#111827',
+                                        padding: '0.65rem 1.15rem',
+                                        borderRadius: '10px',
+                                        fontWeight: '800',
+                                        fontSize: '0.85rem',
+                                        textDecoration: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        boxShadow: '0 4px 12px rgba(255, 153, 0, 0.3)'
+                                    }}
+                                >
+                                    <span>Track Live on Amazon</span>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                </a>
+                            </div>
+
+                            <div style={{ fontSize: '0.75rem', color: '#9ca3af', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.6rem' }}>
+                                💡 Click the button above to view live courier tracking & real-time updates directly on Amazon's official portal.
+                            </div>
+                        </div>
+                    ) : (orderData.courier_name === 'rail' || orderData.courier_name === 'bus') ? (
+                        <div style={{
+                            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                            color: '#ffffff',
+                            borderRadius: '16px',
+                            padding: '1.25rem 1.5rem',
+                            margin: '1.25rem 0',
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.85rem'
+                        }}>
+                            <div style={{
+                                background: '#2563eb',
+                                color: 'white',
+                                padding: '0.45rem 0.85rem',
+                                borderRadius: '8px',
+                                fontWeight: '800',
+                                fontSize: '0.85rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem'
+                            }}>
+                                {orderData.courier_name === 'rail' ? '🚆 Rail / Train' : '🚌 BUS Service'}
+                            </div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#f8fafc' }}>
+                                Delivery will be done by Rasobhoomi in hand.
+                            </div>
+                        </div>
+                    ) : orderData.tracking_id ? (
                         <div style={{
                             background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
                             color: '#ffffff',
@@ -155,7 +249,7 @@ const TrackOrder = () => {
                                 💡 Click the button above to view live courier tracking & real-time updates directly on DTDC's official portal.
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <div className="timeline-wrapper">
                         {/* Step 1 */}

@@ -54,12 +54,14 @@ function initDb() {
             payment_status TEXT DEFAULT 'pending',
             transaction_id TEXT,
             tracking_id TEXT,
+            courier_name TEXT DEFAULT 'dtdc',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating orders table:", err);
         });
 
         db.run(`ALTER TABLE orders ADD COLUMN tracking_id TEXT`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN courier_name TEXT DEFAULT 'dtdc'`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN delivery_charge REAL DEFAULT 0`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0`, (mErr) => {});
 
