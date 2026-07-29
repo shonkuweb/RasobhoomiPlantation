@@ -1371,7 +1371,14 @@ app.post('/api/orders/:id/mark-paid', requireAuth, (req, res) => {
                     } catch (e) { console.error("Item parse error:", e); }
                 }
 
-                res.json({ success: true, message: 'Order marked as paid' });
+                // Trigger WhatsApp notification & PDF invoice to customer and admin
+                db.get("SELECT * FROM orders WHERE id = ?", [orderId], (fetchErr, updatedOrder) => {
+                    if (!fetchErr && updatedOrder) {
+                        sendOrderPaymentNotification(updatedOrder).catch(e => console.error('[WHATSAPP] Order notification error:', e));
+                    }
+                });
+
+                res.json({ success: true, message: 'Order marked as paid & invoice sent via WhatsApp' });
             }
         );
     });

@@ -277,7 +277,55 @@ export function reconnectWhatsApp() {
 }
 
 /**
- * Send Payment Success Notification for an Order to 8972076182
+ * Build structured WhatsApp confirmation message for customer
+ */
+export function buildCustomerOrderMessage(order) {
+    let itemsText = '• Item details unavailable';
+    try {
+        const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+        if (Array.isArray(items) && items.length > 0) {
+            itemsText = items.map((item, idx) => {
+                const name = item.name || item.title || 'Plant / Product';
+                const qty = item.qty || item.quantity || 1;
+                const price = item.price ? `₹${item.price}` : '';
+                return `  ${idx + 1}. *${name}* × ${qty} ${price ? `(${price})` : ''}`;
+            }).join('\n');
+        }
+    } catch (e) {
+        if (typeof order.items === 'string' && order.items.trim()) {
+            itemsText = `• ${order.items}`;
+        }
+    }
+
+    const customerName = order.name ? order.name.trim() : 'Valued Customer';
+    const txnId = order.transaction_id || order.id;
+
+    return `🌿 *THANK YOU FOR YOUR ORDER WITH RASOBHOOMI PLANTATION!* 🌿
+--------------------------------------------------
+Dear *${customerName}*,
+
+We have received your payment and your order *#${order.id}* is successfully confirmed! 🎉
+
+📦 *Ordered Items:*
+${itemsText}
+
+💰 *Total Paid:* ₹${order.total || 0}
+💳 *Payment Status:* ${(order.payment_status || 'PAID').toUpperCase()}
+🏷️ *Transaction ID:* ${txnId}
+
+📍 *Delivery Address:*
+${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
+
+--------------------------------------------------
+📄 *Your official Tax Invoice PDF is attached below.*
+
+If you have any questions, feel free to reply directly to this message or contact us on WhatsApp (+91 89720 76182).
+
+Thank you for choosing *Rasobhoomi Plantation* for a greener home! 🪴✨`;
+}
+
+/**
+ * Send Payment Success Notification & Invoice PDF for an Order to Admin (8972076182) and Customer
  */
 export async function sendOrderPaymentNotification(order) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
@@ -304,13 +352,27 @@ export async function sendOrderPaymentNotification(order) {
             console.error('[WHATSAPP] Failed to generate PDF invoice:', pdfErr);
         }
 
-        // 1. Send ONLY to Admin / Notification Number (8972076182)
+        // 1. Send to Admin / Notification Number (8972076182)
         const adminJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
         if (adminJid) {
             console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
             await client.sendMessage(adminJid, textMessage);
             if (pdfMedia) {
-                await client.sendMessage(adminJid, pdfMedia, { caption: `📄 Invoice PDF - Order #${order.id}` });
+                await client.sendMessage(adminJid, pdfMedia, { caption: `📄 Admin Copy - Invoice PDF Order #${order.id}` });
+            }
+        }
+
+        // 2. Send to Customer's WhatsApp Number provided at checkout
+        if (order.phone) {
+            const customerJid = formatWhatsAppJid(order.phone);
+            if (customerJid && customerJid !== adminJid) {
+                console.log(`[WHATSAPP] Sending customer order confirmation & invoice PDF for #${order.id} to Customer (${customerJid})...`);
+                const customerMsg = buildCustomerOrderMessage(order);
+                await client.sendMessage(customerJid, customerMsg);
+                if (pdfMedia) {
+                    await client.sendMessage(customerJid, pdfMedia, { caption: `📄 Tax Invoice - Order #${order.id}` });
+                }
+                console.log(`[WHATSAPP] Customer order confirmation & invoice PDF delivered to ${customerJid}!`);
             }
         }
 
