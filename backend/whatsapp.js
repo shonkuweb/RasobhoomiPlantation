@@ -125,6 +125,8 @@ function cleanChromiumLocks(dirPath) {
     } catch (e) {}
 }
 
+let initTimeoutTimer = null;
+
 /**
  * Initialize WhatsApp Client
  */
@@ -149,10 +151,26 @@ export function initWhatsApp() {
     const execPath = getChromiumExecutablePath();
     console.log(`[WHATSAPP] Initializing client... Chromium path: ${execPath || 'Puppeteer default'}`);
 
+    if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
+    initTimeoutTimer = setTimeout(() => {
+        if (connectionState === 'INITIALIZING' && !currentQrDataUrl) {
+            console.warn('[WHATSAPP] Initialization stuck in INITIALIZING for >35s. Triggering automatic reconnect...');
+            reconnectWhatsApp();
+        }
+    }, 35000);
+
     client = new Client({
         authStrategy: new LocalAuth({
             dataPath: authPath
         }),
+        webVersionCache: {
+            type: 'remote',
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+        },
+        takeoverOnConflict: true,
+        bypassCSP: true,
+        authTimeoutMs: 90000,
+        qrMaxRetries: 10,
         puppeteer: {
             headless: true,
             executablePath: execPath,
@@ -163,13 +181,15 @@ export function initWhatsApp() {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--disable-extensions'
             ]
         }
     });
 
     client.on('qr', async (qr) => {
         console.log('[WHATSAPP] New QR code generated');
+        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'QR_READY';
         try {
             currentQrDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 8 });
@@ -178,8 +198,13 @@ export function initWhatsApp() {
         }
     });
 
+    client.on('loading_screen', (percent, message) => {
+        console.log(`[WHATSAPP] Loading screen: ${percent}% - ${message}`);
+    });
+
     client.on('ready', async () => {
         console.log('[WHATSAPP] Client is ready & authenticated!');
+        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'CONNECTED';
         currentQrDataUrl = null;
         try {
@@ -194,13 +219,15 @@ export function initWhatsApp() {
     });
 
     client.on('authenticated', () => {
-        console.log('[WHATSAPP] Authenticated successfully!');
-        connectionState = 'INITIALIZING';
+        console.log('[WHATSAPP] Authenticated successfully! Waiting for ready state...');
+        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
+        connectionState = 'AUTHENTICATED';
         currentQrDataUrl = null;
     });
 
     client.on('auth_failure', (msg) => {
         console.error('[WHATSAPP] Authentication failure:', msg);
+        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'DISCONNECTED';
         currentQrDataUrl = null;
         userInfo = null;

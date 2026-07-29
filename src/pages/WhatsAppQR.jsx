@@ -105,6 +105,11 @@ const WhatsAppQR = () => {
                             🟡 Ready for QR Scan
                         </span>
                     )}
+                    {statusData.status === 'AUTHENTICATED' && (
+                        <span style={{ ...styles.badge, ...styles.badgeInitializing }}>
+                            🟡 Restoring Session...
+                        </span>
+                    )}
                     {statusData.status === 'INITIALIZING' && (
                         <span style={{ ...styles.badge, ...styles.badgeInitializing }}>
                             🔵 Initializing Client...
@@ -180,11 +185,26 @@ const WhatsAppQR = () => {
                     </div>
                 )}
 
+                {/* AUTHENTICATED STATE */}
+                {statusData.status === 'AUTHENTICATED' && (
+                    <div style={styles.loadingSection}>
+                        <div style={styles.spinner}></div>
+                        <p style={styles.loadingText}>Session Authenticated! Loading WhatsApp Web chats and syncing...</p>
+                    </div>
+                )}
+
                 {/* INITIALIZING STATE */}
                 {statusData.status === 'INITIALIZING' && (
                     <div style={styles.loadingSection}>
                         <div style={styles.spinner}></div>
-                        <p style={styles.loadingText}>Initializing WhatsApp Web engine... Please wait 10-15 seconds.</p>
+                        <p style={styles.loadingText}>Initializing WhatsApp Web engine... Please wait a moment.</p>
+                        <button
+                            style={{ ...styles.testBtn, backgroundColor: '#f59e0b', marginTop: '1.25rem' }}
+                            onClick={handleConnect}
+                            disabled={connectLoading}
+                        >
+                            {connectLoading ? 'Re-launching Engine...' : '🔄 Force Reset & Regenerate QR Code'}
+                        </button>
                     </div>
                 )}
 
