@@ -317,34 +317,49 @@ app.get('/api/shipping/check-pincode', async (req, res) => {
             });
         }
 
-        /* 
-        // --- SHIPROCKET LIVE API LOOKUP (COMMENTED OUT AS REQUESTED) ---
-        const pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE || "700156";
+        const pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE || "743245";
         const weight = parseFloat(req.query.weight) || 0.5;
         const cod = req.query.cod === '1' ? 1 : 0;
 
         let token = await getShiprocketToken();
         const serviceabilityUrl = `https://apiv2.shiprocket.in/v1/external/courier/serviceability/?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=${cod}`;
-        let servRes = await axios.get(serviceabilityUrl, {
+        
+        const servRes = await axios.get(serviceabilityUrl, {
             headers: { "Authorization": `Bearer ${token}` },
             timeout: 10000
         });
+
         const servData = servRes.data;
         const couriers = servData?.data?.available_courier_companies || [];
-        */
 
-        return res.json({
-            success: true,
-            pincode: deliveryPincode,
-            serviceable: true,
-            dtdcAvailable: true,
-            message: `Delivery service is available for pincode ${deliveryPincode}.`
+        // Check if Amazon delivery option is available in the courier list
+        const isAvailable = couriers.some(c => {
+            const name = (c.courier_name || '').toLowerCase();
+            return name.includes('amazon');
         });
+
+        if (isAvailable) {
+            return res.json({
+                success: true,
+                pincode: deliveryPincode,
+                serviceable: true,
+                message: `Delivery service is available for pincode ${deliveryPincode}.`
+            });
+        } else {
+            return res.json({
+                success: false,
+                pincode: deliveryPincode,
+                serviceable: false,
+                error: `Delivery service is currently not available for pincode ${deliveryPincode}.`
+            });
+        }
     } catch (err) {
-        console.error("Error checking pincode serviceability:", err.message);
-        return res.status(500).json({
+        console.error("Error checking pincode serviceability:", err?.response?.data || err.message);
+        return res.json({
             success: false,
-            error: "Failed to verify pincode serviceability."
+            pincode: (req.query.pincode || req.query.zip || '').toString().trim(),
+            serviceable: false,
+            error: "Delivery service is currently not available for this pincode."
         });
     }
 });
