@@ -386,6 +386,162 @@ export async function sendOrderPaymentNotification(order) {
 }
 
 /**
+ * Build sweet, delightful WhatsApp status update message for customer
+ */
+export function buildOrderStatusMessage(order, newStatus) {
+    const customerName = order.name ? order.name.trim() : 'Valued Customer';
+    const statusKey = String(newStatus || '').toLowerCase().trim();
+
+    let itemsText = '• Item details unavailable';
+    try {
+        const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+        if (Array.isArray(items) && items.length > 0) {
+            itemsText = items.map((item, idx) => {
+                const name = item.name || item.title || 'Plant / Product';
+                const qty = item.qty || item.quantity || 1;
+                return `  ${idx + 1}. *${name}* × ${qty}`;
+            }).join('\n');
+        }
+    } catch (e) {
+        if (typeof order.items === 'string' && order.items.trim()) {
+            itemsText = `• ${order.items}`;
+        }
+    }
+
+    const deliveryAddress = [order.address, order.city, order.zip ? `- ${order.zip}` : ''].filter(Boolean).join(', ');
+
+    if (statusKey === 'in-process' || statusKey === 'in_process' || statusKey === 'processing') {
+        return `🌿 *RASOBHOOMI PLANTATION - ORDER UPDATE* 🌿
+--------------------------------------------------
+Dearest *${customerName}*, 🌸
+
+Wonderful news! We are loving and pampering your plant babies for Order *#${order.id}*! 🪴💚
+
+Our nursery team is carefully inspecting, watering, and packing your plants with utmost care so they reach you fresh, healthy, and vibrant!
+
+📦 *Your Ordered Items:*
+${itemsText}
+
+We can't wait for your home and garden to blossom! Thank you for choosing *Rasobhoomi Plantation*. ✨🌿`;
+    }
+
+    if (statusKey === 'in-transit' || statusKey === 'in_transit' || statusKey === 'dispatched' || statusKey === 'shipped') {
+        const courierName = (order.courier_name || 'dtdc').toUpperCase();
+        let trackingDetails = '';
+        if (order.courier_name === 'dtdc') {
+            trackingDetails = `• *Courier:* DTDC Express 🚚\n• *Tracking AWB:* ${order.tracking_id || 'N/A'}\n• *Track Here:* https://www.dtdc.in/tracking.asp`;
+        } else if (order.courier_name === 'amazon') {
+            trackingDetails = `• *Courier:* Amazon Shipping 📦\n• *Tracking ID:* ${order.tracking_id || 'N/A'}\n• *Track Here:* https://track.amazon.in/tracking/${order.tracking_id || ''}`;
+        } else if (order.courier_name === 'rail') {
+            trackingDetails = `• *Delivery Method:* Rail / Train Transport 🚂\n• *Note:* Delivery will be done in hand by Rasobhoomi team upon arrival.`;
+        } else if (order.courier_name === 'bus') {
+            trackingDetails = `• *Delivery Method:* BUS Transport 🚌\n• *Note:* Delivery will be done in hand by Rasobhoomi team upon arrival.`;
+        } else {
+            trackingDetails = `• *Delivery Method:* ${courierName}\n• *Tracking ID:* ${order.tracking_id || 'Hand Delivery'}`;
+        }
+
+        return `🌿 *RASOBHOOMI PLANTATION - ORDER DISPATCHED!* 🌿
+--------------------------------------------------
+Yay, *${customerName}*! 🚀📦
+Your green companions for Order *#${order.id}* are on their way to you!
+
+🚚 *Shipment Details:*
+${trackingDetails}
+
+📦 *Items in Transit:*
+${itemsText}
+
+📍 *Delivery Destination:*
+${deliveryAddress}
+
+💡 *Quick Tip:* Once your green friends arrive, give them a gentle spray of water and place them in partial shade to rest after their journey! 🪴💧
+
+Thank you for bringing nature into your life with *Rasobhoomi Plantation*! 🌸💚`;
+    }
+
+    if (statusKey === 'completed' || statusKey === 'delivered') {
+        return `🌿 *RASOBHOOMI PLANTATION - ORDER DELIVERED!* 🌿
+--------------------------------------------------
+Dearest *${customerName}*, 🎉🏡
+Your Order *#${order.id}* has been marked as *DELIVERED*!
+
+We hope your new plant babies bring boundless joy, positivity, and fresh air into your home! 🪴✨
+
+📦 *Delivered Items:*
+${itemsText}
+
+🌱 *Plant Care & Support:*
+If you ever have any questions about soil, watering, or sunlight for your plants, we are always just a message away right here on WhatsApp!
+
+If you loved your experience, we would mean the world to us if you shared your green corners with us! 💚
+
+Thank you for choosing *Rasobhoomi Plantation*! 🌸🌿`;
+    }
+
+    if (statusKey === 'cancelled') {
+        return `🌿 *RASOBHOOMI PLANTATION - ORDER CANCELLED* 🌿
+--------------------------------------------------
+Dear *${customerName}*, 🌸
+
+Your Order *#${order.id}* status has been updated to *CANCELLED*.
+
+If you have any questions or need assistance, please feel free to reply directly to this message or call/WhatsApp us at +91 89720 76182. We are always here to help you! 💚`;
+    }
+
+    // Default / General Status Change
+    const formattedStatus = statusKey.replace(/[-_]/g, ' ').toUpperCase();
+    return `🌿 *RASOBHOOMI PLANTATION - ORDER STATUS UPDATE* 🌿
+--------------------------------------------------
+Dear *${customerName}*, 🌸
+
+The status of your Order *#${order.id}* has been updated to: *${formattedStatus}* ✨
+
+📦 *Ordered Items:*
+${itemsText}
+
+If you have any questions, feel free to reply to this WhatsApp message anytime.
+
+Thank you for trusting *Rasobhoomi Plantation* for a greener world! 🪴💚`;
+}
+
+/**
+ * Send WhatsApp Notification to Customer for Order Status Change
+ */
+export async function sendOrderStatusNotification(order, newStatus) {
+    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
+
+    if (connectionState !== 'CONNECTED' || !client) {
+        console.warn(`[WHATSAPP] Cannot send order status notification. WhatsApp state is '${connectionState}'`);
+        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
+    }
+
+    if (!order.phone) {
+        console.warn(`[WHATSAPP] Order #${order.id} has no phone number. Skipping status notification.`);
+        return { success: false, error: 'Customer phone number missing' };
+    }
+
+    try {
+        const customerJid = formatWhatsAppJid(order.phone);
+        if (!customerJid) {
+            console.warn(`[WHATSAPP] Invalid customer phone format for order #${order.id}: ${order.phone}`);
+            return { success: false, error: 'Invalid customer phone format' };
+        }
+
+        const messageText = buildOrderStatusMessage(order, newStatus);
+
+        console.log(`[WHATSAPP] Sending order status update ('${newStatus}') for #${order.id} to Customer (${customerJid})...`);
+        await client.sendMessage(customerJid, messageText);
+        console.log(`[WHATSAPP] Order status notification successfully delivered to ${customerJid}!`);
+
+        return { success: true };
+    } catch (err) {
+        console.error(`[WHATSAPP] Failed to send status notification for order #${order.id}:`, err);
+        return { success: false, error: err.message };
+    }
+}
+
+
+/**
  * Send a custom test message to verify connection
  */
 export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER) {

@@ -17,6 +17,7 @@ import {
     getWhatsAppStatus,
     reconnectWhatsApp,
     sendOrderPaymentNotification,
+    sendOrderStatusNotification,
     sendTestMessage,
     logoutWhatsApp
 } from './whatsapp.js';
@@ -1458,25 +1459,45 @@ app.put('/api/orders/:id', requireAuth, (req, res) => {
         }
     }
 
-    if (status !== undefined) {
-        db.run(
-            "UPDATE orders SET status = ?, tracking_id = ?, courier_name = ? WHERE id = ?",
-            [status, trackingVal, courierVal || 'dtdc', req.params.id],
-            function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ message: 'Order updated successfully' });
+    const orderId = req.params.id;
+
+    // Fetch existing order to compare status/tracking change
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (getErr, oldOrder) => {
+        if (getErr || !oldOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const newStatusVal = status !== undefined ? status : oldOrder.status;
+        const newTrackingVal = tracking_id !== undefined ? trackingVal : oldOrder.tracking_id;
+        const newCourierVal = courier_name !== undefined ? (courierVal || 'dtdc') : (oldOrder.courier_name || 'dtdc');
+
+        const sql = status !== undefined
+            ? "UPDATE orders SET status = ?, tracking_id = ?, courier_name = ? WHERE id = ?"
+            : "UPDATE orders SET tracking_id = ?, courier_name = ? WHERE id = ?";
+        const params = status !== undefined
+            ? [newStatusVal, newTrackingVal, newCourierVal, orderId]
+            : [newTrackingVal, newCourierVal, orderId];
+
+        db.run(sql, params, function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // If status changed or tracking details updated for dispatched order, send WhatsApp notification
+            const statusChanged = oldOrder.status !== newStatusVal;
+            const trackingChanged = oldOrder.tracking_id !== newTrackingVal || oldOrder.courier_name !== newCourierVal;
+
+            if (statusChanged || (newStatusVal === 'in-transit' && trackingChanged)) {
+                db.get("SELECT * FROM orders WHERE id = ?", [orderId], (fetchErr, updatedOrder) => {
+                    if (!fetchErr && updatedOrder) {
+                        sendOrderStatusNotification(updatedOrder, newStatusVal).catch(e => {
+                            console.error('[WHATSAPP] Order status notification error:', e);
+                        });
+                    }
+                });
             }
-        );
-    } else {
-        db.run(
-            "UPDATE orders SET tracking_id = ?, courier_name = ? WHERE id = ?",
-            [trackingVal, courierVal || 'dtdc', req.params.id],
-            function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ message: 'Order tracking updated successfully' });
-            }
-        );
-    }
+
+            res.json({ message: 'Order updated successfully', status: newStatusVal });
+        });
+    });
 });
 
 app.post('/api/auth/login', (req, res) => {
