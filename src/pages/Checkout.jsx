@@ -294,11 +294,14 @@ const Checkout = () => {
 
                 {/* Shipping Details Form */}
                 <form onSubmit={handleSubmit} className="checkout-card">
-                    <h3 className="checkout-section-title">Shipping Details</h3>
+                    <div className="checkout-section-header">
+                        <span className="step-badge">1</span>
+                        <h3 className="checkout-section-title">Shipping Details</h3>
+                    </div>
 
                     <div className="form-group">
                         <input
-                            type="text" name="name" placeholder="Full Name" required
+                            type="text" name="name" placeholder="Full Name *" required
                             value={formData.name} onChange={handleChange}
                             className="modern-input"
                         />
@@ -306,7 +309,7 @@ const Checkout = () => {
 
                     <div className="form-group">
                         <input
-                            type="tel" name="phone" placeholder="Phone Number" required
+                            type="tel" name="phone" placeholder="Phone Number *" required
                             value={formData.phone} onChange={handleChange}
                             className="modern-input"
                         />
@@ -314,7 +317,7 @@ const Checkout = () => {
 
                     <div className="form-group">
                         <textarea
-                            name="address" placeholder="Address" required
+                            name="address" placeholder="Delivery Address *" required
                             value={formData.address} onChange={handleChange}
                             rows="3"
                             className="modern-input"
@@ -324,7 +327,7 @@ const Checkout = () => {
                     <div className="form-row">
                         <div className="form-group">
                             <input
-                                type="text" name="city" placeholder="City" required
+                                type="text" name="city" placeholder="City *" required
                                 value={formData.city} onChange={handleChange}
                                 className="modern-input"
                             />
@@ -332,7 +335,7 @@ const Checkout = () => {
                         <div className="form-group">
                             <div className="zip-input-wrapper">
                                 <input
-                                    type="text" name="zip" placeholder="Pincode" required
+                                    type="text" name="zip" placeholder="Pincode *" required
                                     value={formData.zip} onChange={handleChange}
                                     maxLength={6}
                                     className="modern-input zip-input"
@@ -385,57 +388,70 @@ const Checkout = () => {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="btn-primary btn-block"
-                        style={{ fontSize: '1rem', opacity: isSubmitting ? 0.7 : 1 }}
+                        className="btn-primary btn-block desktop-pay-btn"
+                        style={{ fontSize: '1.05rem', opacity: isSubmitting ? 0.7 : 1 }}
                     >
-                        {isSubmitting ? 'Processing...' : `PAY ₹${total}`}
+                        {isSubmitting ? 'Processing Order...' : `PAY ₹${total} NOW`}
                     </button>
-                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#666', marginTop: '1rem' }}>
-                        Secure Payment via PhonePe
+                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#6b7280', marginTop: '0.85rem' }}>
+                        🔒 100% Secure Payment via PhonePe
                     </p>
                 </form>
 
-                {/* Order Summary */}
+                {/* Order Summary Card */}
                 <div className="checkout-card">
-                    <h3 className="checkout-section-title">Order Summary</h3>
+                    <div className="checkout-section-header">
+                        <span className="step-badge">2</span>
+                        <h3 className="checkout-section-title">Order Summary</h3>
+                    </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {/* Items List */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {/* Items List with Thumbnails */}
+                        <div className="checkout-items-list-modern">
                             {cart.map(item => {
                                 const product = products.find(p => p.id === item.id);
                                 if (!product) return null;
                                 return (
-                                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#4b5563' }}>
-                                        <span>{product.name} <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>x {item.qty}</span></span>
-                                        <span style={{ fontWeight: '500' }}>₹{product.price * item.qty}</span>
+                                    <div key={item.id} className="checkout-item-row">
+                                        <div className="checkout-item-left">
+                                            {product.image ? (
+                                                <img src={product.image} alt={product.name} className="checkout-item-thumb" />
+                                            ) : (
+                                                <div className="checkout-item-thumb-placeholder">🌿</div>
+                                            )}
+                                            <div className="checkout-item-details">
+                                                <span className="checkout-item-title">{product.name}</span>
+                                                <span className="checkout-item-qty">Qty: {item.qty} × ₹{product.price}</span>
+                                            </div>
+                                        </div>
+                                        <span className="checkout-item-subtotal">₹{product.price * item.qty}</span>
                                     </div>
                                 );
                             })}
                         </div>
 
                         <div className="summary-total">
-                            <div className="summary-row" style={{ fontSize: '1rem' }}>
+                            <div className="summary-row" style={{ fontSize: '0.95rem' }}>
                                 <span>Item Subtotal</span>
                                 <span>₹{subtotal}</span>
                             </div>
-                            <div className="summary-row" style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                            <div className="summary-row" style={{ fontSize: '0.88rem', color: '#6b7280' }}>
                                 <span>Total Plants</span>
                                 <span>{totalQty}</span>
                             </div>
-                            <div className="summary-row" style={{ fontSize: '1rem' }}>
+                            <div className="summary-row" style={{ fontSize: '0.95rem' }}>
                                 <span>Delivery Charges</span>
-                                <span style={{ color: '#059669' }}>
+                                <span style={{ color: '#059669', fontWeight: '700' }}>
                                     {orderSettings.freeDeliveryActive || deliveryCharge === 0 ? 'FREE' : `+ ₹${deliveryCharge}`}
                                 </span>
                             </div>
                             {appliedDiscounts.length > 0 && (
-                                <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #bbf7d0', margin: '0.5rem 0' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#166534', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '10px', border: '1px solid #bbf7d0', margin: '0.5rem 0' }}>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#166534', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                         🎉 Applied Discounts:
                                     </div>
                                     {appliedDiscounts.map((disc, idx) => (
-                                        <div key={disc.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#15803d', fontWeight: '500' }}>
+                                        <div key={disc.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#15803d', fontWeight: '600' }}>
                                             <span>• {disc.name}</span>
                                             <span>{disc.type === 'free_delivery' ? 'FREE DELIVERY' : `- ₹${disc.amount}`}</span>
                                         </div>
@@ -443,19 +459,44 @@ const Checkout = () => {
                                 </div>
                             )}
                             {discountAmount > 0 && (
-                                <div className="summary-row" style={{ fontSize: '0.95rem', color: '#059669', fontWeight: '600' }}>
+                                <div className="summary-row" style={{ fontSize: '0.95rem', color: '#059669', fontWeight: '700' }}>
                                     <span>Total Savings</span>
                                     <span>- ₹{discountAmount}</span>
                                 </div>
                             )}
-                            <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '1px dashed #e5e7eb', paddingTop: '0.5rem' }}>
-                                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#111827' }}>Grand Total</span>
-                                <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#2C1B10' }}>₹{total}</span>
+                            <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem' }}>
+                                <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>Grand Total</span>
+                                <span style={{ fontSize: '1.35rem', fontWeight: '900', color: '#1A4D2E' }}>₹{total}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
+            </div>
+
+            {/* Mobile Sticky Bottom Pay Bar */}
+            <div className="mobile-checkout-bar">
+                <div className="mobile-checkout-total">
+                    <span className="mobile-total-label">Grand Total</span>
+                    <span className="mobile-total-val">₹{total}</span>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => {
+                        const form = document.querySelector('form.checkout-card');
+                        if (form) {
+                            if (typeof form.requestSubmit === 'function') {
+                                form.requestSubmit();
+                            } else {
+                                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                            }
+                        }
+                    }}
+                    disabled={isSubmitting}
+                    className="mobile-pay-btn"
+                >
+                    {isSubmitting ? 'Processing...' : `PAY ₹${total} NOW`}
+                </button>
             </div>
         </main>
     );
