@@ -4,77 +4,393 @@
 <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Panel - Mobile E-commerce</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Admin Panel - Rasobhoomi Plantation</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Great+Vibes&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* Admin specific simple styles */
-        .admin-container {
-            padding: 1rem;
+        :root {
+            --admin-primary: #1A4D2E;
+            --admin-primary-dark: #0F2B1A;
+            --admin-primary-light: #256D3B;
+            --admin-accent: #22c55e;
+            --admin-bg: #F8FAFC;
+            --admin-card-bg: #FFFFFF;
+            --admin-border: #E2E8F0;
+            --admin-text-main: #0F172A;
+            --admin-text-muted: #64748B;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-sheet: 24px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 14px rgba(0,0,0,0.07);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
         }
 
-        .admin-card {
-            background-color: #f5f5f5;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border-radius: 8px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* New List Item Styling */
-        .admin-list-item {
-            background: white;
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--admin-bg);
+            color: var(--admin-text-main);
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for mobile bottom nav */
+        }
+
+        /* --- ADMIN NAVBAR --- */
+        .admin-navbar {
+            background: linear-gradient(135deg, #0F2B1A 0%, #1A4D2E 100%) !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 4px 20px rgba(15, 43, 26, 0.2);
+            height: 64px;
+            padding: 0 1.25rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .admin-logo {
+            font-size: 1.1rem !important;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #FFFFFF !important;
+        }
+
+        .admin-badge-pill {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+            padding: 0.4rem 0.9rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover, .logout-btn:active {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(0.98);
+        }
+
+        /* --- EXECUTIVE STATS SUMMARY BAR --- */
+        .admin-stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .admin-stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+        }
+
+        .stat-card {
+            background: var(--admin-card-bg);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.15rem;
+            border: 1px solid var(--admin-border);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
-            padding: 1.5rem;
-            /* Increased padding */
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .revenue-icon { background: #dcfce7; color: #166534; }
+        .orders-icon { background: #e0f2fe; color: #0369a1; }
+        .pending-icon { background: #fef3c7; color: #b45309; }
+        .stock-icon { background: #fee2e2; color: #b91c1c; }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--admin-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--admin-text-main);
+            line-height: 1.2;
+            margin-top: 0.1rem;
+        }
+
+        /* --- DESKTOP / TABLET SEGMENTED TOGGLE NAV --- */
+        .admin-toggle-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .toggle-wrapper {
+            background: #E2E8F0;
+            padding: 4px;
+            border-radius: 16px;
+            display: flex;
+            gap: 4px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-btn.active {
+            background: #FFFFFF;
+            color: var(--admin-primary);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        .order-counter {
+            background: var(--admin-primary);
+            color: white;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .toggle-btn.active .order-counter {
+            background: #22c55e;
+        }
+
+        /* --- MOBILE STICKY BOTTOM NAVIGATION BAR --- */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+            z-index: 1200;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-bottom-nav {
+                display: flex;
+            }
+            .admin-toggle-container {
+                display: none; /* Mobile uses bottom nav */
+            }
+            body {
+                padding-bottom: 85px;
+            }
+        }
+
+        .mobile-nav-btn {
+            background: none;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            color: #64748B;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            flex: 1;
+            padding: 6px 0;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .mobile-nav-btn.active {
+            color: var(--admin-primary);
+        }
+
+        .mobile-nav-btn svg {
+            transition: transform 0.2s ease;
+        }
+
+        .mobile-nav-btn.active svg {
+            transform: translateY(-2px);
+            stroke: var(--admin-primary);
+        }
+
+        .nav-badge {
+            position: absolute;
+            top: -4px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 800;
+            padding: 1px 5px;
+            border-radius: 10px;
+            border: 2px solid white;
+        }
+
+        /* --- MOBILE FLOATING ACTION BUTTON (FAB) --- */
+        .mobile-fab {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            right: 1.25rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1A4D2E 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 24px rgba(26, 77, 46, 0.4);
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1100;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .mobile-fab:active {
+            transform: scale(0.92);
+        }
+
+        @media (max-width: 768px) {
+            .mobile-fab {
+                display: flex;
+            }
+        }
+
+        /* --- LIST ITEMS & CARDS (MOBILE OPTIMIZED) --- */
+        .admin-list-item {
+            background: var(--admin-card-bg);
+            border-radius: var(--radius-md);
+            padding: 1.15rem;
+            margin-bottom: 0.85rem;
+            box-shadow: var(--shadow-sm);
             display: flex;
             align-items: center;
             gap: 1rem;
-            border: 1px solid #eee;
-            transition: transform 0.2s, box-shadow 0.2s;
-            flex-wrap: wrap;
-            /* Mobile friendly wrapping */
-        }
-
-        @media (max-width: 600px) {
-            .admin-list-item {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 1rem;
-            }
-
-            .admin-item-image {
-                width: 100%;
-                height: 150px;
-                margin-bottom: 0.5rem;
-            }
-
-            .view-btn-container {
-                width: 100%;
-                justify-content: flex-end;
-                margin-top: 0.5rem;
-            }
-
-            .admin-item-details {
-                width: 100%;
-            }
+            border: 1px solid var(--admin-border);
+            transition: all 0.2s ease;
         }
 
         .admin-list-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e1;
+        }
+
+        @media (max-width: 640px) {
+            .admin-list-item {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 1rem;
+                gap: 0.85rem;
+            }
+            .admin-item-image {
+                width: 100% !important;
+                height: 160px !important;
+                border-radius: 10px;
+            }
+            .view-btn-container {
+                width: 100%;
+                justify-content: stretch;
+                gap: 0.5rem;
+                margin-top: 0.25rem;
+            }
+            .view-btn-container button, .view-btn-container a {
+                flex: 1;
+                text-align: center;
+                min-height: 42px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
         }
 
         .admin-item-image {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             flex-shrink: 0;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            background: #f0f0f0;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
         }
 
         .admin-item-image img {
@@ -83,374 +399,316 @@
             object-fit: cover;
         }
 
-        .no-image {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: #999;
-            font-weight: bold;
-        }
-
         .admin-item-details {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 0.2rem;
+            gap: 0.25rem;
         }
 
         .item-id {
-            font-size: 0.7rem;
-            color: #888;
+            font-size: 0.72rem;
+            color: var(--admin-text-muted);
+            font-weight: 700;
             letter-spacing: 0.5px;
             margin: 0;
         }
 
         .item-name {
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 700;
-            color: #2C1B10;
+            color: var(--admin-text-main);
             margin: 0;
-            line-height: 1.2;
+            line-height: 1.3;
         }
 
         .item-meta {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             font-size: 0.85rem;
-            color: #555;
-            font-weight: 500;
+            color: #475569;
+            font-weight: 600;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 0.15rem;
         }
 
-        .status-badge {
-            display: inline-block;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            font-weight: bold;
-            margin-top: 0.2rem;
-            align-self: flex-start;
-        }
-
-        .status-new {
-            background: #e0f2fe;
-            color: #0369a1;
-        }
-
-        .status-in-process {
-            background: #fef9c3;
-            color: #a16207;
-        }
-
-        .status-in-transit {
-            background: #ffedd5;
-            color: #9a3412;
-        }
-
-        .status-completed {
+        .price-badge {
             background: #dcfce7;
-            color: #15803d;
+            color: #166534;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.85rem;
         }
 
-        .view-btn-container {
-            display: flex;
-            gap: 0.5rem;
+        .qty-badge {
+            background: #f1f5f9;
+            color: #334155;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .low-qty {
+            background: #fee2e2 !important;
+            color: #991b1b !important;
+        }
+
+        /* --- BUTTON STYLES --- */
+        .btn-add-product-modern {
+            background: linear-gradient(135deg, #1A4D2E 0%, #256D3B 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.25rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(26, 77, 46, 0.25);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn-add-product-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(26, 77, 46, 0.35);
+        }
+
+        .modern-input {
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .modern-input:focus {
+            outline: none;
+            border-color: var(--admin-primary);
+            box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.12);
         }
 
         .view-btn {
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.8rem;
+            padding: 0.55rem 1rem;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.78rem;
             cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        .view-btn:hover {
-            opacity: 0.9;
-        }
-
-        .edit-btn {
-            background: #1A4D2E;
-            color: white;
-        }
-
-        .delete-btn {
-            background: #ef4444;
-            color: white;
-        }
-
-        .view-order-btn {
-            background: #1A4D2E;
-            color: white;
-        }
-
-        /* Drop Zone Styles */
-        .drop-zone {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
             transition: all 0.2s;
-            background: #fafafa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .edit-btn { background: #1A4D2E; color: white; }
+        .edit-btn:hover { background: #256D3B; }
+        .delete-btn { background: #ef4444; color: white; }
+        .delete-btn:hover { background: #dc2626; }
+        .view-order-btn { background: #0f172a; color: white; }
+        .view-order-btn:hover { background: #334155; }
+
+        .filter-chip {
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #475569;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .filter-chip.active {
+            background: var(--admin-primary);
+            color: white;
+            border-color: var(--admin-primary);
+            box-shadow: 0 2px 8px rgba(26, 77, 46, 0.25);
+        }
+
+        /* --- BOTTOM SHEET / MODAL STYLING (MOBILE FIRST) --- */
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.6) !important;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-modern {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-width: 540px;
+            width: 92%;
+            max-height: 88vh;
+            overflow-y: auto;
             position: relative;
+            animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlide {
+            from { transform: translateY(30px) scale(0.96); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 640px) {
+            .modal-overlay {
+                align-items: flex-end !important; /* Bottom sheet on mobile */
+            }
+            .modal-modern {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: var(--radius-sheet) var(--radius-sheet) 0 0 !important;
+                padding: 1.5rem 1.25rem 2rem 1.25rem !important;
+                max-height: 90vh !important;
+                animation: sheetUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            }
+            /* Add drag handle bar on top of mobile sheet */
+            .modal-modern::before {
+                content: '';
+                display: block;
+                width: 38px;
+                height: 5px;
+                background: #cbd5e1;
+                border-radius: 10px;
+                margin: -0.5rem auto 1rem auto;
+            }
+        }
+
+        @keyframes sheetUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .close-modal-modern {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-modal-modern:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        /* --- MOBILE DISCOUNT CARDS (RESPONSIVE VIEW) --- */
+        .discount-card-mobile {
+            background: white;
+            border: 1px solid var(--admin-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .discount-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .discount-rule-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--admin-text-main);
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--radius-md);
+            padding: 1.25rem 1rem;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.2s;
         }
 
         .drop-zone.drag-over {
-            border-color: #1A4D2E;
+            border-color: var(--admin-primary);
             background: #dcfce7;
         }
 
-        .drop-zone-text {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 0.5rem;
-            pointer-events: none;
-            /* Prevent interference with drag events */
-        }
-
-        /* Admin Navbar Overrides */
-        .admin-navbar {
-            background-color: #1A4D2E !important;
-            /* Dark Green */
-            color: #FFFFFF !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-        }
-
-        .admin-navbar .nav-icon {
-            color: #FFFFFF !important;
-        }
-
-        .admin-navbar .nav-logo {
-            color: #FFFFFF !important;
-        }
-
-        .admin-logo {
-            font-family: 'Inter', sans-serif !important;
-            font-weight: 800;
-            font-size: 1.2rem !important;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
+        .btn-upload-modern {
+            background: white;
+            border: 1.5px solid var(--admin-primary);
+            color: var(--admin-primary);
+            padding: 0.5rem 0.85rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .logout-btn {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            color: #FFFFFF;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
+            gap: 0.3rem;
             transition: all 0.2s;
         }
 
-        .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #FFFFFF;
-        }
-
-        /* Filter Dropdown Styles */
-        .btn-icon-modern {
-            background: white;
-            border: 2px solid #1A4D2E;
-            color: #1A4D2E;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            font-weight: bold;
-        }
-
-        .btn-icon-modern:hover {
-            background: #1A4D2E;
+        .btn-upload-modern:hover {
+            background: var(--admin-primary);
             color: white;
         }
 
-        .filter-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            width: 220px;
-            background: white;
-            border: 1px solid #ddd;
+        /* Quick Call & WhatsApp Action Buttons */
+        .quick-action-btn {
+            padding: 0.4rem 0.75rem;
             border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            display: none;
-            max-height: 300px;
-            overflow-y: auto;
-            margin-top: 0.5rem;
-        }
-
-        .filter-dropdown.active {
-            display: block;
-        }
-
-        .dropdown-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: #1A4D2E;
-        }
-
-        .dropdown-item:hover {
-            background: #f3f4f6;
-        }
-
-        .dropdown-item.active {
-            background: #1A4D2E;
-            color: white;
-        }
-
-        /* Base styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f5f5f5;
-            min-height: 100vh;
-        }
-
-        /* Navbar styles */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #2C1B10;
-            color: #FFFAF0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 1rem;
-            z-index: 100;
-        }
-
-        .nav-icon {
-            background: none;
-            border: none;
-            color: #FFFAF0;
-            cursor: pointer;
-            padding: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-logo {
-            flex: 1;
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: 800;
-            color: #FFFAF0;
+            font-size: 0.75rem;
+            font-weight: 700;
             text-decoration: none;
-        }
-
-        /* Sidebar styles */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            right: -280px;
-            width: 280px;
-            height: 100%;
-            background-color: #FFFAF0;
-            z-index: 200;
-            transition: right 0.3s ease;
-            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar.open {
-            right: 0;
-        }
-
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
+            display: inline-flex;
             align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid #ddd;
-            background: #1A4D2E;
-            color: #FFFFFF;
+            gap: 0.3rem;
+            transition: transform 0.15s ease;
         }
 
-        .sidebar-close {
-            background: none;
-            border: none;
-            color: #FFFFFF;
-            font-size: 1.5rem;
-            cursor: pointer;
+        .quick-action-btn:active {
+            transform: scale(0.95);
         }
 
-        .sidebar-nav {
-            list-style: none;
-            padding: 1rem 0;
+        .btn-call {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
         }
 
-        .sidebar-nav li {
-            border-bottom: 1px solid #eee;
-        }
-
-        .sidebar-nav a {
-            display: block;
-            padding: 1rem 1.5rem;
-            color: #2C1B10;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background 0.2s;
-        }
-
-        .sidebar-nav a:hover {
-            background: #f0f0f0;
-        }
-
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 150;
-            display: none;
-        }
-
-        .sidebar-overlay.open {
-            display: block;
-        }
-
-        /* Main content padding for fixed navbar */
-        main {
-            padding-top: 70px;
+        .btn-whatsapp {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
         }
     </style>
 </head>
 
 <body>
-    <!-- Setup a simpler navbar for Admin or keep same? User asked for "Admin Panel" link,
-        implies separate area But often on mobile it shares the shell. I'll keep the shell for consistency. -->
-    <!-- Admin Navbar -->
+    <!-- Top Navbar -->
     <nav class="navbar admin-navbar">
-        <button id="menu-btn" class="nav-icon">
+        <button id="menu-btn" class="nav-icon" aria-label="Open navigation menu">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -458,80 +716,127 @@
                 <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
         </button>
+
         <div class="nav-logo admin-logo">
-            <span style="opacity:0.7; font-weight:400;">RASOBHOOMI</span> PANEL
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #4ade80;">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <span>RASOBHOOMI</span>
+            <span class="admin-badge-pill">ADMIN</span>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
+
+        <div>
             <button id="logout-btn" class="logout-btn">LOGOUT</button>
         </div>
     </nav>
+
+    <!-- Sidebar Overlay & Sidebar -->
     <div id="overlay" class="overlay"></div>
     <aside id="sidebar" class="sidebar">
-        <div class="sidebar-header"><span class="sidebar-title">MENU</span><button id="close-sidebar"
-                class="sidebar-close"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="sidebar-header">
+            <span class="sidebar-title">NAVIGATION</span>
+            <button id="close-sidebar" class="sidebar-close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg></button></div>
+                </svg>
+            </button>
+        </div>
         <div class="sidebar-menu">
-            <a href="/categories" class="menu-item">Categories</a>
-            <a href="/about" class="menu-item">About Us</a>
-            <a href="/contact" class="menu-item">Contact Us</a>
-            <a href="/refund" class="menu-item">Refund & Return</a>
-            <a href="/track-order" class="menu-item">Track Your Order</a>
-            <a href="/" class="menu-item">Home</a>
+            <a href="/" class="menu-item">🛍️ Storefront Home</a>
+            <a href="/categories" class="menu-item">📁 Product Categories</a>
+            <a href="/about" class="menu-item">ℹ️ About Us</a>
+            <a href="/contact" class="menu-item">📞 Contact Us</a>
+            <a href="/track-order" class="menu-item">📦 Track Orders</a>
         </div>
-        <div class="admin-link-container"><a href="/admin" class="admin-link">Admin Panel <svg
-                    xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="7" y1="17" x2="17" y2="7"></line>
-                    <polyline points="7 7 17 7 17 17"></polyline>
-                </svg></a></div>
+        <div class="admin-link-container">
+            <a href="/admin" class="admin-link">⚙️ Admin Dashboard</a>
+        </div>
     </aside>
-    <main style="padding: 1rem; padding-top: 2rem;">
-        <!-- Toggle (Products | Orders | Discounts | Settings) -->
-        <div class="admin-toggle-container">
-            <div class="toggle-wrapper">
-                <button id="btn-products" class="toggle-btn active">Products</button>
-                <button id="btn-orders" class="toggle-btn">Orders</button>
-                <button id="btn-discounts" class="toggle-btn">Discounts</button>
-                <button id="btn-settings" class="toggle-btn">Settings</button>
-            </div>
-        </div>
-        <!-- Toolbar (Products View) -->
-        <div id="product-toolbar"
-            style="display: none; gap: 1rem; margin-bottom: 2rem; align-items: center; flex-wrap: wrap;">
-            <button id="add-product-btn" class="btn-add-product-modern"
-                style="margin-bottom: 0; flex: 1; min-width: 150px;">+ ADD
-                PRODUCT</button>
 
-            <div class="search-container" style="flex: 2; min-width: 200px;">
-                <input type="text" id="product-search" placeholder="Search products..." class="modern-input"
-                    style="width: 100%; margin: 0;">
-            </div>
+    <!-- Main Admin Container -->
+    <main style="padding: 1rem; padding-top: 5rem; max-width: 1200px; margin: 0 auto;">
 
-            <div style="position: relative;">
-                <button id="filter-toggle-btn" class="btn-icon-modern">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                    </svg>
-                    <span id="active-filter-label" style="margin-left: 0.5rem; display: none;">ALL</span>
-                </button>
-                <div id="filter-dropdown" class="filter-dropdown">
-                    <!-- Populated by JS -->
+        <!-- Executive Stat Dashboard Header -->
+        <div id="admin-stats-bar" class="admin-stats-bar">
+            <div class="stat-card">
+                <div class="stat-icon revenue-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Sales Revenue</span>
+                    <span id="stat-revenue" class="stat-value">₹0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orders-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Orders</span>
+                    <span id="stat-orders" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon pending-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Pending Orders</span>
+                    <span id="stat-pending" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stock-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Low Stock</span>
+                    <span id="stat-stock" class="stat-value">0</span>
                 </div>
             </div>
         </div>
 
-        <!-- Order Filters -->
-        <div id="order-filters" class="admin-filters"
-            style="display: none; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;">
-            <div class="search-container" style="flex: 1; min-width: 200px;">
-                <input type="text" id="order-search" placeholder="Search Order ID..." class="modern-input"
-                    style="width: 100%; margin: 0;">
+        <!-- Desktop Segmented Navigation Toggle Bar -->
+        <div class="admin-toggle-container">
+            <div class="toggle-wrapper">
+                <button id="btn-products" class="toggle-btn active">📦 Products</button>
+                <button id="btn-orders" class="toggle-btn">📋 Orders</button>
+                <button id="btn-discounts" class="toggle-btn">🏷️ Discounts</button>
+                <button id="btn-settings" class="toggle-btn">⚙️ Settings</button>
             </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        </div>
+
+        <!-- Product Toolbar (Search & Filter) -->
+        <div id="product-toolbar" style="display: none; gap: 0.75rem; margin-bottom: 1.25rem; align-items: center; flex-wrap: wrap;">
+            <button id="add-product-btn" class="btn-add-product-modern" style="margin: 0; min-width: 140px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                ADD PRODUCT
+            </button>
+
+            <div class="search-container" style="flex: 2; min-width: 200px;">
+                <input type="text" id="product-search" placeholder="Search products by name..." class="modern-input" style="width: 100%; box-sizing: border-box;">
+            </div>
+
+            <div style="position: relative;">
+                <button id="filter-toggle-btn" class="btn-upload-modern" style="padding: 0.75rem 1rem; height: 46px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span id="active-filter-label" style="margin-left: 0.4rem; display: none;">ALL</span>
+                </button>
+                <div id="filter-dropdown" class="filter-dropdown">
+                    <!-- Populated dynamically by admin.js -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Filters Toolbar -->
+        <div id="order-filters" class="admin-filters" style="display: none; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; align-items: center;">
+            <div class="search-container" style="flex: 1; min-width: 220px;">
+                <input type="text" id="order-search" placeholder="Search by Order ID or Name..." class="modern-input" style="width: 100%; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; overflow-x: auto; padding-bottom: 4px;">
                 <button class="filter-chip active" data-type="order" data-filter="all">ALL</button>
                 <button class="filter-chip" data-type="order" data-filter="new">NEW</button>
                 <button class="filter-chip" data-type="order" data-filter="in-process">IN-PROCESS</button>
@@ -540,146 +845,102 @@
                 <button class="filter-chip" data-type="order" data-filter="pending-payment" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;">⚠ PENDING PAYMENT</button>
             </div>
         </div>
-        <!-- List Container -->
+
+        <!-- Main Items List Container (Products & Orders) -->
         <div id="admin-list" class="admin-list">
-            <!-- JS renders items here -->
+            <!-- Rendered by admin.js -->
         </div>
 
         <!-- Settings View Container -->
-        <div id="settings-view" class="admin-settings" style="display: none; max-width: 600px; margin: 0 auto;">
-            <div
-                style="background: white; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                <h2 style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 1rem;">
-                    Generate Sales Report
+        <div id="settings-view" class="admin-settings" style="display: none; max-width: 650px; margin: 0 auto;">
+            <div style="background: white; border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-md); border: 1px solid var(--admin-border);">
+                
+                <!-- Report Generator Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    📄 Generate Sales PDF Report
                 </h2>
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.5rem; background: #fafafa; border-radius: 8px; border: 1px solid #eaeaea;">
-                    <p style="color: #555; font-size: 0.9rem; text-align: center;">Generate a PDF of all orders within a date range.</p>
-                    <div style="display: flex; gap: 1rem;">
-                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label for="report-start-date" style="font-weight: 600; color: #555; font-size: 0.9rem;">Start Date</label>
-                            <input type="date" id="report-start-date" class="modern-input" style="padding: 0.8rem; width: 100%;">
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem;">Export complete order records within a custom date range as a PDF.</p>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.3rem;">
+                            <label for="report-start-date" style="font-weight: 600; color: #475569; font-size: 0.8rem;">Start Date</label>
+                            <input type="date" id="report-start-date" class="modern-input" style="padding: 0.6rem;">
                         </div>
-                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label for="report-end-date" style="font-weight: 600; color: #555; font-size: 0.9rem;">End Date</label>
-                            <input type="date" id="report-end-date" class="modern-input" style="padding: 0.8rem; width: 100%;">
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.3rem;">
+                            <label for="report-end-date" style="font-weight: 600; color: #475569; font-size: 0.8rem;">End Date</label>
+                            <input type="date" id="report-end-date" class="modern-input" style="padding: 0.6rem;">
                         </div>
                     </div>
-                    <button id="btn-generate-report" class="btn-save-modern" style="padding: 1rem; font-size: 1rem; border-radius: 8px; font-weight: bold; background: #2563eb; margin-top: 1rem;">
-                        GENERATE PDF REPORT
+                    <button id="btn-generate-report" class="btn-add-product-modern" style="background: #2563eb; width: 100%; margin-top: 0.5rem;">
+                        GENERATE SALES REPORT PDF
                     </button>
                 </div>
 
-                <hr style="border: none; border-top: 1px solid #eaeaea; margin: 2rem 0;">
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
 
-                <h2
-                    style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 1rem;">
-                    Order Rules & Delivery
+                <!-- Order Rules Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🚚 Order Rules & Delivery Configuration
                 </h2>
                 <form id="settings-order-form" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-min-order-qty" style="font-weight: 600; color: #555; font-size: 0.9rem;">Minimum Order Quantity</label>
-                        <input type="number" id="settings-min-order-qty" min="1" required class="modern-input" style="padding: 0.8rem; background: #fafafa; width: 100%;">
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-min-order-qty" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Minimum Order Quantity</label>
+                        <input type="number" id="settings-min-order-qty" min="1" required class="modern-input">
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-delivery-per-plant" style="font-weight: 600; color: #555; font-size: 0.9rem;">Delivery Charge Per Plant (₹)</label>
-                        <input type="number" id="settings-delivery-per-plant" min="0" step="1" required class="modern-input" style="padding: 0.8rem; background: #fafafa; width: 100%;">
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-delivery-per-plant" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Delivery Charge Per Plant (₹)</label>
+                        <input type="number" id="settings-delivery-per-plant" min="0" step="1" required class="modern-input">
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-drum-multiplier" style="font-weight: 600; color: #555; font-size: 0.9rem;">Drum Plant Delivery Multiplier</label>
-                        <input type="number" id="settings-drum-multiplier" min="0" step="0.1" required class="modern-input" style="padding: 0.8rem; background: #fafafa; width: 100%;">
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-drum-multiplier" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Drum Plant Delivery Multiplier</label>
+                        <input type="number" id="settings-drum-multiplier" min="0" step="0.1" required class="modern-input">
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.6rem;">
-                        <input type="checkbox" id="settings-free-delivery-enabled">
-                        <label for="settings-free-delivery-enabled" style="font-weight: 600; color: #555; font-size: 0.9rem;">Enable Free Delivery Window</label>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.25rem;">
+                        <input type="checkbox" id="settings-free-delivery-enabled" style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="settings-free-delivery-enabled" style="font-weight: 600; color: #334155; font-size: 0.88rem; cursor: pointer;">Enable Free Delivery Window</label>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-free-start" style="font-weight: 600; color: #555; font-size: 0.9rem;">Free Delivery Start</label>
-                        <input type="datetime-local" id="settings-free-start" class="modern-input" style="padding: 0.8rem; background: #fafafa; width: 100%;">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.3rem;">
+                            <label for="settings-free-start" style="font-weight: 600; color: #475569; font-size: 0.8rem;">Free Delivery Start</label>
+                            <input type="datetime-local" id="settings-free-start" class="modern-input" style="padding: 0.6rem;">
+                        </div>
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.3rem;">
+                            <label for="settings-free-end" style="font-weight: 600; color: #475569; font-size: 0.8rem;">Free Delivery End</label>
+                            <input type="datetime-local" id="settings-free-end" class="modern-input" style="padding: 0.6rem;">
+                        </div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-free-end" style="font-weight: 600; color: #555; font-size: 0.9rem;">Free Delivery End</label>
-                        <input type="datetime-local" id="settings-free-end" class="modern-input" style="padding: 0.8rem; background: #fafafa; width: 100%;">
-                    </div>
-                    <div id="settings-order-error" style="color: red; font-size: 0.85rem; text-align: center;"></div>
-                    <div id="settings-order-success" style="color: #15803d; font-size: 0.85rem; text-align: center;"></div>
-                    <button type="submit" id="settings-order-save-btn" class="btn-save-modern"
-                        style="padding: 1rem; font-size: 1rem; border-radius: 8px; font-weight: bold;">
+                    <div id="settings-order-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+                    <div id="settings-order-success" style="color: #166534; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+                    <button type="submit" id="settings-order-save-btn" class="btn-add-product-modern" style="width: 100%; margin-top: 0.5rem;">
                         SAVE ORDER SETTINGS
                     </button>
                 </form>
 
-                <h2
-                    style="text-align: center; color: #2d2d2d; font-weight: bold; font-size: 1.5rem; margin-bottom: 2rem;">
-                    Change Admin Password</h2>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
 
-                <form id="settings-password-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-old-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">Current
-                            Password</label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <input type="password" id="settings-old-pass" placeholder="Enter current password" required
-                                class="modern-input"
-                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
-                            <button type="button" class="pwd-toggle-btn"
-                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
-                                aria-label="Toggle password visibility">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="eye-icon">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                            </button>
-                        </div>
+                <!-- Password Change Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🔒 Security: Change Admin Password
+                </h2>
+                <form id="settings-password-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-old-pass" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Current Password</label>
+                        <input type="password" id="settings-old-pass" placeholder="Enter current admin password" required class="modern-input">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-new-pass" style="font-weight: 600; color: #475569; font-size: 0.85rem;">New Password</label>
+                        <input type="password" id="settings-new-pass" placeholder="Enter new password (min 4 chars)" required class="modern-input">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-confirm-new-pass" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Confirm New Password</label>
+                        <input type="password" id="settings-confirm-new-pass" placeholder="Confirm new password" required class="modern-input">
                     </div>
 
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-new-pass" style="font-weight: 600; color: #555; font-size: 0.9rem;">New
-                            Password</label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <input type="password" id="settings-new-pass" placeholder="Enter new password (min 4 chars)"
-                                required class="modern-input"
-                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
-                            <button type="button" class="pwd-toggle-btn"
-                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
-                                aria-label="Toggle password visibility">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="eye-icon">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+                    <div id="settings-password-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+                    <div id="settings-password-success" style="color: #166534; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
 
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <label for="settings-confirm-new-pass"
-                            style="font-weight: 600; color: #555; font-size: 0.9rem;">Confirm New Password</label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <input type="password" id="settings-confirm-new-pass" placeholder="Confirm new password"
-                                required class="modern-input"
-                                style="padding: 0.8rem; background: #fafafa; width: 100%; padding-right: 2.5rem;">
-                            <button type="button" class="pwd-toggle-btn"
-                                style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: #666; padding: 0.2rem;"
-                                aria-label="Toggle password visibility">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round" class="eye-icon">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="settings-password-error" style="color: red; font-size: 0.85rem; text-align: center;"></div>
-                    <div id="settings-password-success" style="color: #15803d; font-size: 0.85rem; text-align: center;">
-                    </div>
-
-                    <button type="submit" class="btn-save-modern"
-                        style="margin-top: 1rem; padding: 1rem; font-size: 1rem; border-radius: 8px; font-weight: bold;">
-                        CHANGE PASSWORD
+                    <button type="submit" class="btn-add-product-modern" style="width: 100%; margin-top: 0.5rem; background: #0f172a;">
+                        UPDATE PASSCODE
                     </button>
                 </form>
             </div>
@@ -687,24 +948,26 @@
 
         <!-- Discounts View -->
         <div id="discounts-view" style="display: none; max-width: 950px; margin: 0 auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
-                    <h2 style="font-size: 1.5rem; color: #2C1B10; margin: 0; font-weight: 700;">Discount Rules</h2>
-                    <p style="color: #666; font-size: 0.9rem; margin: 0.25rem 0 0 0;">Create and manage automatic discounts based on customer purchase amounts.</p>
+                    <h2 style="font-size: 1.35rem; color: var(--admin-text-main); margin: 0; font-weight: 800;">Discount Rules</h2>
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Automated spending tier discount rules for store checkout.</p>
                 </div>
-                <button id="add-discount-btn" class="btn-add-product-modern" style="margin: 0; padding: 0.75rem 1.25rem;">+ ADD DISCOUNT RULE</button>
+                <button id="add-discount-btn" class="btn-add-product-modern" style="margin: 0;">+ ADD DISCOUNT RULE</button>
             </div>
 
-            <div id="discounts-list-container" class="card-modern" style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <div id="discounts-loading" style="text-align: center; color: #666; padding: 2rem;">Loading discount rules...</div>
-                <div id="discounts-empty" style="display: none; text-align: center; color: #666; padding: 2rem;">No discount rules found. Click <strong>+ ADD DISCOUNT RULE</strong> to create one.</div>
+            <div id="discounts-list-container" style="background: white; border-radius: var(--radius-lg); padding: 1.25rem; border: 1px solid var(--admin-border); box-shadow: var(--shadow-sm);">
+                <div id="discounts-loading" style="text-align: center; color: var(--admin-text-muted); padding: 2rem;">Loading rules...</div>
+                <div id="discounts-empty" style="display: none; text-align: center; color: var(--admin-text-muted); padding: 2rem;">No discount rules found. Click <strong>+ ADD DISCOUNT RULE</strong> to create one.</div>
+                
+                <!-- Table for Desktop View -->
                 <div id="discounts-table-wrapper" style="overflow-x: auto;">
                     <table id="discounts-table" style="width: 100%; border-collapse: collapse; display: none;">
                         <thead>
-                            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left; font-size: 0.85rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">
+                            <tr style="border-bottom: 2px solid #f1f5f9; text-align: left; font-size: 0.78rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                                 <th style="padding: 0.75rem;">Rule Name</th>
-                                <th style="padding: 0.75rem;">Purchase Condition</th>
-                                <th style="padding: 0.75rem;">Discount Type</th>
+                                <th style="padding: 0.75rem;">Condition</th>
+                                <th style="padding: 0.75rem;">Type</th>
                                 <th style="padding: 0.75rem;">Value</th>
                                 <th style="padding: 0.75rem;">Status</th>
                                 <th style="padding: 0.75rem; text-align: right;">Actions</th>
@@ -715,268 +978,249 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Cards for Mobile View (Populated by admin.js) -->
+                <div id="discounts-cards-mobile" style="display: none;">
+                    <!-- Populated by admin.js -->
+                </div>
             </div>
         </div>
 
-        <!-- Danger Zone -->
-        <div
-            style="margin-top: 3rem; text-align: center; border-top: 1px solid #ccc; padding-top: 1rem; display:flex; flex-direction:column; gap:1rem; align-items:center;">
-            <button id="delete-completed-btn"
-                style="background: transparent; border: 1px solid #8B4513; color: #8B4513; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                DELETE COMPLETED HISTORY
+        <!-- Danger Zone Actions -->
+        <div style="margin-top: 3rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.5rem; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:0.75rem; align-items:center;">
+            <button id="delete-completed-btn" style="background: transparent; border: 1.5px solid #b45309; color: #b45309; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer; font-size: 0.78rem; font-weight: 700;">
+                🧹 DELETE COMPLETED HISTORY
             </button>
-            <button id="reset-db-btn"
-                style="background: transparent; border: 1px solid red; color: red; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">⚠
-                RESET ALL PRODUCTS </button>
+            <button id="reset-db-btn" style="background: transparent; border: 1.5px solid #dc2626; color: #dc2626; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer; font-size: 0.78rem; font-weight: 700;">
+                ⚠️ RESET ALL PRODUCTS
+            </button>
         </div>
-        <script type="module" src="main.js"></script>
-        <!-- Password Change Modal removed, integrated into Settings Tab -->
-        </div>
-        <!-- Product Modal (Moved to Bottom) -->
-        <div id="product-modal" class="overlay modal-overlay"
-            style="display: none; align-items: center; justify-content: center; z-index: 2000;">
-            <div class="modal-modern"><button id="close-modal" class="close-modal-modern">&times;
-                </button>
-                <h2 id="modal-title">ADD PRODUCT</h2>
-                <form id="product-form" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <div id="drop-zone" class="drop-zone" style="text-align: center; margin-bottom: 1rem;">
-                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
-                            <label for="product-images" class="btn-upload-modern" style="margin:0; flex:1;">+UPLOAD
-                                IMAGES </label><button type="button" id="btn-camera" class="btn-upload-modern"
-                                style="margin:0; flex:1; background: #1A4D2E; color: white;">📷
-                                TAKE PHOTO </button>
-                        </div>
-                        <p class="drop-zone-text">or Drag and Drop Images Here</p>
-                        <input type="file" id="product-images" accept="image/*" multiple style="display: none;"><input
-                            type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
-                        <div id="image-preview-container"
-                            style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
-                        </div>
-                        <p style="font-size: 0.7rem; color: #666; margin-top: 0.25rem;">
-                            Recommended 1:1 Aspect Ratio</p>
-                    </div><input type="text" id="product-name" placeholder="Product Name" required
-                        class="modern-input"><textarea id="product-desc" placeholder="Product Description"
-                        class="modern-input" rows="3" style="resize: none;"></textarea>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="number" step="0.01" id="product-price" placeholder="Price (₹)" required class="modern-input">
-                        <input type="number" step="1" id="product-discount-percent" placeholder="Discount (%)" class="modern-input">
-                    </div>
-                    <!-- Category Dropdown --><select id="product-category" class="modern-input" required
-                        style="background: white;">
-                        <option value="" disabled selected>Select Category</option>
-                    </select>
-                    <!-- Qty input with spinner can be styled but standard input is
-                                                            fine for now, just apply class --><input type="number"
-                        id="product-qty" placeholder="Quantity" required class="modern-input"><button type="submit"
-                        class="btn-save-modern">SAVE</button>
-                </form>
+    </main>
+
+    <!-- Sticky Mobile Bottom Navigation -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
+        <button class="mobile-nav-btn active" data-tab="products">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <span>Products</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="orders">
+            <div style="position:relative; display:inline-block;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                <span id="mobile-order-badge" class="nav-badge" style="display:none;">0</span>
             </div>
-        </div>
-        <!-- Order Details Modal (Moved to Bottom) -->
-        <div id="order-modal" class="overlay modal-overlay"
-            style="display: none; align-items: center; justify-content: center; z-index: 2000;">
-            <div class="modal-modern" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
-                <button id="close-order-modal" class="close-modal-modern">&times;
-                </button>
-                <h2 style="margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">
-                    ORDER DETAILS </h2>
-                <div style="font-size: 0.9rem; margin-bottom: 1.5rem;">
-                    <!-- Header Info -->
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <strong>Order ID:</strong><span id="view-order-id"
-                            style="color: #1A4D2E; font-weight: bold;"></span>
+            <span>Orders</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="discounts">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
+            <span>Discounts</span>
+        </button>
+        <button class="mobile-nav-btn" data-tab="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Settings</span>
+        </button>
+    </nav>
+
+    <!-- Mobile Floating Action Button (FAB) -->
+    <button id="mobile-fab" class="mobile-fab" aria-label="Add item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+
+    <!-- Product Modal (Bottom Sheet on Mobile) -->
+    <div id="product-modal" class="overlay modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-modern">
+            <button id="close-modal" class="close-modal-modern">&times;</button>
+            <h2 id="modal-title" style="font-weight: 800; font-size: 1.25rem; color: var(--admin-text-main); margin-bottom: 1rem;">ADD PRODUCT</h2>
+            <form id="product-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div id="drop-zone" class="drop-zone">
+                    <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.5rem;">
+                        <label for="product-images" class="btn-upload-modern" style="flex:1;">+ UPLOAD IMAGES</label>
+                        <button type="button" id="btn-camera" class="btn-upload-modern" style="flex:1; background: var(--admin-primary); color: white;">📷 TAKE PHOTO</button>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <strong>Date:</strong><span id="view-order-date"></span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                        <strong>Status:</strong><span id="view-order-status"
-                            style="text-transform: uppercase; font-weight: bold;"></span>
-                    </div>
-                    <!-- Customer Info -->
-                    <div style="background: #f9f9f9; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem;">
-                        <p style="margin-bottom: 0.3rem;"><strong
-                                style="display:inline-block; width: 70px;">Name:</strong><span
-                                id="view-customer-name"></span></p>
-                        <p style="margin-bottom: 0.3rem;"><strong
-                                style="display:inline-block; width: 70px;">Phone:</strong><span
-                                id="view-customer-phone"></span></p>
-                        <p style="margin-bottom: 0.3rem;"><strong
-                                style="display:inline-block; width: 70px;">Location:</strong><span
-                                id="view-customer-location"></span></p>
-                    </div>
-                    <!-- Products -->
-                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">
-                        Items</h3>
-                    <div id="view-order-items" style="border-top: 1px solid #ddd; margin-bottom: 1rem;">
-                        <!-- Items populated by JS -->
-                    </div>
-                    <!-- Total -->
-                    <div
-                        style="display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold; border-top: 2px solid #333; padding-top: 0.5rem;">
-                        <span>Total:</span><span id="view-order-total"></span>
-                    </div>
+                    <p class="drop-zone-text" style="font-size: 0.78rem; color: #64748b;">or Drag and Drop Images Here</p>
+                    <input type="file" id="product-images" accept="image/*" multiple style="display: none;">
+                    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
+                    <div id="image-preview-container" style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap;"></div>
                 </div>
-                <!-- Action: Change Status & DTDC Tracking ID -->
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <div>
-                            <label style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; font-weight: 600; color: #374151;">UPDATE STATUS</label>
-                            <select id="modal-status-select" class="modern-input" style="width: 100%; background: white; margin: 0;">
-                                <option value="new">NEW</option>
-                                <option value="in-process">IN-PROCESS</option>
-                                <option value="in-transit">IN-TRANSIT</option>
-                                <option value="completed">COMPLETED</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.3rem; font-size: 0.8rem; font-weight: 600; color: #374151;">DTDC TRACKING ID (AWB)</label>
-                            <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0;">
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
-                            <button id="modal-update-status-btn" class="btn-save-modern" style="flex: 1; margin: 0; padding: 0.75rem; font-weight: bold;">UPDATE ORDER</button>
-                            <a id="modal-download-invoice-btn" href="#" target="_blank" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.75rem 1rem; background: #1f2937; color: white; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 0.85rem;">
-                                📄 INVOICE PDF
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Change Password Modal -->
-        <div id="password-modal" class="auth-overlay" style="display: none; z-index: 3000;">
-            <div class="auth-card" style="position: relative;">
-                <button id="close-password-modal"
-                    style="position:absolute; top:10px; right:15px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#666;">&times;</button>
-                <div class="auth-icon"
-                    style="background-color: #1A4D2E; color: white; display: flex; align-items: center; justify-content: center;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                </div>
-                <h2
-                    style="text-transform: uppercase; font-size: 1.2rem; letter-spacing: 1px; color: #1A4D2E; margin-bottom: 1rem;">
-                    CHANGE PASSWORD</h2>
-                <form id="password-form" style="width: 100%;">
-                    <div style="margin-bottom:0.75rem;">
-                        <input type="password" id="old-pass" placeholder="Current Password" required
-                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
-                    </div>
-                    <div style="margin-bottom:0.75rem;">
-                        <input type="password" id="new-pass" placeholder="New Password" required minlength="4"
-                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
-                    </div>
-                    <div style="margin-bottom:1.5rem;">
-                        <input type="password" id="confirm-new-pass" placeholder="Confirm New Password" required
-                            minlength="4"
-                            style="width:100%; padding:0.75rem; border:1px solid #ccc; border-radius:6px; font-size:1rem;">
-                    </div>
-                    <button type="submit" class="auth-btn"
-                        style="background:#1A4D2E; width:100%; padding:0.75rem; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">SAVE
-                        CHANGES</button>
-                </form>
-                <p id="password-error"
-                    style="color: red; font-size: 0.85rem; margin-top: 1rem; min-height: 1.2em; font-weight: bold;"></p>
-                <p id="password-success"
-                    style="color: green; font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; font-weight: bold;">
-                </p>
-            </div>
-        </div>
-        <!-- Confirm Modal -->
-        <div id="confirm-modal" class="auth-overlay" style="display: none; z-index: 4000;">
-            <div class="auth-card">
-                <div class="auth-icon" style="background-color: #ef4444;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18"></path>
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6">
-                        </path>
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                </div>
-                <h2 id="confirm-title" style="color: #ef4444;">ARE YOU SURE?
-                </h2>
-                <p id="confirm-msg" style="color: #666; font-size: 0.9rem; margin-bottom: 2rem;">
-                    Do you really want to delete this?</p>
-                <div style="display: flex; gap: 1rem; width: 100%;"><button id="confirm-cancel" class="auth-btn"
-                        style="background: transparent; border: 2px solid #2C1B10; color: #2C1B10;">CANCEL</button><button
-                        id="confirm-yes" class="auth-btn" style="background: #ef4444;">DELETE</button></div>
-            </div>
-        </div>
-        <!-- Discount Modal -->
-        <div id="discount-modal" class="overlay modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
-            <div class="modal-modern" style="max-width: 520px; width: 90%;">
-                <button id="close-discount-modal" class="close-modal-modern">&times;</button>
-                <h2 id="discount-modal-title" style="margin-top: 0; color: #2C1B10; font-size: 1.25rem;">CREATE DISCOUNT RULE</h2>
                 
-                <form id="discount-form" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
-                    <div>
-                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Rule Name</label>
-                        <input type="text" id="discount-name" placeholder="e.g. Festival 10% Off" required class="modern-input" style="width: 100%; box-sizing: border-box;">
-                    </div>
+                <input type="text" id="product-name" placeholder="Product Name" required class="modern-input">
+                <textarea id="product-desc" placeholder="Product Description" class="modern-input" rows="3" style="resize: none;"></textarea>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="number" step="0.01" id="product-price" placeholder="Price (₹)" required class="modern-input" style="flex: 1;">
+                    <input type="number" step="1" id="product-discount-percent" placeholder="Discount (%)" class="modern-input" style="flex: 1;">
+                </div>
 
-                    <div style="background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb;">
-                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Purchase Amount Condition</label>
-                        <p style="font-size: 0.75rem; color: #6b7280; margin: 0 0 0.75rem 0;">Condition is evaluated against customer's subtotal amount.</p>
-                        
-                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                            <div style="flex: 1; min-width: 90px;">
-                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Amount 1 (₹)</label>
-                                <input type="number" id="discount-amount1" min="0" step="1" placeholder="0" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
-                            </div>
-                            <div style="width: 90px;">
-                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Operator</label>
-                                <select id="discount-operator" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem; font-weight: bold;">
-                                    <option value=">=">&gt;=</option>
-                                    <option value=">">&gt;</option>
-                                    <option value="<=">&lt;=</option>
-                                    <option value="<">&lt;</option>
-                                </select>
-                            </div>
-                            <div style="flex: 1; min-width: 90px;">
-                                <label style="font-size: 0.75rem; color: #6b7280; display: block;">Amount 2 (₹) (Opt.)</label>
-                                <input type="number" id="discount-amount2" min="0" step="1" placeholder="Max/Upper" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
-                            </div>
-                        </div>
-                    </div>
+                <select id="product-category" class="modern-input" required style="background: white;">
+                    <option value="" disabled selected>Select Category</option>
+                </select>
 
+                <input type="number" id="product-qty" placeholder="Quantity in Stock" required class="modern-input">
+                
+                <button type="submit" class="btn-add-product-modern" style="margin-top: 0.5rem; padding: 0.9rem;">SAVE PRODUCT</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Details Modal (Bottom Sheet on Mobile) -->
+    <div id="order-modal" class="overlay modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-modern">
+            <button id="close-order-modal" class="close-modal-modern">&times;</button>
+            <h2 style="font-weight: 800; font-size: 1.2rem; color: var(--admin-text-main); margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">ORDER DETAILS</h2>
+            
+            <div style="font-size: 0.9rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <strong style="color: #64748b;">Order ID:</strong>
+                    <span id="view-order-id" style="color: var(--admin-primary); font-weight: 800;"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <strong style="color: #64748b;">Date:</strong>
+                    <span id="view-order-date"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+                    <strong style="color: #64748b;">Order Status:</strong>
+                    <span id="view-order-status" style="text-transform: uppercase; font-weight: 800;"></span>
+                </div>
+
+                <!-- Customer Details Box with Call / WA Buttons -->
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+                    <p style="margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+                        <strong style="color: #475569;">Customer:</strong>
+                        <span id="view-customer-name" style="font-weight: 700;"></span>
+                    </p>
+                    <p style="margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #475569;">Phone:</strong>
+                        <span id="view-customer-phone" style="font-weight: 700;"></span>
+                    </p>
+                    <p style="margin-bottom: 0.4rem; display: flex; justify-content: space-between;">
+                        <strong style="color: #475569;">Location:</strong>
+                        <span id="view-customer-location" style="font-weight: 600;"></span>
+                    </p>
+                    <div id="modal-quick-contact" style="display: flex; gap: 0.5rem; margin-top: 0.5rem;"></div>
+                </div>
+
+                <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; color: #334155;">Ordered Items</h3>
+                <div id="view-order-items" style="border-top: 1px solid #e2e8f0; margin-bottom: 1rem; padding-top: 0.5rem;"></div>
+
+                <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 800; border-top: 2px solid #0f172a; padding-top: 0.6rem;">
+                    <span>Total Amount:</span>
+                    <span id="view-order-total" style="color: var(--admin-primary);"></span>
+                </div>
+            </div>
+
+            <!-- Action: Update Status & Tracking -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <div>
-                        <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Discount Type</label>
-                        <select id="discount-type" class="modern-input" style="width: 100%; box-sizing: border-box;">
-                            <option value="percentage">Percentage Discount on Total Spend</option>
-                            <option value="fixed">Fixed Amount Discount on Total Spend</option>
-                            <option value="free_delivery">Free Delivery</option>
+                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 700; color: #475569;">UPDATE ORDER STATUS</label>
+                        <select id="modal-status-select" class="modern-input" style="width: 100%; background: white; margin: 0; font-weight: 700;">
+                            <option value="new">NEW</option>
+                            <option value="in-process">IN-PROCESS</option>
+                            <option value="in-transit">IN-TRANSIT</option>
+                            <option value="completed">COMPLETED</option>
                         </select>
                     </div>
-
-                    <div id="discount-value-wrapper">
-                        <label id="discount-value-label" style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; color: #374151;">Discount Percentage (%)</label>
-                        <input type="number" id="discount-value" min="0" step="0.01" placeholder="e.g. 10" class="modern-input" style="width: 100%; box-sizing: border-box;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.3rem; font-size: 0.78rem; font-weight: 700; color: #475569;">DTDC TRACKING ID (AWB)</label>
+                        <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0;">
                     </div>
-
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                        <input type="checkbox" id="discount-enabled" checked style="width: 18px; height: 18px; cursor: pointer;">
-                        <label for="discount-enabled" style="font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #374151;">Enable Discount Rule</label>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                        <button id="modal-update-status-btn" class="btn-add-product-modern" style="flex: 1; margin: 0;">UPDATE ORDER</button>
+                        <a id="modal-download-invoice-btn" href="#" target="_blank" class="view-btn" style="background: #0f172a; color: white;">📄 INVOICE PDF</a>
                     </div>
-
-                    <div id="discount-form-error" style="color: red; font-size: 0.85rem;"></div>
-
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                        <button type="button" id="cancel-discount-btn" class="btn-save-modern" style="background: #e5e7eb; color: #374151; flex: 1;">CANCEL</button>
-                        <button type="submit" id="save-discount-btn" class="btn-save-modern" style="flex: 1;">SAVE RULE</button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- jsPDF and jsPDF-AutoTable CDNs -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script>window.jsPDF = window.jspdf.jsPDF;</script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-        
-        <script type="module" src="admin.js"></script>
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="overlay modal-overlay" style="display: none; z-index: 4000; align-items: center; justify-content: center;">
+        <div class="modal-modern" style="max-width: 400px; text-align: center;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+            </div>
+            <h2 id="confirm-title" style="color: #0f172a; font-weight: 800; font-size: 1.2rem; margin-bottom: 0.5rem;">ARE YOU SURE?</h2>
+            <p id="confirm-msg" style="color: #64748b; font-size: 0.88rem; margin-bottom: 1.5rem;">Do you really want to proceed with this action?</p>
+            <div style="display: flex; gap: 0.75rem; width: 100%;">
+                <button id="confirm-cancel" class="modern-input" style="flex: 1; font-weight: 700; cursor: pointer;">CANCEL</button>
+                <button id="confirm-yes" class="btn-add-product-modern" style="background: #dc2626; flex: 1;">DELETE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discount Modal -->
+    <div id="discount-modal" class="overlay modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-modern">
+            <button id="close-discount-modal" class="close-modal-modern">&times;</button>
+            <h2 id="discount-modal-title" style="margin-top: 0; color: var(--admin-text-main); font-size: 1.25rem; font-weight: 800;">CREATE DISCOUNT RULE</h2>
+            
+            <form id="discount-form" style="display: flex; flex-direction: column; gap: 0.85rem; margin-top: 1rem;">
+                <div>
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; color: #475569;">Rule Name</label>
+                    <input type="text" id="discount-name" placeholder="e.g. Festive 10% Special" required class="modern-input" style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.2rem; color: #475569;">Purchase Condition</label>
+                    <p style="font-size: 0.75rem; color: #64748b; margin: 0 0 0.75rem 0;">Condition evaluates against order total spend.</p>
+                    
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 90px;">
+                            <label style="font-size: 0.72rem; color: #64748b; display: block; font-weight: 600;">Min Amount (₹)</label>
+                            <input type="number" id="discount-amount1" min="0" step="1" placeholder="0" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
+                        </div>
+                        <div style="width: 90px;">
+                            <label style="font-size: 0.72rem; color: #64748b; display: block; font-weight: 600;">Operator</label>
+                            <select id="discount-operator" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem; font-weight: bold;">
+                                <option value=">=">&gt;=</option>
+                                <option value=">">&gt;</option>
+                                <option value="<=">&lt;=</option>
+                                <option value="<">&lt;</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 90px;">
+                            <label style="font-size: 0.72rem; color: #64748b; display: block; font-weight: 600;">Max Amount (Opt.)</label>
+                            <input type="number" id="discount-amount2" min="0" step="1" placeholder="Max" class="modern-input" style="width: 100%; box-sizing: border-box; padding: 0.5rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; color: #475569;">Discount Type</label>
+                    <select id="discount-type" class="modern-input" style="width: 100%; box-sizing: border-box; font-weight: 600;">
+                        <option value="percentage">Percentage Discount (%)</option>
+                        <option value="fixed">Fixed Amount Discount (₹)</option>
+                        <option value="free_delivery">Free Delivery</option>
+                    </select>
+                </div>
+
+                <div id="discount-value-wrapper">
+                    <label id="discount-value-label" style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; color: #475569;">Discount Percentage (%)</label>
+                    <input type="number" id="discount-value" min="0" step="0.01" placeholder="e.g. 10" class="modern-input" style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                    <input type="checkbox" id="discount-enabled" checked style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="discount-enabled" style="font-weight: 700; font-size: 0.88rem; cursor: pointer; color: #334155;">Enable Discount Rule</label>
+                </div>
+
+                <div id="discount-form-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600;"></div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+                    <button type="button" id="cancel-discount-btn" class="modern-input" style="flex: 1; font-weight: 700; cursor: pointer;">CANCEL</button>
+                    <button type="submit" id="save-discount-btn" class="btn-add-product-modern" style="flex: 1;">SAVE RULE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- jsPDF and jsPDF-AutoTable CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>window.jsPDF = window.jspdf.jsPDF;</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    
+    <script type="module" src="admin.js"></script>
 </body>
 
 </html>

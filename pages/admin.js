@@ -394,6 +394,30 @@ function setupListeners() {
     ordersBtn.addEventListener('click', () => switchView('orders'));
     if (settingsBtn) settingsBtn.addEventListener('click', () => switchView('settings'));
     if (discountsBtn) discountsBtn.addEventListener('click', () => switchView('discounts'));
+
+    // Mobile Bottom Navigation Buttons
+    const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+    mobileNavBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            if (tab) switchView(tab);
+        });
+    });
+
+    // Mobile Floating Action Button (FAB)
+    const mobileFab = document.getElementById('mobile-fab');
+    if (mobileFab) {
+        mobileFab.addEventListener('click', () => {
+            if (currentView === 'products') {
+                openModal();
+            } else if (currentView === 'discounts') {
+                openDiscountModal();
+            } else if (currentView === 'orders') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+    }
+
     if (addDiscountBtn) addDiscountBtn.addEventListener('click', () => openDiscountModal());
     if (closeDiscountModalBtn) closeDiscountModalBtn.addEventListener('click', closeDiscountModal);
     if (cancelDiscountBtn) cancelDiscountBtn.addEventListener('click', closeDiscountModal);
@@ -870,6 +894,33 @@ function renderPreviews() {
     });
 }
 
+function updateDashboardStats() {
+    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const totalOrdersCount = orders.length;
+    const pendingOrdersCount = orders.filter(o => o.status !== 'completed').length;
+    const lowStockCount = products.filter(p => Number(p.qty) <= 5).length;
+
+    const elRev = document.getElementById('stat-revenue');
+    const elOrd = document.getElementById('stat-orders');
+    const elPend = document.getElementById('stat-pending');
+    const elStock = document.getElementById('stat-stock');
+
+    if (elRev) elRev.textContent = `₹${Math.round(totalRevenue).toLocaleString('en-IN')}`;
+    if (elOrd) elOrd.textContent = totalOrdersCount;
+    if (elPend) elPend.textContent = pendingOrdersCount;
+    if (elStock) elStock.textContent = lowStockCount;
+
+    const mobileBadge = document.getElementById('mobile-order-badge');
+    if (mobileBadge) {
+        if (pendingOrdersCount > 0) {
+            mobileBadge.textContent = pendingOrdersCount;
+            mobileBadge.style.display = 'inline-block';
+        } else {
+            mobileBadge.style.display = 'none';
+        }
+    }
+}
+
 function switchView(view) {
     currentView = view;
 
@@ -884,6 +935,26 @@ function switchView(view) {
     ordersBtn.classList.remove('active');
     if (settingsBtn) settingsBtn.classList.remove('active');
     if (discountsBtn) discountsBtn.classList.remove('active');
+
+    // Sync Mobile Bottom Navigation buttons
+    const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+    mobileNavBtns.forEach(btn => {
+        if (btn.dataset.tab === view) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // Control Mobile Floating Action Button (FAB)
+    const mobileFab = document.getElementById('mobile-fab');
+    if (mobileFab) {
+        if (view === 'products' || view === 'discounts') {
+            mobileFab.style.display = 'flex';
+        } else {
+            mobileFab.style.display = 'none';
+        }
+    }
 
     if (view === 'products') {
         productsBtn.classList.add('active');
@@ -918,6 +989,7 @@ function switchView(view) {
     }
 
     checkAddButtonVisibility();
+    updateDashboardStats();
     if (view !== 'settings' && view !== 'discounts') {
         render();
     }
@@ -1376,10 +1448,11 @@ function render() {
     // Inject Count Badge logic
     const btnOrders = document.getElementById('btn-orders');
     if (btnOrders) {
-        btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
+        btnOrders.innerHTML = `📋 ORDERS <span class="order-counter">${orders.length}</span>`;
     }
 
     updateProductCounterBadge();
+    updateDashboardStats();
 
     let itemsToRender = [];
 
@@ -1397,12 +1470,13 @@ function render() {
         itemsToRender = sortProductsWithMangoFirst(itemsToRender);
     } else {
         itemsToRender = orders.filter(o => {
-            const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch);
+            const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch) ||
+                (o.name || '').toLowerCase().includes(currentOrderSearch);
             let statusMatch;
             if (currentOrderFilter === 'all') {
                 statusMatch = true;
             } else if (currentOrderFilter === 'pending-payment') {
-                statusMatch = o.status === 'pending_payment';
+                statusMatch = o.status === 'pending_payment' || (o.payment_status || '').toLowerCase() === 'pending';
             } else {
                 statusMatch = o.status === currentOrderFilter;
             }
@@ -1410,8 +1484,6 @@ function render() {
         });
     }
 
-    // Keep server ordering for recency (API already returns newest first).
-    // Reversing here was pushing latest orders to the bottom of long lists.
     if (currentView === 'orders') {
         itemsToRender.sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0));
     }
@@ -1424,7 +1496,10 @@ function render() {
         let detailsHtml = '';
 
         if (currentView === 'products') {
-            // PRODUCT SPECIFIC UI
+            const isOut = Number(item.qty) <= 0;
+            const isLow = Number(item.qty) > 0 && Number(item.qty) <= 5;
+            const qtyClass = isOut || isLow ? 'low-qty' : '';
+
             actionButtons = `
             <div class="view-btn-container" style="flex-direction:row; gap:0.5rem;">
                 <button class="view-btn edit-btn" data-id="${item.id}">EDIT</button>
@@ -1434,56 +1509,54 @@ function render() {
 
             detailsHtml = `
                 <div class="admin-item-details">
-                    <p class="item-id">#${item.id}</p>
-                    <p style="font-size:0.75rem; color:#8B6F47; font-weight:bold; text-transform:uppercase; margin-bottom:2px;">${item.category || 'Uncategorized'}</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
+                        <span class="item-id">ID #${item.id}</span>
+                        <span style="font-size:0.68rem; color:var(--admin-primary); background:#e6f4ea; padding:2px 8px; border-radius:10px; font-weight:800; text-transform:uppercase;">${item.category || 'General'}</span>
+                    </div>
                     <h3 class="item-name">${item.name}</h3>
                     <div class="item-meta">
-                        <span>Qty: ${item.qty}</span>
-                        <span>₹${item.price}</span>
+                        <span class="price-badge">₹${item.price}</span>
+                        <span class="qty-badge ${qtyClass}">Stock: ${item.qty} ${isOut ? '⚠️ Out of Stock' : isLow ? '⚠️ Low Stock' : ''}</span>
                     </div>
                 </div>
             `;
         } else {
-            // ORDER SPECIFIC UI
+            // ORDER SPECIFIC UI WITH MOBILE QUICK CALL / WHATSAPP
             const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
             const isPendingPayment = paymentStatus === 'pending' || item.status === 'pending_payment';
             const isFailedPayment = paymentStatus === 'failed';
-
-            if (isPendingPayment) {
-                actionButtons = `
-                <div class="view-btn-container" style="flex-direction:column; gap:0.4rem;">
-                    <button class="view-btn mark-paid-btn" data-id="${item.id}" style="background:#f59e0b; color:white; font-size:0.7rem;">✓ MARK PAID</button>
-                    <button class="view-btn view-order-btn" data-id="${item.id}" style="font-size:0.7rem;">VIEW</button>
-                </div>
-                `;
-            } else {
-                actionButtons = `
-                <div class="view-btn-container">
-                    <button class="view-btn view-order-btn" data-id="${item.id}">VIEW</button>
-                </div>
-                `;
-            }
-
-            // Calculate total items for order
             const totalItems = (item.items || []).reduce((sum, i) => sum + Number(i.qty), 0);
+            const cleanPhone = String(item.phone || '').replace(/\D/g, '');
+
+            actionButtons = `
+            <div class="view-btn-container" style="flex-direction:row; gap:0.4rem; flex-wrap:wrap;">
+                ${cleanPhone ? `
+                    <a href="tel:${cleanPhone}" class="quick-action-btn btn-call" title="Call Customer">📞 Call</a>
+                    <a href="https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(item.name || 'Customer')}%2C%20regarding%20your%20order%20%23${item.id}%20from%20Rasobhoomi" target="_blank" class="quick-action-btn btn-whatsapp" title="WhatsApp Chat">💬 WA</a>
+                ` : ''}
+                ${isPendingPayment ? `<button class="view-btn mark-paid-btn" data-id="${item.id}" style="background:#f59e0b; color:white;">✓ PAID</button>` : ''}
+                <button class="view-btn view-order-btn" data-id="${item.id}">VIEW</button>
+            </div>
+            `;
 
             detailsHtml = `
                 <div class="admin-item-details">
-                    <p class="item-id">ORD #${item.id}</p>
-                    <h3 class="item-name">${item.name || 'Guest'}</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
+                        <span class="item-id">ORDER #${item.id}</span>
+                        <span style="font-size:0.7rem; font-weight:700; color:#64748B;">${item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN') : ''}</span>
+                    </div>
+                    <h3 class="item-name">${item.name || 'Guest Customer'}</h3>
                     <div class="item-meta">
-                        <span>Items: ${totalItems}</span>
-                        <span>₹${item.total || 0}</span>
+                        <span>Items: <strong>${totalItems}</strong></span>
+                        <span style="color:var(--admin-primary); font-weight:800; font-size:1rem;">₹${item.total || 0}</span>
+                        <span class="filter-chip active" style="padding:2px 8px; font-size:0.68rem; text-transform:uppercase;">${(item.status || 'new').toUpperCase()}</span>
                     </div>
-                    <div class="status-badge" style="background:${paymentStatus === 'paid' ? '#dcfce7' : paymentStatus === 'failed' ? '#fee2e2' : '#fef3c7'}; color:${paymentStatus === 'paid' ? '#166534' : paymentStatus === 'failed' ? '#b91c1c' : '#92400e'}; border:1px solid ${paymentStatus === 'paid' ? '#86efac' : paymentStatus === 'failed' ? '#fca5a5' : '#fcd34d'};">
-                        Payment: ${paymentStatus.toUpperCase()}
+                    <div style="display:flex; gap:0.4rem; margin-top:0.2rem; flex-wrap:wrap;">
+                        <span class="status-badge" style="background:${paymentStatus === 'paid' ? '#dcfce7' : paymentStatus === 'failed' ? '#fee2e2' : '#fef3c7'}; color:${paymentStatus === 'paid' ? '#166534' : paymentStatus === 'failed' ? '#b91c1c' : '#92400e'}; border:1px solid ${paymentStatus === 'paid' ? '#86efac' : paymentStatus === 'failed' ? '#fca5a5' : '#fcd34d'}; font-size:0.68rem; font-weight:700;">
+                            Payment: ${paymentStatus.toUpperCase()}
+                        </span>
+                        ${isPendingPayment ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:0.68rem; font-weight:700;">⚠ PENDING PAYMENT</span>` : ''}
                     </div>
-                    ${isPendingPayment
-                        ? `<div class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">⚠ PAYMENT PENDING</div>`
-                        : isFailedPayment
-                            ? `<div class="status-badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;">⚠ PAYMENT FAILED</div>`
-                            : `<div class="status-badge status-${item.status}">${item.status}</div>`
-                    }
                 </div>
             `;
         }
@@ -1492,7 +1565,7 @@ function render() {
         if (item.image) {
             imageHtml = `<img src="${item.image}" alt="Product">`;
         } else {
-            imageHtml = `<div class="no-image">IMG</div>`;
+            imageHtml = `<div class="no-image" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f1f5f9; color:#94a3b8; font-weight:700; font-size:0.75rem;">${currentView === 'products' ? 'PRODUCT' : 'ORDER'}</div>`;
         }
 
         el.innerHTML = `
@@ -1506,7 +1579,7 @@ function render() {
     });
 
     if (itemsToRender.length === 0) {
-        listContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">No items found.</p>';
+        listContainer.innerHTML = '<p style="text-align:center; padding: 2.5rem; color:#64748b; font-weight:600;">No items found matching criteria.</p>';
     }
 
     if (currentView === 'products' && productsHasMore) {
@@ -1517,10 +1590,6 @@ function render() {
         listContainer.appendChild(loadMoreWrap);
     }
 }
-
-// Real-time updates
-// Real-time updates - Removed localStorage listener as we use API now
-// implementation detail: could use polling or websockets, but for now manual refresh or page reload is expected.
 
 // --- DISCOUNT MANAGEMENT FUNCTIONS ---
 async function fetchDiscounts() {
@@ -1549,33 +1618,40 @@ function renderDiscounts() {
     if (!discountsLoading || !discountsEmpty || !discountsTable || !discountsTableBody) return;
     discountsLoading.style.display = 'none';
 
+    const mobileContainer = document.getElementById('discounts-cards-mobile');
+
     if (discounts.length === 0) {
         discountsEmpty.style.display = 'block';
         discountsTable.style.display = 'none';
+        if (mobileContainer) mobileContainer.style.display = 'none';
         return;
     }
 
     discountsEmpty.style.display = 'none';
-    discountsTable.style.display = 'table';
+    
+    if (window.innerWidth <= 640 && mobileContainer) {
+        discountsTable.style.display = 'none';
+        mobileContainer.style.display = 'block';
+        mobileContainer.innerHTML = '';
+    } else {
+        discountsTable.style.display = 'table';
+        if (mobileContainer) mobileContainer.style.display = 'none';
+    }
+
     discountsTableBody.innerHTML = '';
 
     discounts.forEach(rule => {
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #f3f4f6';
-
-        // Format Condition
         let conditionText = '';
         const amt1 = Number(rule.amount1 || 0);
         const amt2 = Number(rule.amount2 || 0);
         const op = rule.operator || '>=';
 
         if (amt2 > 0) {
-            conditionText = `₹${amt1} ${op} Subtotal and Subtotal <= ₹${amt2}`;
+            conditionText = `₹${amt1} ${op} Subtotal <= ₹${amt2}`;
         } else {
             conditionText = `Subtotal ${op} ₹${amt1}`;
         }
 
-        // Format Type & Value
         let typeText = 'Percentage';
         let valText = `${rule.discount_value}%`;
 
@@ -1589,54 +1665,83 @@ function renderDiscounts() {
 
         const isEnabled = Boolean(rule.is_enabled);
         const statusBadge = isEnabled
-            ? `<span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Active</span>`
-            : `<span style="background: #f3f4f6; color: #6b7280; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Disabled</span>`;
+            ? `<span style="background: #dcfce7; color: #15803d; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">Active</span>`
+            : `<span style="background: #f1f5f9; color: #64748b; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">Disabled</span>`;
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f1f5f9';
 
         tr.innerHTML = `
-            <td style="padding: 0.85rem; font-weight: 600; color: #111827;">${rule.name}</td>
-            <td style="padding: 0.85rem; color: #4b5563; font-size: 0.85rem; font-family: monospace;">${conditionText}</td>
-            <td style="padding: 0.85rem; color: #374151; font-size: 0.85rem;">${typeText}</td>
-            <td style="padding: 0.85rem; font-weight: 600; color: #059669;">${valText}</td>
+            <td style="padding: 0.85rem; font-weight: 700; color: #0f172a;">${rule.name}</td>
+            <td style="padding: 0.85rem; color: #475569; font-size: 0.85rem; font-family: monospace;">${conditionText}</td>
+            <td style="padding: 0.85rem; color: #334155; font-size: 0.85rem;">${typeText}</td>
+            <td style="padding: 0.85rem; font-weight: 800; color: #15803d;">${valText}</td>
             <td style="padding: 0.85rem;">${statusBadge}</td>
             <td style="padding: 0.85rem; text-align: right;">
-                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
-                    <button class="btn-toggle-disc" data-id="${rule.id}" data-enabled="${isEnabled ? '1' : '0'}" style="background: none; border: 1px solid #d1d5db; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #374151;">
+                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                    <button class="btn-toggle-disc view-btn" data-id="${rule.id}" data-enabled="${isEnabled ? '1' : '0'}" style="background: #f1f5f9; color: #334155; padding: 0.35rem 0.65rem; font-size: 0.72rem;">
                         ${isEnabled ? 'Disable' : 'Enable'}
                     </button>
-                    <button class="btn-edit-disc" data-id="${rule.id}" style="background: #f3f4f6; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #1f2937; font-weight: 600;">
+                    <button class="btn-edit-disc view-btn edit-btn" data-id="${rule.id}" style="padding: 0.35rem 0.65rem; font-size: 0.72rem;">
                         Edit
                     </button>
-                    <button class="btn-del-disc" data-id="${rule.id}" style="background: #fee2e2; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; color: #dc2626; font-weight: 600;">
+                    <button class="btn-del-disc view-btn delete-btn" data-id="${rule.id}" style="padding: 0.35rem 0.65rem; font-size: 0.72rem;">
                         Delete
                     </button>
                 </div>
             </td>
         `;
-
         discountsTableBody.appendChild(tr);
+
+        if (mobileContainer) {
+            const card = document.createElement('div');
+            card.className = 'discount-card-mobile';
+            card.innerHTML = `
+                <div class="discount-card-header">
+                    <span class="discount-rule-title">${rule.name}</span>
+                    ${statusBadge}
+                </div>
+                <div style="font-size: 0.82rem; color: #475569; margin-bottom: 0.65rem;">
+                    <div>Condition: <strong>${conditionText}</strong></div>
+                    <div>Value: <strong style="color: #15803d;">${valText}</strong> (${typeText})</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button class="btn-toggle-disc view-btn" data-id="${rule.id}" data-enabled="${isEnabled ? '1' : '0'}" style="background: #f1f5f9; color: #334155; padding: 0.4rem 0.75rem; font-size: 0.75rem;">
+                        ${isEnabled ? 'Disable' : 'Enable'}
+                    </button>
+                    <button class="btn-edit-disc view-btn edit-btn" data-id="${rule.id}" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">
+                        Edit
+                    </button>
+                    <button class="btn-del-disc view-btn delete-btn" data-id="${rule.id}" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">
+                        Delete
+                    </button>
+                </div>
+            `;
+            mobileContainer.appendChild(card);
+        }
     });
 
-    // Attach row button listeners
-    discountsTableBody.querySelectorAll('.btn-toggle-disc').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            const currentEnabled = e.currentTarget.getAttribute('data-enabled') === '1';
-            toggleDiscount(id, currentEnabled);
+    const allContainers = [discountsTableBody, mobileContainer].filter(Boolean);
+    allContainers.forEach(container => {
+        container.querySelectorAll('.btn-toggle-disc').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const currentEnabled = btn.getAttribute('data-enabled') === '1';
+                toggleDiscount(id, currentEnabled);
+            });
         });
-    });
-
-    discountsTableBody.querySelectorAll('.btn-edit-disc').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            const rule = discounts.find(d => String(d.id) === String(id));
-            if (rule) openDiscountModal(rule);
+        container.querySelectorAll('.btn-edit-disc').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const rule = discounts.find(d => String(d.id) === String(id));
+                if (rule) openDiscountModal(rule);
+            });
         });
-    });
-
-    discountsTableBody.querySelectorAll('.btn-del-disc').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            deleteDiscount(id);
+        container.querySelectorAll('.btn-del-disc').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                deleteDiscount(id);
+            });
         });
     });
 }
