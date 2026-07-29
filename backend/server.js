@@ -1434,12 +1434,24 @@ app.get('/api/orders/:id/invoice', (req, res) => {
 app.put('/api/orders/:id', requireAuth, (req, res) => {
     const { status, tracking_id, courier_name } = req.body;
     const trackingVal = tracking_id !== undefined ? String(tracking_id).trim() : null;
-    const courierVal = courier_name !== undefined ? String(courier_name).trim().toLowerCase() : 'dtdc';
+    const courierVal = courier_name !== undefined ? String(courier_name).trim().toLowerCase() : '';
+
+    const validCouriers = ['dtdc', 'amazon', 'rail', 'bus'];
+
+    // Strict validation for IN-TRANSIT and COMPLETED statuses
+    if (status === 'in-transit' || status === 'in_transit' || status === 'completed') {
+        if (!courierVal || !validCouriers.includes(courierVal)) {
+            return res.status(400).json({ error: 'Cannot update order to IN-TRANSIT: Delivery method must be chosen (DTDC, Amazon, Rail, or Bus).' });
+        }
+        if ((courierVal === 'dtdc' || courierVal === 'amazon') && !trackingVal) {
+            return res.status(400).json({ error: `Cannot update order to IN-TRANSIT: Tracking ID is required for ${courierVal.toUpperCase()} delivery.` });
+        }
+    }
 
     if (status !== undefined) {
         db.run(
             "UPDATE orders SET status = ?, tracking_id = ?, courier_name = ? WHERE id = ?",
-            [status, trackingVal, courierVal, req.params.id],
+            [status, trackingVal, courierVal || 'dtdc', req.params.id],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ message: 'Order updated successfully' });
@@ -1448,7 +1460,7 @@ app.put('/api/orders/:id', requireAuth, (req, res) => {
     } else {
         db.run(
             "UPDATE orders SET tracking_id = ?, courier_name = ? WHERE id = ?",
-            [trackingVal, courierVal, req.params.id],
+            [trackingVal, courierVal || 'dtdc', req.params.id],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
                 res.json({ message: 'Order tracking updated successfully' });

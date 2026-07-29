@@ -1400,20 +1400,30 @@ async function updateOrderStatus() {
     if (!editingId) return;
 
     const newStatus = document.getElementById('modal-status-select')?.value;
-    const courierName = document.getElementById('modal-courier-select')?.value || 'dtdc';
+    const courierSelect = document.getElementById('modal-courier-select');
+    const courierName = courierSelect?.value || '';
     const trackingInput = document.getElementById('modal-tracking-id');
     const trackingId = trackingInput?.value?.trim() || '';
 
-    // Validation for DTDC and Amazon
-    if (courierName === 'dtdc' && !trackingId) {
-        if (window.showToast) window.showToast('Please enter DTDC Tracking / AWB Number', 'error');
-        if (trackingInput) trackingInput.focus();
-        return;
-    }
-    if (courierName === 'amazon' && !trackingId) {
-        if (window.showToast) window.showToast('Please enter Amazon Tracking ID', 'error');
-        if (trackingInput) trackingInput.focus();
-        return;
+    // Enforce strict check when changing status to IN-TRANSIT or COMPLETED
+    if (newStatus === 'in-transit' || newStatus === 'in_transit' || newStatus === 'completed') {
+        if (!courierName) {
+            if (window.showToast) window.showToast(`Cannot set status to ${newStatus.toUpperCase()}: Please select a Delivery Method!`, 'error');
+            if (courierSelect) courierSelect.focus();
+            return;
+        }
+
+        if (courierName === 'dtdc' && !trackingId) {
+            if (window.showToast) window.showToast(`Cannot set status to ${newStatus.toUpperCase()}: Please enter DTDC Tracking / AWB Number!`, 'error');
+            if (trackingInput) trackingInput.focus();
+            return;
+        }
+
+        if (courierName === 'amazon' && !trackingId) {
+            if (window.showToast) window.showToast(`Cannot set status to ${newStatus.toUpperCase()}: Please enter Amazon Tracking ID!`, 'error');
+            if (trackingInput) trackingInput.focus();
+            return;
+        }
     }
 
     try {
@@ -1436,12 +1446,14 @@ async function updateOrderStatus() {
             closeOrderModal();
             fetchData();
         } else {
-            if (window.showToast) window.showToast('Failed to update order', 'error');
+            const errData = await res.json().catch(() => ({}));
+            const errMsg = errData.error || 'Failed to update order';
+            if (window.showToast) window.showToast(errMsg, 'error');
         }
 
     } catch (e) {
         console.error(e);
-        if (window.showToast) window.showToast('Error updating order', 'error');
+        if (window.showToast) window.showToast('Error updating order: ' + e.message, 'error');
     }
 }
 
