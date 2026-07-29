@@ -120,6 +120,8 @@ function initDb() {
             city TEXT,
             zip TEXT,
             total REAL,
+            delivery_charge REAL DEFAULT 0,
+            discount_amount REAL DEFAULT 0,
             status TEXT DEFAULT 'new',
             items TEXT,
             payment_status TEXT DEFAULT 'pending',
@@ -129,6 +131,8 @@ function initDb() {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_id TEXT`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_charge REAL DEFAULT 0`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount REAL DEFAULT 0`,
         `CREATE TABLE IF NOT EXISTS categories (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,

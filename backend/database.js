@@ -47,6 +47,8 @@ function initDb() {
             city TEXT,
             zip TEXT,
             total REAL,
+            delivery_charge REAL DEFAULT 0,
+            discount_amount REAL DEFAULT 0,
             status TEXT DEFAULT 'new',
             items TEXT, -- JSON string
             payment_status TEXT DEFAULT 'pending',
@@ -57,9 +59,9 @@ function initDb() {
             if (err) console.error("Error creating orders table:", err);
         });
 
-        db.run(`ALTER TABLE orders ADD COLUMN tracking_id TEXT`, (mErr) => {
-            // Column might already exist, safe to ignore
-        });
+        db.run(`ALTER TABLE orders ADD COLUMN tracking_id TEXT`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN delivery_charge REAL DEFAULT 0`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0`, (mErr) => {});
 
         // Categories Table
         db.run(`CREATE TABLE IF NOT EXISTS categories (

@@ -960,9 +960,9 @@ function saveConfirmedOrder(orderId, phonePeTxnId) {
                 return resolve(null);
             }
 
-            const { name, phone, address, city, zip, total } = orderData;
-            const insertSql = `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(insertSql, [orderId, name, phone, address, city, zip, total, jsonItemsStr, 'new', 'paid', phonePeTxnId || orderId], function (insertErr) {
+            const { name, phone, address, city, zip, total, delivery_charge, discount_amount } = orderData;
+            const insertSql = `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            db.run(insertSql, [orderId, name, phone, address, city, zip, total, delivery_charge || 0, discount_amount || 0, jsonItemsStr, 'new', 'paid', phonePeTxnId || orderId], function (insertErr) {
                 if (insertErr) return reject(insertErr);
 
                 console.log(`[ORDER] Saved confirmed order ${orderId} to DB`);
@@ -1122,15 +1122,17 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             pendingOrders.set(orderId, {
                 name, phone, address, city, zip,
                 total,
+                delivery_charge: deliveryCharge,
+                discount_amount: discountAmount,
                 items: verifiedItemsJson,
                 createdAt: Date.now()
             });
             console.log(`[ORDER] Stored pending order ${orderId} in memory`);
 
             db.run(
-                `INSERT INTO orders (id, name, phone, address, city, zip, total, items, status, payment_status, transaction_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [orderId, name, phone, address, city, zip, total, verifiedItemsJson, 'pending_payment', 'pending', null],
+                `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [orderId, name, phone, address, city, zip, total, deliveryCharge, discountAmount, verifiedItemsJson, 'pending_payment', 'pending', null],
                 function (insertErr) {
                     if (insertErr) {
                         console.error(`[ORDER] Failed to persist pending order ${orderId}:`, insertErr.message);

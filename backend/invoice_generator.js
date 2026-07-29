@@ -31,7 +31,7 @@ export function generateInvoicePdf(order) {
             doc.fontSize(8).fillColor(TEXT_MUTED).text('WhatsApp: +91 89720 76182  |  Web: rasobhoomiplantation.com', 36, 64);
 
             // Invoice Title & Info (Top Right)
-            doc.fillColor(PRIMARY_COLOR).fontSize(18).font('Helvetica-Bold').text('TAX INVOICE', 350, 28, { align: 'right', width: 209 });
+            doc.fillColor(PRIMARY_COLOR).fontSize(18).font('Helvetica-Bold').text('INVOICE', 350, 28, { align: 'right', width: 209 });
             doc.fillColor(TEXT_MAIN).fontSize(9).font('Helvetica-Bold').text(`Invoice #: ${order.id}`, 350, 52, { align: 'right', width: 209 });
             
             const formattedDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
@@ -128,8 +128,29 @@ export function generateInvoicePdf(order) {
             const summaryWidth = 209;
 
             const total = Number(order.total || subtotal);
-            const deliveryCharge = Number(order.delivery_charge || 0);
-            const discountAmount = Math.max(0, subtotal + deliveryCharge - total);
+            let deliveryCharge = 0;
+            let discountAmount = 0;
+
+            if (order.delivery_charge !== undefined && order.delivery_charge !== null) {
+                deliveryCharge = Number(order.delivery_charge);
+            }
+            if (order.discount_amount !== undefined && order.discount_amount !== null) {
+                discountAmount = Number(order.discount_amount);
+            } else if (order.delivery_charge !== undefined && order.delivery_charge !== null) {
+                discountAmount = Math.max(0, subtotal + deliveryCharge - total);
+            } else {
+                // Fallback for legacy orders without stored delivery_charge or discount_amount
+                if (total > subtotal) {
+                    deliveryCharge = total - subtotal;
+                    discountAmount = 0;
+                } else if (total < subtotal) {
+                    deliveryCharge = 0;
+                    discountAmount = subtotal - total;
+                } else {
+                    deliveryCharge = 0;
+                    discountAmount = 0;
+                }
+            }
 
             doc.fontSize(8.5).font('Helvetica').fillColor(TEXT_MUTED);
             
@@ -139,7 +160,7 @@ export function generateInvoicePdf(order) {
 
             // Delivery
             doc.fillColor(TEXT_MUTED).text('Delivery Charges:', summaryX, summaryTop + 14, { width: 100 });
-            const deliveryText = deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`;
+            const deliveryText = deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toLocaleString('en-IN')}`;
             doc.fillColor(TEXT_MAIN).text(deliveryText, summaryX + 100, summaryTop + 14, { width: 109, align: 'right' });
 
             let currentSummaryY = summaryTop + 28;
