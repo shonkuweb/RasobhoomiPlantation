@@ -898,17 +898,12 @@ function updateDashboardStats() {
     const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const totalOrdersCount = orders.length;
     const pendingOrdersCount = orders.filter(o => o.status !== 'completed').length;
-    const lowStockCount = products.filter(p => Number(p.qty) <= 5).length;
 
     const elRev = document.getElementById('stat-revenue');
     const elOrd = document.getElementById('stat-orders');
-    const elPend = document.getElementById('stat-pending');
-    const elStock = document.getElementById('stat-stock');
 
     if (elRev) elRev.textContent = `₹${Math.round(totalRevenue).toLocaleString('en-IN')}`;
     if (elOrd) elOrd.textContent = totalOrdersCount;
-    if (elPend) elPend.textContent = pendingOrdersCount;
-    if (elStock) elStock.textContent = lowStockCount;
 
     const mobileBadge = document.getElementById('mobile-order-badge');
     if (mobileBadge) {
