@@ -1422,6 +1422,9 @@ app.get('/api/orders/:id/invoice', (req, res) => {
             const pdfBuffer = await generateInvoicePdf(row);
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `inline; filename="Invoice_${row.id}.pdf"`);
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
             res.send(pdfBuffer);
         } catch (pdfErr) {
             console.error('Invoice generation error:', pdfErr);

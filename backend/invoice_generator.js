@@ -74,10 +74,30 @@ export function generateInvoicePdf(order) {
 
             doc.text('', box2X + 10, boxY + 50); // Line reset
 
-            if (order.tracking_id) {
+            const courier = (order.courier_name || 'dtdc').toLowerCase();
+            let courierLabel = 'DTDC Tracking AWB';
+            let courierColor = '#dc2626';
+
+            if (courier === 'amazon') {
+                courierLabel = 'Amazon Tracking ID';
+                courierColor = '#ff9900';
+            } else if (courier === 'rail') {
+                courierLabel = 'Delivery Method';
+                courierColor = '#2563eb';
+            } else if (courier === 'bus') {
+                courierLabel = 'Delivery Method';
+                courierColor = '#2563eb';
+            }
+
+            if (courier === 'rail' || courier === 'bus') {
+                const methodText = courier === 'rail' ? 'By Rail/Train' : 'By BUS';
                 doc.font('Helvetica').fillColor(TEXT_MAIN)
-                   .text('DTDC Tracking AWB: ', box2X + 10, boxY + 50, { continued: true })
-                   .font('Helvetica-Bold').fillColor('#dc2626').text(order.tracking_id);
+                   .text(`${courierLabel}: `, box2X + 10, boxY + 50, { continued: true })
+                   .font('Helvetica-Bold').fillColor(courierColor).text(methodText);
+            } else if (order.tracking_id) {
+                doc.font('Helvetica').fillColor(TEXT_MAIN)
+                   .text(`${courierLabel}: `, box2X + 10, boxY + 50, { continued: true })
+                   .font('Helvetica-Bold').fillColor(courierColor).text(order.tracking_id);
             }
 
             // Items Table

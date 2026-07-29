@@ -1333,7 +1333,35 @@ function openOrderModal(id) {
     updateCourierFields(currentCourier, order.tracking_id);
 
     const invoiceBtn = document.getElementById('modal-download-invoice-btn');
-    if (invoiceBtn) invoiceBtn.href = `/api/orders/${order.id}/invoice`;
+    if (invoiceBtn) {
+        invoiceBtn.onclick = async (e) => {
+            e.preventDefault();
+
+            // Auto-sync current modal form values first (if admin changed tracking ID / courier method)
+            const newStatus = document.getElementById('modal-status-select')?.value;
+            const courierSelectVal = document.getElementById('modal-courier-select')?.value || '';
+            const trackingIdVal = document.getElementById('modal-tracking-id')?.value?.trim() || '';
+
+            if (courierSelectVal || trackingIdVal || newStatus) {
+                try {
+                    await fetch(`/api/orders/${order.id}`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            status: newStatus,
+                            tracking_id: (courierSelectVal === 'dtdc' || courierSelectVal === 'amazon') ? trackingIdVal : '',
+                            courier_name: courierSelectVal
+                        })
+                    });
+                } catch (syncErr) {
+                    console.warn('PDF pre-sync notice:', syncErr);
+                }
+            }
+
+            // Instantly generate PDF on the fly and open in a new browser window/tab
+            window.open(`/api/orders/${order.id}/invoice?t=${Date.now()}`, '_blank');
+        };
+    }
 
     if (select) {
         Array.from(select.options).forEach(option => {
