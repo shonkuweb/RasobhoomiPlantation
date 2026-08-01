@@ -43,18 +43,36 @@ export function generateInvoicePdf(order) {
             doc.moveTo(36, 82).lineTo(559, 82).strokeColor(SECONDARY_COLOR).lineWidth(1.5).stroke();
 
             // Customer & Payment Info Boxes Side by Side
-            const boxY = 94;
+            const boxY = 90;
             const boxWidth = 252;
-            const boxHeight = 84;
+            const boxHeight = 100;
 
-            // Box 1: Billed To
+            // Box 1: Billed To / Deliver To
             doc.roundedRect(36, boxY, boxWidth, boxHeight, 6).fillAndStroke(BG_LIGHT, BORDER_COLOR);
             doc.fillColor(PRIMARY_COLOR).fontSize(9).font('Helvetica-Bold').text('BILLED TO / DELIVER TO', 46, boxY + 8);
-            doc.fillColor(TEXT_MAIN).fontSize(9.5).font('Helvetica-Bold').text(order.name || 'Customer', 46, boxY + 22);
-            doc.fontSize(8.5).font('Helvetica').fillColor(TEXT_MUTED)
-               .text(`Phone: +91 ${order.phone ? order.phone.replace(/\D/g, '').slice(-10) : 'N/A'}`, 46, boxY + 36)
-               .text(`Address: ${order.address || ''}`, 46, boxY + 48, { width: boxWidth - 20, height: 18 })
-               .text(`${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}`, 46, boxY + 65);
+            doc.fillColor(TEXT_MAIN).fontSize(9.5).font('Helvetica-Bold').text(order.name || 'Customer', 46, boxY + 21, { width: boxWidth - 20, lineBreak: false });
+            
+            const phoneFormatted = order.phone ? `+91 ${String(order.phone).replace(/\D/g, '').slice(-10)}` : 'N/A';
+            doc.fontSize(8.5).font('Helvetica').fillColor(TEXT_MUTED).text(`Phone: ${phoneFormatted}`, 46, boxY + 34);
+
+            const streetAddr = (order.address || '').trim();
+            const cityZipParts = [order.city ? order.city.trim() : '', order.zip ? `- ${order.zip.trim()}` : ''].filter(Boolean).join(' ');
+
+            let addrY = boxY + 46;
+            if (streetAddr) {
+                doc.fontSize(8).font('Helvetica').fillColor(TEXT_MUTED).text(`Address: ${streetAddr}`, 46, addrY, {
+                    width: boxWidth - 20,
+                    height: 38,
+                    ellipsis: true
+                });
+                addrY = Math.min(boxY + 84, doc.y + 2);
+            }
+            if (cityZipParts) {
+                doc.fontSize(8.5).font('Helvetica-Bold').fillColor(TEXT_MAIN).text(cityZipParts, 46, addrY, {
+                    width: boxWidth - 20,
+                    lineBreak: false
+                });
+            }
 
             // Box 2: Payment & Order Information
             const box2X = 307;
@@ -101,7 +119,7 @@ export function generateInvoicePdf(order) {
             }
 
             // Items Table
-            const tableTop = 192;
+            const tableTop = boxY + boxHeight + 12;
             // Header Row
             doc.rect(36, tableTop, 523, 20).fill(PRIMARY_COLOR);
             doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold');
