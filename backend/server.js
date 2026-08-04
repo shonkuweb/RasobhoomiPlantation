@@ -280,6 +280,43 @@ app.post('/api/admin/settings/order', requireAuth, (req, res) => {
     });
 });
 
+const HERO_VIDEO_SETTINGS_KEY = 'hero_video_settings';
+
+app.get('/api/settings/hero-video', (req, res) => {
+    db.get("SELECT value FROM admin_settings WHERE key = ?", [HERO_VIDEO_SETTINGS_KEY], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        let heroVideoUrl = '';
+        if (row && row.value) {
+            try {
+                const parsed = JSON.parse(row.value);
+                heroVideoUrl = parsed.heroVideoUrl || '';
+            } catch (e) {
+                heroVideoUrl = row.value || '';
+            }
+        }
+        res.json({ heroVideoUrl });
+    });
+});
+
+app.post('/api/admin/settings/hero-video', requireAuth, (req, res) => {
+    const { heroVideoUrl } = req.body || {};
+    const cleanUrl = typeof heroVideoUrl === 'string' ? heroVideoUrl.trim() : '';
+    const payload = JSON.stringify({ heroVideoUrl: cleanUrl, updatedAt: new Date().toISOString() });
+
+    db.run("DELETE FROM admin_settings WHERE key = ?", [HERO_VIDEO_SETTINGS_KEY], (deleteErr) => {
+        if (deleteErr) return res.status(500).json({ error: deleteErr.message });
+        db.run(
+            "INSERT INTO admin_settings (key, value) VALUES (?, ?)",
+            [HERO_VIDEO_SETTINGS_KEY, payload],
+            (insertErr) => {
+                if (insertErr) return res.status(500).json({ error: insertErr.message });
+                res.json({ success: true, heroVideoUrl: cleanUrl });
+            }
+        );
+    });
+});
+
+
 // --- SHIPROCKET SERVICEABILITY ENDPOINTS ---
 let shiprocketToken = null;
 let shiprocketTokenExpiry = null;

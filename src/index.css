@@ -298,6 +298,107 @@ main.home-main {
   object-position: center;
 }
 
+/* Hero Video Styles */
+.hero-video-wrapper {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #000;
+}
+
+.hero-video-aspect-box {
+  width: 100%;
+  position: relative;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  overflow: hidden;
+}
+
+.hero-video-iframe-holder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-video-iframe-holder iframe,
+.hero-video-iframe-holder > div {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  pointer-events: none;
+}
+
+/* Custom Overlay Controls (Play/Pause and Fullscreen ONLY) */
+.hero-video-custom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 8px 14px;
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+}
+
+.hero-video-custom-controls:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.hero-video-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  padding: 0;
+  outline: none;
+}
+
+.hero-video-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.08);
+}
+
+.hero-video-btn:active {
+  transform: scale(0.95);
+}
+
+.hero-video-btn svg {
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .hero-video-custom-controls {
+    bottom: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+  .hero-video-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .hero-video-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 /* Filter Button */
 .filter-section {
   padding: 1rem;

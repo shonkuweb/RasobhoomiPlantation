@@ -310,6 +310,13 @@ const settingsOrderError = document.getElementById('settings-order-error');
 const settingsOrderSuccess = document.getElementById('settings-order-success');
 const settingsOrderSaveBtn = document.getElementById('settings-order-save-btn');
 
+const settingsHeroVideoForm = document.getElementById('settings-hero-video-form');
+const settingsHeroVideoUrl = document.getElementById('settings-hero-video-url');
+const settingsHeroVideoError = document.getElementById('settings-hero-video-error');
+const settingsHeroVideoSuccess = document.getElementById('settings-hero-video-success');
+const settingsHeroVideoSaveBtn = document.getElementById('settings-hero-video-save-btn');
+
+
 // Discount Elements
 const discountsBtn = document.getElementById('btn-discounts');
 const discountsView = document.getElementById('discounts-view');
@@ -345,6 +352,7 @@ function init() {
     checkAuth();
     setupListeners();
     fetchOrderSettings();
+    fetchHeroVideoSetting();
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
@@ -439,6 +447,58 @@ async function saveOrderSettings(e) {
         if (settingsOrderSaveBtn) {
             settingsOrderSaveBtn.disabled = false;
             settingsOrderSaveBtn.textContent = 'SAVE ORDER SETTINGS';
+        }
+    }
+}
+
+async function fetchHeroVideoSetting() {
+    try {
+        const res = await fetch('/api/settings/hero-video');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (settingsHeroVideoUrl) {
+            settingsHeroVideoUrl.value = data.heroVideoUrl || '';
+        }
+    } catch (err) {
+        console.error('Failed to fetch hero video setting', err);
+    }
+}
+
+async function saveHeroVideoSettings(e) {
+    e.preventDefault();
+    if (!settingsHeroVideoForm) return;
+
+    if (settingsHeroVideoError) settingsHeroVideoError.textContent = '';
+    if (settingsHeroVideoSuccess) settingsHeroVideoSuccess.textContent = '';
+    if (settingsHeroVideoSaveBtn) {
+        settingsHeroVideoSaveBtn.disabled = true;
+        settingsHeroVideoSaveBtn.textContent = 'SAVING...';
+    }
+
+    try {
+        const payload = {
+            heroVideoUrl: settingsHeroVideoUrl?.value?.trim() || ''
+        };
+
+        const res = await fetch('/api/admin/settings/hero-video', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update hero video settings');
+        }
+
+        if (settingsHeroVideoSuccess) settingsHeroVideoSuccess.textContent = 'Hero video settings updated successfully.';
+    } catch (err) {
+        console.error('Hero video settings save failed:', err);
+        if (settingsHeroVideoError) settingsHeroVideoError.textContent = err.message || 'Network error. Try again.';
+    } finally {
+        if (settingsHeroVideoSaveBtn) {
+            settingsHeroVideoSaveBtn.disabled = false;
+            settingsHeroVideoSaveBtn.textContent = 'SAVE HERO VIDEO SETTINGS';
         }
     }
 }
@@ -608,6 +668,10 @@ function setupListeners() {
 
     if (settingsOrderForm) {
         settingsOrderForm.addEventListener('submit', saveOrderSettings);
+    }
+
+    if (settingsHeroVideoForm) {
+        settingsHeroVideoForm.addEventListener('submit', saveHeroVideoSettings);
     }
 
     // Filter Toggle Logic

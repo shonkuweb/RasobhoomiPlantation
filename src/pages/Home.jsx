@@ -5,6 +5,7 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
+import HeroVideoBanner, { extractYouTubeId } from '../components/HeroVideoBanner';
 import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst, sortProductsWithMangoFirst } from '../utils/categories';
 import { translateCategoryName } from '../utils/translations';
 
@@ -15,12 +16,22 @@ const Home = () => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState({});
     const [categories, setCategories] = useState([]);
+    const [heroVideoUrl, setHeroVideoUrl] = useState('');
 
     useEffect(() => {
         fetch('/api/categories')
             .then(res => res.json())
             .then(data => setCategories(data))
             .catch(err => console.error("Failed to fetch categories", err));
+
+        fetch('/api/settings/hero-video')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.heroVideoUrl) {
+                    setHeroVideoUrl(data.heroVideoUrl);
+                }
+            })
+            .catch(err => console.error("Failed to fetch hero video setting", err));
     }, []);
 
     useEffect(() => {
@@ -62,6 +73,8 @@ const Home = () => {
         return translateCategoryName(name, language);
     };
 
+    const hasValidHeroVideo = Boolean(extractYouTubeId(heroVideoUrl));
+
     return (
         <main className="home-main">
             <SEO
@@ -78,17 +91,21 @@ const Home = () => {
             />
             {/* Hero Section */}
             <section className="hero-carousel" aria-label="Rasobhoomi Plantation">
-                <div className="carousel-track">
-                    <img
-                        src="/assets/rashero.png"
-                        alt="Rasobhoomi Plantation entrance — nursery and plants"
-                        className="hero-slide"
-                        width="1920"
-                        height="1080"
-                        decoding="async"
-                        fetchPriority="high"
-                    />
-                </div>
+                {hasValidHeroVideo ? (
+                    <HeroVideoBanner url={heroVideoUrl} />
+                ) : (
+                    <div className="carousel-track">
+                        <img
+                            src="/assets/rashero.png"
+                            alt="Rasobhoomi Plantation entrance — nursery and plants"
+                            className="hero-slide"
+                            width="1920"
+                            height="1080"
+                            decoding="async"
+                            fetchPriority="high"
+                        />
+                    </div>
+                )}
             </section>
 
             {/* Filter Section */}

@@ -977,6 +977,27 @@
 
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
 
+                <!-- Hero Banner Video Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🎬 Hero Banner YouTube Video
+                </h2>
+                <form id="settings-hero-video-form" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">
+                        Paste a 16:9 ratio YouTube video URL. When provided, this video replaces the static hero banner image on the homepage. Leave empty to use the default hero image.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="settings-hero-video-url" style="font-weight: 600; color: #475569; font-size: 0.85rem;">YouTube Video URL</label>
+                        <input type="url" id="settings-hero-video-url" placeholder="https://www.youtube.com/watch?v=..." class="modern-input">
+                    </div>
+                    <div id="settings-hero-video-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600;"></div>
+                    <div id="settings-hero-video-success" style="color: #166534; font-size: 0.85rem; font-weight: 600;"></div>
+                    <button type="submit" id="settings-hero-video-save-btn" class="btn-add-product-modern" style="width: 100%; margin-top: 0.25rem; background: #0284c7;">
+                        SAVE HERO VIDEO SETTINGS
+                    </button>
+                </form>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
+
                 <!-- Password Change Section -->
                 <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                     🔒 Security: Change Admin Password
