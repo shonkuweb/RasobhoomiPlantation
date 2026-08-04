@@ -1,6 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ShopProvider } from './context/ShopContext';
+import { LanguageProvider } from './context/LanguageContext';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import CartSidebar from './components/CartSidebar';
