@@ -135,6 +135,7 @@ function initDb() {
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_name TEXT DEFAULT 'dtdc'`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_charge REAL DEFAULT 0`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount REAL DEFAULT 0`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS lang TEXT DEFAULT 'en'`,
         `CREATE TABLE IF NOT EXISTS categories (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,

@@ -304,16 +304,20 @@ export function reconnectWhatsApp() {
     return getWhatsAppStatus();
 }
 
+import { translateProduct } from '../src/utils/translations.js';
+
 /**
- * Build structured WhatsApp confirmation message for customer
+ * Build structured WhatsApp confirmation message for customer in their selected language
  */
 export function buildCustomerOrderMessage(order) {
+    const lang = order.lang || 'en';
     let itemsText = '• Item details unavailable';
     try {
         const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
         if (Array.isArray(items) && items.length > 0) {
             itemsText = items.map((item, idx) => {
-                const name = item.name || item.title || 'Plant / Product';
+                const itemObj = translateProduct(item, lang);
+                const name = itemObj.name || item.name || item.title || 'Plant / Product';
                 const qty = item.qty || item.quantity || 1;
                 const price = item.price ? `₹${item.price}` : '';
                 return `  ${idx + 1}. *${name}* × ${qty} ${price ? `(${price})` : ''}`;
@@ -325,8 +329,58 @@ export function buildCustomerOrderMessage(order) {
         }
     }
 
-    const customerName = order.name ? order.name.trim() : 'Valued Customer';
+    const customerName = order.name ? order.name.trim() : 'Customer';
     const txnId = order.transaction_id || order.id;
+
+    if (lang === 'hi') {
+        return `🌿 *रसोभूमि प्लांटेशन से ऑर्डर करने के लिए आपका धन्यवाद!* 🌿
+--------------------------------------------------
+प्रिय *${customerName}*,
+
+हमें आपका भुगतान प्राप्त हो गया है और आपका ऑर्डर *#${order.id}* सफलतापूर्वक कन्फर्म हो गया है! 🎉
+
+📦 *ऑर्डर किए गए पौधे:*
+${itemsText}
+
+💰 *कुल भुगतान:* ₹${order.total || 0}
+💳 *भुगतान स्थिति:* सफलता (PAID)
+🏷️ *ट्रांजैक्शन आईडी:* ${txnId}
+
+📍 *डिलिवरी पता:*
+${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
+
+--------------------------------------------------
+📄 *आपका टैक्स इनवॉइस (Invoice PDF) नीचे संलग्न है।*
+
+यदि आपका कोई प्रश्न है, तो इस व्हाट्सएप संदेश का उत्तर दें या हमसे संपर्क करें (+91 89720 76182)।
+
+*रसोभूमि प्लांटेशन* को चुनने के लिए धन्यवाद! 🪴✨`;
+    }
+
+    if (lang === 'bn') {
+        return `🌿 *রসভূমি প্ল্যান্টেশন থেকে অর্ডারের জন্য আপনাকে ধন্যবাদ!* 🌿
+--------------------------------------------------
+প্রিয় *${customerName}*,
+
+আমরা আপনার পেমেন্ট পেয়েছি এবং আপনার অর্ডার *#${order.id}* সফলভাবে নিশ্চিত হয়েছে! 🎉
+
+📦 *অর্ডার করা চারা/পণ্য:*
+${itemsText}
+
+💰 *মোট পেমেন্ট:* ₹${order.total || 0}
+💳 *পেমেন্ট স্ট্যাটাস:* সফল (PAID)
+🏷️ *ট্রানজ্যাকশন আইডি:* ${txnId}
+
+📍 *ডেলিভারি ঠিকানা:*
+${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
+
+--------------------------------------------------
+📄 *আপনার ট্যাক্স ইনভয়েস (Invoice PDF) নিচে সংযুক্ত করা হলো।*
+
+যেকোনো প্রশ্নের জন্য এই হোয়াটসঅ্যাপ মেসেজের উত্তর দিন অথবা যোগাযোগ করুন (+91 89720 76182)।
+
+*রসভূমি প্ল্যান্টেশন* বেছে নেওয়ার জন্য ধন্যবাদ! 🪴✨`;
+    }
 
     return `🌿 *THANK YOU FOR YOUR ORDER WITH RASOBHOOMI PLANTATION!* 🌿
 --------------------------------------------------

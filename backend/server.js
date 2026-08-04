@@ -1084,7 +1084,13 @@ function updateOrderPaymentState(orderId, paymentStatus, orderStatus = null, tra
 
 // ORDERS & PAYMENT
 app.post('/api/orders', validateOrder, async (req, res) => {
-    const { name, phone, address, city, zip, items, forcedMock } = req.body;
+    const { name, phone, address, city, zip, items, lang } = req.body;
+    const orderLang = (lang && ['en', 'hi', 'bn'].includes(lang)) ? lang : 'en';
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Cart is empty' });
+    }
+
     const orderId = 'ORD-' + Date.now();
 
     // Server-Side Calculation & Verification
@@ -1165,20 +1171,21 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         items: verifiedItemsJson,
         status: 'pending_payment',
         payment_status: 'pending',
+        lang: orderLang,
         createdAt: Date.now()
     };
     pendingOrders.set(orderId, pendingOrderObj);
-    console.log(`[ORDER] Stored pending order ${orderId} in memory`);
+    console.log(`[ORDER] Stored pending order ${orderId} (lang: ${orderLang}) in memory`);
 
     db.run(
-        `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [orderId, name, phone, address, city, zip, total, deliveryCharge, discountAmount, verifiedItemsJson, 'pending_payment', 'pending', null],
+        `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id, lang)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, name, phone, address, city, zip, total, deliveryCharge, discountAmount, verifiedItemsJson, 'pending_payment', 'pending', null, orderLang],
         function (insertErr) {
             if (insertErr) {
                 console.error(`[ORDER] Failed to persist pending order ${orderId}:`, insertErr.message);
             } else {
-                console.log(`[ORDER] Pending order ${orderId} saved to DB`);
+                console.log(`[ORDER] Pending order ${orderId} saved to DB with lang=${orderLang}`);
             }
         }
     );

@@ -15,7 +15,7 @@ const DEFAULT_ORDER_SETTINGS = {
 
 const Checkout = () => {
     const { cart, products, getCartTotal, clearCart } = useShop();
-    const { t, translateProduct } = useLanguage();
+    const { t, translateProduct, language } = useLanguage();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
@@ -211,7 +211,8 @@ const Checkout = () => {
         const payload = {
             ...formData,
             items: orderItems,
-            total
+            total,
+            lang: language || 'en'
         };
 
         try {

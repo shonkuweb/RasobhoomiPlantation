@@ -64,6 +64,7 @@ function initDb() {
         db.run(`ALTER TABLE orders ADD COLUMN courier_name TEXT DEFAULT 'dtdc'`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN delivery_charge REAL DEFAULT 0`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN lang TEXT DEFAULT 'en'`, (mErr) => {});
 
         // Categories Table
         db.run(`CREATE TABLE IF NOT EXISTS categories (
