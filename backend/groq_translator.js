@@ -6,26 +6,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const BATCH_SIZE = 25; // Send 25 products per request to stay well below token limits
 
 /**
- * Call Groq API to translate a batch of products into target language ('hi' or 'bn').
+ * Call Groq API for a single chunk/batch of products.
  */
-export async function translateProductsWithGroq(products, targetLang) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-        console.warn('[GROQ] GROQ_API_KEY is not set in environment. Skipping AI translation.');
-        return [];
-    }
-
-    if (!Array.isArray(products) || products.length === 0) {
-        return [];
-    }
-
+async function translateBatchWithGroq(productsChunk, targetLang, apiKey) {
     const langName = targetLang === 'hi' ? 'Hindi' : 'Bengali';
-    const payloadItems = products.map(p => ({
+    const payloadItems = productsChunk.map(p => ({
         id: String(p.id),
         name: p.name || '',
-        description: p.description || '',
+        description: (p.description || '').substring(0, 300), // Trim description to conserve tokens
         category: p.category || ''
     }));
 
@@ -45,7 +36,6 @@ You MUST output a JSON object containing an array under key "translations":
 }`;
 
     try {
-        console.log(`[GROQ] Requesting ${langName} translations for ${products.length} products...`);
         const response = await fetch(GROQ_API_URL, {
             method: 'POST',
             headers: {
@@ -53,7 +43,7 @@ You MUST output a JSON object containing an array under key "translations":
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant', // High-limit, ultra-fast model (500k TPM / 14M TPD)
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: JSON.stringify(payloadItems) }
@@ -65,7 +55,7 @@ You MUST output a JSON object containing an array under key "translations":
 
         if (!response.ok) {
             const errText = await response.text();
-            console.error(`[GROQ] API Error (${response.status}):`, errText);
+            console.error(`[GROQ] Batch API Error (${response.status}):`, errText);
             return [];
         }
 
@@ -73,9 +63,7 @@ You MUST output a JSON object containing an array under key "translations":
         const rawContent = data.choices?.[0]?.message?.content;
         if (!rawContent) return [];
 
-        console.log(`[GROQ] Raw response received (${rawContent.length} chars)`);
         const parsed = JSON.parse(rawContent);
-
         let rawList = [];
         if (Array.isArray(parsed)) {
             rawList = parsed;
@@ -99,7 +87,7 @@ You MUST output a JSON object containing an array under key "translations":
             }
         }
 
-        const normalizedList = rawList.map(item => {
+        return rawList.map(item => {
             if (!item) return null;
             const itemId = String(item.id || item.productId || item.product_id || '');
             if (!itemId) return null;
@@ -108,20 +96,47 @@ You MUST output a JSON object containing an array under key "translations":
             const description = item.description || item.translated_description || item[`${langName.toLowerCase()}_description`] || '';
             const category = item.category || item.translated_category || item[`${langName.toLowerCase()}_category`] || '';
 
-            return {
-                id: itemId,
-                name,
-                description,
-                category
-            };
+            return { id: itemId, name, description, category };
         }).filter(Boolean);
-
-        console.log(`[GROQ] Successfully parsed and normalized ${normalizedList.length} product translations for '${targetLang}'.`);
-        return normalizedList;
     } catch (err) {
-        console.error('[GROQ] Failed to translate products:', err.message);
+        console.error('[GROQ] Batch translation exception:', err.message);
         return [];
     }
+}
+
+/**
+ * Call Groq API in batched chunks to translate products safely without hitting rate limits.
+ */
+export async function translateProductsWithGroq(products, targetLang) {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+        console.warn('[GROQ] GROQ_API_KEY is not set in environment. Skipping AI translation.');
+        return [];
+    }
+
+    if (!Array.isArray(products) || products.length === 0) {
+        return [];
+    }
+
+    const langName = targetLang === 'hi' ? 'Hindi' : 'Bengali';
+    console.log(`[GROQ] Starting batched translation of ${products.length} products to ${langName} (batch size: ${BATCH_SIZE})...`);
+
+    const allResults = [];
+    for (let i = 0; i < products.length; i += BATCH_SIZE) {
+        const chunk = products.slice(i, i + BATCH_SIZE);
+        console.log(`[GROQ] Translating batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(products.length / BATCH_SIZE)} (${chunk.length} items)...`);
+
+        const chunkResults = await translateBatchWithGroq(chunk, targetLang, apiKey);
+        allResults.push(...chunkResults);
+
+        // Small delay between batches to respect rate limits
+        if (i + BATCH_SIZE < products.length) {
+            await new Promise(res => setTimeout(res, 200));
+        }
+    }
+
+    console.log(`[GROQ] Batched translation complete. Successfully translated ${allResults.length}/${products.length} products for '${targetLang}'.`);
+    return allResults;
 }
 
 /**
@@ -145,7 +160,7 @@ export async function getTranslatedProducts(db, products, lang) {
                 const missingProducts = products.filter(p => !cachedMap.has(String(p.id)));
 
                 if (missingProducts.length > 0) {
-                    console.log(`[GROQ] Found ${missingProducts.length} missing product translations for '${lang}'. Requesting Groq AI...`);
+                    console.log(`[GROQ] Found ${missingProducts.length} missing product translations for '${lang}'. Starting batch AI translation...`);
                     const newTranslations = await translateProductsWithGroq(missingProducts, lang);
 
                     newTranslations.forEach(tItem => {
@@ -159,7 +174,7 @@ export async function getTranslatedProducts(db, products, lang) {
                                 category: tItem.category
                             });
 
-                            // Save to DB cache asynchronously
+                            // Save to DB cache
                             db.run(
                                 `INSERT INTO product_translations (product_id, lang, name, description, category) 
                                  VALUES (?, ?, ?, ?, ?) 
@@ -168,7 +183,6 @@ export async function getTranslatedProducts(db, products, lang) {
                                 [strId, lang, tItem.name || '', tItem.description || '', tItem.category || ''],
                                 (insErr) => {
                                     if (insErr) {
-                                        // SQLite fallback syntax if ON CONFLICT failed
                                         db.run(
                                             `INSERT OR REPLACE INTO product_translations (product_id, lang, name, description, category) VALUES (?, ?, ?, ?, ?)`,
                                             [strId, lang, tItem.name || '', tItem.description || '', tItem.category || '']
