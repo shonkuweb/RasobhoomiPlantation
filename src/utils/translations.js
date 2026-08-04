@@ -2669,13 +2669,29 @@ export const translateProduct = (product, lang = 'en') => {
     if (!product) return product;
     if (lang === 'en') return product;
 
+    const defaultHindiDesc = `✅ प्रीमियम गुणवत्ता का कलम/ग्राफ्टेड पौधा
+🌱 स्वस्थ एवं मजबूत जड़ प्रणाली
+🍃 तेज़ वृद्धि और अच्छी शाखा विकास
+🍎 उचित देखभाल पर उच्च गुणवत्ता के फल
+☀️ प्रतिदिन 5–8 घंटे धूप आवश्यक
+💧 नियमित सिंचाई एवं अच्छी जल निकासी वाली मिट्टी उपयुक्त
+🏡 घर, छत, बालकनी, किचन गार्डन और फार्म के लिए उपयुक्त
+🪴 गमले तथा भूमि दोनों में रोपण योग्य
+🌿 रोगमुक्त एवं रोपण के लिए तैयार पौधा
+📦 सुरक्षित पैकिंग के साथ भेजा जाता है`;
+
     // Check by ID first
     if (product.id && productTranslations[product.id]) {
         const trans = productTranslations[product.id];
+        const translatedName = (trans.name && trans.name[lang]) || product.name;
+        let translatedDesc = (trans.description && trans.description[lang]);
+        if (!translatedDesc && lang === 'hi') {
+            translatedDesc = defaultHindiDesc;
+        }
         return {
             ...product,
-            name: (trans.name && trans.name[lang]) || product.name,
-            description: (trans.description && trans.description[lang]) || product.description,
+            name: translatedName,
+            description: translatedDesc || product.description,
             category: (trans.category && trans.category[lang]) || translateCategoryName(product.category, lang),
         };
     }
@@ -2685,7 +2701,7 @@ export const translateProduct = (product, lang = 'en') => {
 
     // Simple common word replacement fallback for demo / newly added products
     let translatedName = product.name || '';
-    let translatedDesc = product.description || '';
+    let translatedDesc = (lang === 'hi') ? defaultHindiDesc : (product.description || '');
 
     if (lang === 'hi') {
         translatedName = translatedName
@@ -2719,9 +2735,6 @@ export const translateProduct = (product, lang = 'en') => {
             .replace(/\bAll Time\b/gi, "बारहमासी")
             .replace(/\btest2\b/gi, "परीक्षण २")
             .replace(/\btest\b/gi, "परीक्षण");
-        
-        translatedDesc = translatedDesc
-            .replace(/this is test/gi, "यह एक परीक्षण विवरण है");
     } else if (lang === 'bn') {
         translatedName = translatedName
             .replace(/\bMango Plant\b/gi, "আম গাছ")
