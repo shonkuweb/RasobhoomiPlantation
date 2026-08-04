@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateInvoicePdf } from './invoice_generator.js';
+import { translateProduct } from '../src/utils/translations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -303,8 +304,6 @@ export function reconnectWhatsApp() {
     initWhatsApp();
     return getWhatsAppStatus();
 }
-
-import { translateProduct } from '../src/utils/translations.js';
 
 /**
  * Build structured WhatsApp confirmation message for customer in their selected language
