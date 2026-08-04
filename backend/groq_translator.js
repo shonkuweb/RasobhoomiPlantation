@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const BATCH_SIZE = 10; // 10 items per batch (~1,000 tokens) to safely stay within 6,000 TPM limit
+const BATCH_SIZE = 10; // 10 items per batch (~1,000 tokens) to safely stay within rate limits
 
 /**
  * Call Groq API for a single chunk/batch of products with automatic 429 retry backoff.
@@ -16,20 +16,22 @@ async function translateBatchWithGroq(productsChunk, targetLang, apiKey, maxRetr
     const payloadItems = productsChunk.map(p => ({
         id: String(p.id),
         name: p.name || '',
-        description: (p.description || '').substring(0, 200), // Trim description to keep tokens low
+        description: (p.description || '').substring(0, 250),
         category: p.category || ''
     }));
 
     const systemPrompt = `You are a professional botanical and horticultural translator for an Indian plant nursery. 
-Translate the provided plant products into fluent, natural ${langName}.
-Maintain accuracy for plant varieties, fruits, and farming terms.
-Output valid JSON ONLY with key "translations":
+Translate the provided plant products completely into fluent, natural ${langName}.
+CRITICAL INSTRUCTIONS:
+1. Translate the FULL product name and description into ${langName} script (${langName === 'Hindi' ? 'Devanagari' : 'Bengali script'}).
+2. Do NOT leave any English words in the product name or description. Transliterate proper names, variety titles, and brand terms phonetically into ${langName} script (e.g. "Amrapali" -> "${langName === 'Hindi' ? 'अमरापाली' : 'আম্রপালী'}", "Kolkata Pati" -> "${langName === 'Hindi' ? 'कोलकाता पाती' : 'কলকাতা পাতি'}", "Hybrid" -> "${langName === 'Hindi' ? 'हाइब्रिड' : 'হাইব্রিড'}", "Grafted" -> "${langName === 'Hindi' ? 'कलमी' : 'কলমি'}").
+3. Output valid JSON ONLY with key "translations":
 {
   "translations": [
     {
       "id": "exact_product_id",
-      "name": "translated plant name in ${langName}",
-      "description": "translated description in ${langName}",
+      "name": "full translated plant name in ${langName}",
+      "description": "full translated description in ${langName}",
       "category": "translated category in ${langName}"
     }
   ]
@@ -57,7 +59,6 @@ Output valid JSON ONLY with key "translations":
             if (!response.ok) {
                 const errText = await response.text();
                 if (response.status === 429 && attempt < maxRetries) {
-                    // Extract suggested retry delay from error message if present (e.g. "try again in 10.28s")
                     const match = errText.match(/try again in ([0-9.]+)s/i);
                     const waitSec = match ? Math.ceil(parseFloat(match[1])) + 1 : 10;
                     console.warn(`[GROQ] Rate limit hit (429). Retrying batch in ${waitSec} seconds (Attempt ${attempt}/${maxRetries})...`);
@@ -133,7 +134,7 @@ export async function translateProductsWithGroq(products, targetLang) {
     }
 
     const langName = targetLang === 'hi' ? 'Hindi' : 'Bengali';
-    console.log(`[GROQ] Starting batched translation of ${products.length} products to ${langName} (batch size: ${BATCH_SIZE})...`);
+    console.log(`[GROQ] Starting batched full translation of ${products.length} products to ${langName} (batch size: ${BATCH_SIZE})...`);
 
     const allResults = [];
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
@@ -145,13 +146,12 @@ export async function translateProductsWithGroq(products, targetLang) {
         const chunkResults = await translateBatchWithGroq(chunk, targetLang, apiKey);
         allResults.push(...chunkResults);
 
-        // Pause 2.5 seconds between batches to stay below 6,000 TPM limit
         if (i + BATCH_SIZE < products.length) {
             await new Promise(res => setTimeout(res, 2500));
         }
     }
 
-    console.log(`[GROQ] Batched translation complete. Successfully translated ${allResults.length}/${products.length} products for '${targetLang}'.`);
+    console.log(`[GROQ] Batched full translation complete. Successfully translated ${allResults.length}/${products.length} products for '${targetLang}'.`);
     return allResults;
 }
 
