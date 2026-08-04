@@ -17,6 +17,7 @@ let currentQrDataUrl = null;
 let connectionState = 'DISCONNECTED'; // DISCONNECTED, INITIALIZING, QR_READY, CONNECTED
 let userInfo = null;
 const notifiedOrderIds = new Set();
+const notifiedPendingOrderIds = new Set();
 let initRetryCount = 0;
 const MAX_INIT_RETRIES = 3;
 
@@ -408,6 +409,86 @@ export async function sendOrderPaymentNotification(order) {
         return { success: true };
     } catch (err) {
         console.error(`[WHATSAPP] Failed to send notification for order #${order.id}:`, err);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Build WhatsApp notification message for pending / incomplete payments (Headline + Customer Details ONLY)
+ */
+export function buildPendingPaymentNotificationMessage(order) {
+    let itemsText = '• Item details unavailable';
+    try {
+        const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+        if (Array.isArray(items) && items.length > 0) {
+            itemsText = items.map((item, idx) => {
+                const name = item.name || item.title || 'Plant / Product';
+                const qty = item.qty || item.quantity || 1;
+                const price = item.price ? `₹${item.price}` : '';
+                return `  ${idx + 1}. *${name}* × ${qty} ${price ? `(${price})` : ''}`;
+            }).join('\n');
+        }
+    } catch (e) {
+        if (typeof order.items === 'string' && order.items.trim()) {
+            itemsText = `• ${order.items}`;
+        }
+    }
+
+    const formattedDate = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
+
+    const phoneFormatted = order.phone ? `+91 ${order.phone.replace(/\D/g, '').slice(-10)}` : 'N/A';
+    const addressFormatted = `${order.address || ''}, ${order.city || ''}${order.zip ? ` - ${order.zip}` : ''}`;
+
+    return `⚠️ *PENDING PAYMENT* ⚠️
+--------------------------------------------------
+🆔 *Order ID:* #${order.id}
+👤 *Customer Name:* ${order.name || 'N/A'}
+📞 *Phone Number:* ${phoneFormatted}
+📍 *Delivery Address:* ${addressFormatted || 'N/A'}
+
+📦 *Ordered Items:*
+${itemsText}
+
+💰 *Amount Pending:* ₹${order.total || 0}
+⏰ *Time:* ${formattedDate}
+--------------------------------------------------`;
+}
+
+/**
+ * Send Pending Payment notification (headline & customer details) to Admin WhatsApp number (8972076182)
+ */
+export async function sendPendingPaymentNotification(order) {
+    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
+
+    if (notifiedPendingOrderIds.has(order.id)) {
+        console.log(`[WHATSAPP] Pending payment notification already sent for order #${order.id}. Skipping.`);
+        return { success: true, duplicate: true };
+    }
+
+    if (connectionState !== 'CONNECTED' || !client) {
+        console.warn(`[WHATSAPP] Cannot send pending payment notification. WhatsApp state is '${connectionState}'`);
+        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
+    }
+
+    try {
+        const textMessage = buildPendingPaymentNotificationMessage(order);
+        const adminJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
+
+        if (adminJid) {
+            console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
+            await client.sendMessage(adminJid, textMessage);
+            notifiedPendingOrderIds.add(order.id);
+            console.log(`[WHATSAPP] Pending payment alert delivered for #${order.id}!`);
+            return { success: true };
+        } else {
+            return { success: false, error: 'Invalid admin phone number' };
+        }
+    } catch (err) {
+        console.error(`[WHATSAPP] Failed to send pending payment notification for order #${order.id}:`, err);
         return { success: false, error: err.message };
     }
 }

@@ -17,6 +17,7 @@ import {
     getWhatsAppStatus,
     reconnectWhatsApp,
     sendOrderPaymentNotification,
+    sendPendingPaymentNotification,
     sendOrderStatusNotification,
     sendTestMessage,
     logoutWhatsApp
@@ -1067,6 +1068,13 @@ function updateOrderPaymentState(orderId, paymentStatus, orderStatus = null, tra
             [paymentStatus, statusToSet, transactionId, orderId],
             function (err) {
                 if (err) return reject(err);
+                if (paymentStatus === 'pending' || paymentStatus === 'failed') {
+                    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (getErr, row) => {
+                        if (!getErr && row) {
+                            sendPendingPaymentNotification(row).catch(e => console.error('[WHATSAPP] Pending notification error:', e));
+                        }
+                    });
+                }
                 resolve();
             }
         );
@@ -1147,6 +1155,37 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     const total = Math.max(0, calculatedTotal - discountAmount) + deliveryCharge;
     console.log(`[DEBUG] Order ID: ${orderId}, Subtotal: ${calculatedTotal}, Discount: ${discountAmount}, Delivery: ${deliveryCharge}, Total: ${total}`);
 
+    const verifiedItemsJson = JSON.stringify(verifiedItems);
+    const pendingOrderObj = {
+        id: orderId,
+        name, phone, address, city, zip,
+        total,
+        delivery_charge: deliveryCharge,
+        discount_amount: discountAmount,
+        items: verifiedItemsJson,
+        status: 'pending_payment',
+        payment_status: 'pending',
+        createdAt: Date.now()
+    };
+    pendingOrders.set(orderId, pendingOrderObj);
+    console.log(`[ORDER] Stored pending order ${orderId} in memory`);
+
+    db.run(
+        `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, name, phone, address, city, zip, total, deliveryCharge, discountAmount, verifiedItemsJson, 'pending_payment', 'pending', null],
+        function (insertErr) {
+            if (insertErr) {
+                console.error(`[ORDER] Failed to persist pending order ${orderId}:`, insertErr.message);
+            } else {
+                console.log(`[ORDER] Pending order ${orderId} saved to DB`);
+            }
+        }
+    );
+
+    // Send Pending Payment alert to admin WhatsApp (+91 8972076182) when Pay Now is clicked
+    sendPendingPaymentNotification(pendingOrderObj).catch(e => console.error('[WHATSAPP] Pending payment alert error:', e));
+
     // Check for credentials - use test mode fallback if credentials aren't set in environment
     if (!process.env.PHONEPE_CLIENT_ID || !process.env.PHONEPE_CLIENT_SECRET) {
         console.warn(`[PAYMENT] PhonePe credentials missing in .env. Operating in Test Simulation mode for order ${orderId}`);
@@ -1159,7 +1198,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         });
     }
 
-    // PHONEPE FLOW — Store order in memory, initiate payment, save to DB ONLY on success
+    // PHONEPE FLOW — Initiate payment session
     try {
         const token = await getPhonePeAuthToken();
 
@@ -1192,31 +1231,6 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         console.log("PhonePe Pay Response:", JSON.stringify(data, null, 2));
 
         if (data && data.redirectUrl) {
-            // Store order in temp map and DB as pending to avoid data loss on callback issues/restarts
-            const verifiedItemsJson = JSON.stringify(verifiedItems);
-            pendingOrders.set(orderId, {
-                name, phone, address, city, zip,
-                total,
-                delivery_charge: deliveryCharge,
-                discount_amount: discountAmount,
-                items: verifiedItemsJson,
-                createdAt: Date.now()
-            });
-            console.log(`[ORDER] Stored pending order ${orderId} in memory`);
-
-            db.run(
-                `INSERT INTO orders (id, name, phone, address, city, zip, total, delivery_charge, discount_amount, items, status, payment_status, transaction_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [orderId, name, phone, address, city, zip, total, deliveryCharge, discountAmount, verifiedItemsJson, 'pending_payment', 'pending', null],
-                function (insertErr) {
-                    if (insertErr) {
-                        console.error(`[ORDER] Failed to persist pending order ${orderId}:`, insertErr.message);
-                    } else {
-                        console.log(`[ORDER] Pending order ${orderId} saved to DB`);
-                    }
-                }
-            );
-
             res.json({
                 success: true,
                 message: "Payment Session Created",
@@ -1471,6 +1485,10 @@ app.get('/api/orders/:id', (req, res) => {
     db.get("SELECT * FROM orders WHERE id = ?", [req.params.id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Order not found' });
+
+        if (row.payment_status === 'pending' || row.status === 'pending_payment') {
+            sendPendingPaymentNotification(row).catch(e => console.error('[WHATSAPP] Pending notification error:', e));
+        }
 
         const order = {
             ...row,
