@@ -32,6 +32,9 @@ RUN npm ci --only=production --legacy-peer-deps
 # Copy backend files
 COPY backend ./backend
 
+# Copy src/utils folder for translation dictionaries
+COPY src/utils ./src/utils
+
 # Copy scripts folder
 COPY scripts ./scripts
 

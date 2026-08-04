@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateInvoicePdf } from './invoice_generator.js';
-import { translateProduct } from '../src/utils/translations.js';
+import { translateProduct } from './product_translator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
