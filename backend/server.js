@@ -21,6 +21,7 @@ import {
     sendTestMessage,
     logoutWhatsApp
 } from './whatsapp.js';
+import { getTranslatedProducts } from './groq_translator.js';
 
 dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), '../.env') }); // Load .env from root
 
@@ -679,6 +680,20 @@ const getPhonePeTransactionId = (payload = {}) =>
 // --- API ENDPOINTS ---
 
 // PRODUCTS
+app.get('/api/products/translations', (req, res) => {
+    const lang = req.query.lang || 'en';
+    db.all("SELECT * FROM products ORDER BY id DESC", [], async (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        try {
+            const rawProducts = parseProductRows(rows);
+            const translated = await getTranslatedProducts(db, rawProducts, lang);
+            res.json({ success: true, lang, products: translated });
+        } catch (parseErr) {
+            res.status(500).json({ error: "Failed to process translation data" });
+        }
+    });
+});
+
 app.get('/api/products/:id', (req, res) => {
     const cacheKey = `one:${req.params.id}:v:${productCacheVersion}`;
     const cachedPayload = getCachedPayload(cacheKey);

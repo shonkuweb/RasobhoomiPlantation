@@ -16,12 +16,41 @@ function clearAdminToken() {
     sessionStorage.removeItem('adminToken');
 }
 
+let adminAiTranslationsMap = {};
+
+async function fetchAdminAiTranslations(lang) {
+    if (lang === 'en') return;
+    try {
+        const res = await fetch(`/api/products/translations?lang=${lang}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.products)) {
+                const map = {};
+                data.products.forEach(p => { if (p && p.id) map[p.id] = p; });
+                adminAiTranslationsMap[lang] = map;
+                render();
+            }
+        }
+    } catch (e) {
+        console.error('Admin AI translation fetch failed:', e);
+    }
+}
+
 function translateProductAdmin(p, lang = 'en') {
     if (!p) return p;
     if (lang === 'en') return p;
+    if (adminAiTranslationsMap[lang] && adminAiTranslationsMap[lang][p.id]) {
+        const aiTrans = adminAiTranslationsMap[lang][p.id];
+        return {
+            ...p,
+            name: aiTrans.name || p.name,
+            description: aiTrans.description || p.description,
+            category: aiTrans.category || p.category
+        };
+    }
     const categoryTranslations = {
         "Indian Mangoes": { hi: "भारतीय आम", bn: "ভারতীয় আম" },
-        "Foreigner Mango": { hi: "विदेशी आम", bn: "বিদেশী আম" },
+        "Foreigner Mango": { hi: "विदेशी आम", bn: "विदेशী আম" },
         "Fruit Plants": { hi: "फलदार पौधे", bn: "ফল গাছ" },
         "Guava": { hi: "अमरूद", bn: "পেয়ারা" },
         "Lemon": { hi: "नींबू", bn: "লেবু" },
@@ -417,9 +446,16 @@ async function saveOrderSettings(e) {
 function setupListeners() {
     const adminLangSelect = document.getElementById('admin-lang-select');
     if (adminLangSelect) {
-        adminLangSelect.value = localStorage.getItem('app_language') || 'en';
+        const initialLang = localStorage.getItem('app_language') || 'en';
+        adminLangSelect.value = initialLang;
+        if (initialLang !== 'en') fetchAdminAiTranslations(initialLang);
+
         adminLangSelect.addEventListener('change', (e) => {
-            localStorage.setItem('app_language', e.target.value);
+            const selectedLang = e.target.value;
+            localStorage.setItem('app_language', selectedLang);
+            if (selectedLang !== 'en') {
+                fetchAdminAiTranslations(selectedLang);
+            }
             render();
         });
     }

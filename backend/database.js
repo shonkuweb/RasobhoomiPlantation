@@ -163,6 +163,18 @@ function initDb() {
             if (err) console.error("Error creating discounts table:", err);
         });
 
+        // Product Translations Table (Groq AI Cache)
+        db.run(`CREATE TABLE IF NOT EXISTS product_translations (
+            product_id TEXT,
+            lang TEXT,
+            name TEXT,
+            description TEXT,
+            category TEXT,
+            PRIMARY KEY (product_id, lang)
+        )`, (err) => {
+            if (err) console.error("Error creating product_translations table:", err);
+        });
+
         console.log('Database tables initialized.');
     });
 }

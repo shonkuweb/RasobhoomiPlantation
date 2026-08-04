@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { uiTranslations, t as tHelper, translateProduct as translateProductHelper } from '../utils/translations';
 
 const LanguageContext = createContext();
@@ -20,6 +20,42 @@ export const LanguageProvider = ({ children }) => {
         }
     });
 
+    const [aiTranslationsMap, setAiTranslationsMap] = useState({});
+    const [isTranslating, setIsTranslating] = useState(false);
+
+    const fetchGroqTranslations = useCallback(async (targetLang) => {
+        if (targetLang === 'en') return;
+        setIsTranslating(true);
+        try {
+            const res = await fetch(`/api/products/translations?lang=${targetLang}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && Array.isArray(data.products)) {
+                    const newMap = {};
+                    data.products.forEach(p => {
+                        if (p && p.id) {
+                            newMap[p.id] = p;
+                        }
+                    });
+                    setAiTranslationsMap(prev => ({
+                        ...prev,
+                        [targetLang]: newMap
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch Groq AI translations:', err);
+        } finally {
+            setIsTranslating(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (language !== 'en') {
+            fetchGroqTranslations(language);
+        }
+    }, [language, fetchGroqTranslations]);
+
     const setLanguage = (newLang) => {
         if (!uiTranslations[newLang]) return;
         setLanguageState(newLang);
@@ -31,10 +67,29 @@ export const LanguageProvider = ({ children }) => {
     };
 
     const t = (key) => tHelper(key, language);
-    const translateProduct = (product) => translateProductHelper(product, language);
+
+    const translateProduct = (product) => {
+        if (!product) return product;
+        if (language === 'en') return product;
+
+        // Check if Groq AI translation is available in map
+        const langMap = aiTranslationsMap[language];
+        if (langMap && langMap[product.id]) {
+            const aiTrans = langMap[product.id];
+            return {
+                ...product,
+                name: aiTrans.name || product.name,
+                description: aiTrans.description || product.description,
+                category: aiTrans.category || product.category
+            };
+        }
+
+        // Fallback to offline dictionary helper while loading
+        return translateProductHelper(product, language);
+    };
 
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t, translateProduct }}>
+        <LanguageContext.Provider value={{ language, setLanguage, t, translateProduct, isTranslating }}>
             {children}
         </LanguageContext.Provider>
     );
