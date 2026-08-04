@@ -1079,8 +1079,8 @@ function setupListeners() {
                             discountPercent = Math.round(((comparePrice - price) / comparePrice) * 100);
                         }
 
-                        const priceFormatted = `₹${price.toLocaleString('en-IN')}`;
-                        const marketPriceFormatted = `₹${marketPrice.toLocaleString('en-IN')}`;
+                        const priceFormatted = `${price.toLocaleString('en-IN')}`;
+                        const marketPriceFormatted = `${marketPrice.toLocaleString('en-IN')}`;
                         const discountFormatted = discountPercent > 0 ? `${discountPercent}%` : '0%';
 
                         return [
