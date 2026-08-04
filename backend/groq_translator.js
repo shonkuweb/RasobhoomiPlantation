@@ -6,24 +6,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const BATCH_SIZE = 25; // Send 25 products per request to stay well below token limits
+const BATCH_SIZE = 10; // 10 items per batch (~1,000 tokens) to safely stay within 6,000 TPM limit
 
 /**
- * Call Groq API for a single chunk/batch of products.
+ * Call Groq API for a single chunk/batch of products with automatic 429 retry backoff.
  */
-async function translateBatchWithGroq(productsChunk, targetLang, apiKey) {
+async function translateBatchWithGroq(productsChunk, targetLang, apiKey, maxRetries = 3) {
     const langName = targetLang === 'hi' ? 'Hindi' : 'Bengali';
     const payloadItems = productsChunk.map(p => ({
         id: String(p.id),
         name: p.name || '',
-        description: (p.description || '').substring(0, 300), // Trim description to conserve tokens
+        description: (p.description || '').substring(0, 200), // Trim description to keep tokens low
         category: p.category || ''
     }));
 
     const systemPrompt = `You are a professional botanical and horticultural translator for an Indian plant nursery. 
 Translate the provided plant products into fluent, natural ${langName}.
 Maintain accuracy for plant varieties, fruits, and farming terms.
-You MUST output a JSON object containing an array under key "translations":
+Output valid JSON ONLY with key "translations":
 {
   "translations": [
     {
@@ -35,77 +35,91 @@ You MUST output a JSON object containing an array under key "translations":
   ]
 }`;
 
-    try {
-        const response = await fetch(GROQ_API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant', // High-limit, ultra-fast model (500k TPM / 14M TPD)
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: JSON.stringify(payloadItems) }
-                ],
-                temperature: 0.1,
-                response_format: { type: 'json_object' }
-            })
-        });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(GROQ_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: JSON.stringify(payloadItems) }
+                    ],
+                    temperature: 0.1,
+                    response_format: { type: 'json_object' }
+                })
+            });
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error(`[GROQ] Batch API Error (${response.status}):`, errText);
-            return [];
-        }
+            if (!response.ok) {
+                const errText = await response.text();
+                if (response.status === 429 && attempt < maxRetries) {
+                    // Extract suggested retry delay from error message if present (e.g. "try again in 10.28s")
+                    const match = errText.match(/try again in ([0-9.]+)s/i);
+                    const waitSec = match ? Math.ceil(parseFloat(match[1])) + 1 : 10;
+                    console.warn(`[GROQ] Rate limit hit (429). Retrying batch in ${waitSec} seconds (Attempt ${attempt}/${maxRetries})...`);
+                    await new Promise(res => setTimeout(res, waitSec * 1000));
+                    continue;
+                }
+                console.error(`[GROQ] Batch API Error (${response.status}):`, errText);
+                return [];
+            }
 
-        const data = await response.json();
-        const rawContent = data.choices?.[0]?.message?.content;
-        if (!rawContent) return [];
+            const data = await response.json();
+            const rawContent = data.choices?.[0]?.message?.content;
+            if (!rawContent) return [];
 
-        const parsed = JSON.parse(rawContent);
-        let rawList = [];
-        if (Array.isArray(parsed)) {
-            rawList = parsed;
-        } else if (Array.isArray(parsed.translations)) {
-            rawList = parsed.translations;
-        } else if (Array.isArray(parsed.products)) {
-            rawList = parsed.products;
-        } else if (Array.isArray(parsed.items)) {
-            rawList = parsed.items;
-        } else if (parsed && typeof parsed === 'object') {
-            if (parsed.id && (parsed.name || parsed.title)) {
-                rawList = [parsed];
-            } else {
-                rawList = Object.keys(parsed).map(key => {
-                    const item = parsed[key];
-                    if (typeof item === 'object' && item !== null) {
-                        return { id: key, ...item };
-                    }
-                    return null;
-                }).filter(Boolean);
+            const parsed = JSON.parse(rawContent);
+            let rawList = [];
+            if (Array.isArray(parsed)) {
+                rawList = parsed;
+            } else if (Array.isArray(parsed.translations)) {
+                rawList = parsed.translations;
+            } else if (Array.isArray(parsed.products)) {
+                rawList = parsed.products;
+            } else if (Array.isArray(parsed.items)) {
+                rawList = parsed.items;
+            } else if (parsed && typeof parsed === 'object') {
+                if (parsed.id && (parsed.name || parsed.title)) {
+                    rawList = [parsed];
+                } else {
+                    rawList = Object.keys(parsed).map(key => {
+                        const item = parsed[key];
+                        if (typeof item === 'object' && item !== null) {
+                            return { id: key, ...item };
+                        }
+                        return null;
+                    }).filter(Boolean);
+                }
+            }
+
+            return rawList.map(item => {
+                if (!item) return null;
+                const itemId = String(item.id || item.productId || item.product_id || '');
+                if (!itemId) return null;
+
+                const name = item.name || item.translated_name || item[`${langName.toLowerCase()}_name`] || item.title || '';
+                const description = item.description || item.translated_description || item[`${langName.toLowerCase()}_description`] || '';
+                const category = item.category || item.translated_category || item[`${langName.toLowerCase()}_category`] || '';
+
+                return { id: itemId, name, description, category };
+            }).filter(Boolean);
+        } catch (err) {
+            console.error(`[GROQ] Batch translation exception on attempt ${attempt}:`, err.message);
+            if (attempt < maxRetries) {
+                await new Promise(res => setTimeout(res, 3000));
             }
         }
-
-        return rawList.map(item => {
-            if (!item) return null;
-            const itemId = String(item.id || item.productId || item.product_id || '');
-            if (!itemId) return null;
-
-            const name = item.name || item.translated_name || item[`${langName.toLowerCase()}_name`] || item.title || '';
-            const description = item.description || item.translated_description || item[`${langName.toLowerCase()}_description`] || '';
-            const category = item.category || item.translated_category || item[`${langName.toLowerCase()}_category`] || '';
-
-            return { id: itemId, name, description, category };
-        }).filter(Boolean);
-    } catch (err) {
-        console.error('[GROQ] Batch translation exception:', err.message);
-        return [];
     }
+
+    return [];
 }
 
 /**
- * Call Groq API in batched chunks to translate products safely without hitting rate limits.
+ * Call Groq API in batched chunks with rate-limiting pauses to translate products safely.
  */
 export async function translateProductsWithGroq(products, targetLang) {
     const apiKey = process.env.GROQ_API_KEY;
@@ -124,14 +138,16 @@ export async function translateProductsWithGroq(products, targetLang) {
     const allResults = [];
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
         const chunk = products.slice(i, i + BATCH_SIZE);
-        console.log(`[GROQ] Translating batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(products.length / BATCH_SIZE)} (${chunk.length} items)...`);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(products.length / BATCH_SIZE);
+        console.log(`[GROQ] Translating batch ${batchNum}/${totalBatches} (${chunk.length} items)...`);
 
         const chunkResults = await translateBatchWithGroq(chunk, targetLang, apiKey);
         allResults.push(...chunkResults);
 
-        // Small delay between batches to respect rate limits
+        // Pause 2.5 seconds between batches to stay below 6,000 TPM limit
         if (i + BATCH_SIZE < products.length) {
-            await new Promise(res => setTimeout(res, 200));
+            await new Promise(res => setTimeout(res, 2500));
         }
     }
 
