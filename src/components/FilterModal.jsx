@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { categories as allCategories, sortCategoriesWithMangoFirst } from '../utils/categories';
+import { useLanguage } from '../context/LanguageContext';
+import { translateCategoryName } from '../utils/translations';
 
 const FilterModal = ({ isOpen, onClose, onApply }) => {
+    const { language, t } = useLanguage();
     const [sort, setSort] = useState('default');
     const [selectedCategoryNames, setSelectedCategoryNames] = useState([]);
     const [stock, setStock] = useState(false);
@@ -27,7 +30,6 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
 
     const categoryOptions = sortCategoriesWithMangoFirst(allCategories).map(cat => cat.name);
 
-
     return (
         <div style={{
             position: 'fixed',
@@ -48,32 +50,32 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
                 overflowY: 'auto'
             }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>FILTER & SORT</h2>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{t('filter_sorting')}</h2>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
                 </div>
 
                 {/* Sort */}
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Sort By Price</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t('sort_by_price')}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input type="radio" name="sortPrice" value="default" checked={sort === 'default'} onChange={() => setSort('default')} />
-                            Default
+                            {t('default_sort')}
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input type="radio" name="sortPrice" value="lowHigh" checked={sort === 'lowHigh'} onChange={() => setSort('lowHigh')} />
-                            Price: Low to High
+                            {t('price_low_high')}
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input type="radio" name="sortPrice" value="highLow" checked={sort === 'highLow'} onChange={() => setSort('highLow')} />
-                            Price: High to Low
+                            {t('price_high_low')}
                         </label>
                     </div>
                 </div>
 
                 {/* Categories */}
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Categories</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t('nav_categories')}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {categoryOptions.map(cat => (
                             <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -82,7 +84,7 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
                                     checked={selectedCategoryNames.includes(cat)}
                                     onChange={() => handleCategoryChange(cat)}
                                 />
-                                {cat}
+                                {translateCategoryName(cat, language)}
                             </label>
                         ))}
                     </div>
@@ -90,10 +92,10 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
 
                 {/* Stock */}
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Availability</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{t('availability')}</h3>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input type="checkbox" checked={stock} onChange={e => setStock(e.target.checked)} />
-                        In Stock Only
+                        {t('in_stock_only')}
                     </label>
                 </div>
 
@@ -111,7 +113,7 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
                             cursor: 'pointer'
                         }}
                     >
-                        RESET
+                        {t('reset')}
                     </button>
                     <button
                         onClick={handleApply}
@@ -126,7 +128,7 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
                             cursor: 'pointer'
                         }}
                     >
-                        APPLY
+                        {t('apply')}
                     </button>
                 </div>
             </div>

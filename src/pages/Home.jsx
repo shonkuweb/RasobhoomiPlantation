@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
 import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst, sortProductsWithMangoFirst } from '../utils/categories';
-import { categoryTranslations } from '../utils/translations';
+import { translateCategoryName } from '../utils/translations';
 
 const Home = () => {
     const { products, searchQuery, isLoadingInitial } = useShop();
@@ -59,11 +59,7 @@ const Home = () => {
     };
 
     const formatCategoryName = (name) => {
-        if (!name) return '';
-        if (categoryTranslations[name] && categoryTranslations[name][language]) {
-            return categoryTranslations[name][language];
-        }
-        return name;
+        return translateCategoryName(name, language);
     };
 
     return (

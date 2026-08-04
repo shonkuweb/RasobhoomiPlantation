@@ -78,10 +78,19 @@ export const uiTranslations = {
         stay_connected: "Stay Connected",
         all_rights_reserved: "All rights reserved.",
 
-        // Home Hero
+        // Home Hero & Section Headers
         hero_title: "Welcome to Rasobhoomi Plantation",
         hero_subtitle: "Explore our collection of authentic, high-yielding fruit and garden plants directly from our nursery.",
-        shop_now: "Shop Now"
+        shop_now: "Shop Now",
+        filter_sorting: "FILTER & SORTING",
+        sort_by_price: "Sort By Price",
+        default_sort: "Default",
+        price_low_high: "Price: Low to High",
+        price_high_low: "Price: High to Low",
+        availability: "Availability",
+        in_stock_only: "In Stock Only",
+        reset: "RESET",
+        apply: "APPLY"
     },
     hi: {
         // Navbar
@@ -162,10 +171,19 @@ export const uiTranslations = {
         stay_connected: "जुड़े रहें",
         all_rights_reserved: "सर्वाधिकार सुरक्षित।",
 
-        // Home Hero
+        // Home Hero & Section Headers
         hero_title: "रसोभूमि प्लांटेशन में आपका स्वागत है",
         hero_subtitle: "हमारी नर्सरी से सीधे प्रामाणिक, उच्च उपज वाले फलों और बगीचे के पौधों का संग्रह देखें।",
-        shop_now: "अभी खरीदें"
+        shop_now: "अभी खरीदें",
+        filter_sorting: "फ़िल्टर और सॉर्टिंग",
+        sort_by_price: "मूल्य के अनुसार सॉर्ट करें",
+        default_sort: "डिफ़ॉल्ट",
+        price_low_high: "मूल्य: कम से अधिक",
+        price_high_low: "मूल्य: अधिक से कम",
+        availability: "उपलब्धता",
+        in_stock_only: "केवल स्टॉक में उपलब्ध",
+        reset: "रीसेट",
+        apply: "लागू करें"
     },
     bn: {
         // Navbar
@@ -246,28 +264,60 @@ export const uiTranslations = {
         stay_connected: "সংযুক্ত থাকুন",
         all_rights_reserved: "সর্বস্বত্ব সংরক্ষিত।",
 
-        // Home Hero
+        // Home Hero & Section Headers
         hero_title: "রসোভূমি প্ল্যান্টেশনে আপনাকে স্বাগতম",
         hero_subtitle: "আমাদের নার্সারি থেকে সরাসরি উন্নত মানের ও ফলনশীল চারা গাছ এবং বাগান গাছ সংগ্রহ করুন।",
-        shop_now: "এখনই কিনুন"
+        shop_now: "এখনই কিনুন",
+        filter_sorting: "ফিল্টার ও সর্টিং",
+        sort_by_price: "দামের ভিত্তিতে সাজান",
+        default_sort: "ডিফল্ট",
+        price_low_high: "দাম: কম থেকে বেশি",
+        price_high_low: "দাম: বেশি থেকে কম",
+        availability: "উপলব্ধতা",
+        in_stock_only: "কেবল স্টকে থাকা পণ্য",
+        reset: "রিসেট",
+        apply: "প্রয়োগ করুন"
     }
 };
 
-// Common Category & Term Translations
+// Comprehensive Category Name Translations Map
 export const categoryTranslations = {
     "Indian Mangoes": { hi: "भारतीय आम", bn: "ভারতীয় আম" },
     "Foreigner Mango": { hi: "विदेशी आम", bn: "বিদেশী আম" },
+    "Malta Orange": { hi: "माल्टा संतरा", bn: "মাল্টা কমলা" },
+    "Orange": { hi: "संतरा", bn: "কমলালেবু" },
+    "Guava": { hi: "अमरूद", bn: "পেয়ারা" },
+    "Jackfruit": { hi: "कटहल", bn: "কাঁঠাল" },
+    "Jamun": { hi: "जामुन", bn: "জাম" },
+    "Water Apple": { hi: "वाटर एप्पल (जामरुल)", bn: "জামরুল" },
+    "Chiku": { hi: "चीकू", bn: "সফেদা" },
+    "Coconut": { hi: "नारियल", bn: "নারকেল" },
+    "Betel Nut": { hi: "सुपारी", bn: "সুপারি" },
+    "Lemon": { hi: "नींबू", bn: "লেবু" },
+    "Amloki": { hi: "आंवला", bn: "আমলকী" },
+    "Longon": { hi: "लोंगॉन (आंशफल)", bn: "আঁশফল" },
+    "Longan": { hi: "लोंगॉन (आंशफल)", bn: "আঁশফল" },
+    "Litchi": { hi: "लीची", bn: "লিচু" },
+    "Anar": { hi: "अनार", bn: "বেদানা" },
+    "Grape": { hi: "अंगूर", bn: "আঙুর" },
+    "Fruit Tree": { hi: "फलदार पेड़", bn: "ফল গাছ" },
     "Fruit Plants": { hi: "फलदार पौधे", bn: "ফল গাছ" },
-    "Guava": { hi: "अमरूद का पौधा", bn: "পেয়ারা গাছ" },
-    "Lemon": { hi: "नींबू का पौधा", bn: "লেবু গাছ" },
-    "Jackfruit": { hi: "कटहल का पौधा", bn: "কাঁঠাল গাছ" },
+    "Drum Plants": { hi: "ड्रम के पौधे", bn: "ড্রাম গাছ" },
     "Spice Plants": { hi: "मसाले के पौधे", bn: "মশলা গাছ" },
-    "Flower Plants": { hi: "फूलों के पौधे", bn: "ফুল গাছ" }
+    "Flower Plants": { hi: "फूलों के पौधे", bn: "ফুল গাছ" },
+    "Others": { hi: "अन्य", bn: "অন্যান্য" }
+};
+
+export const translateCategoryName = (name, lang = 'en') => {
+    if (!name || lang === 'en') return name;
+    if (categoryTranslations[name] && categoryTranslations[name][lang]) {
+        return categoryTranslations[name][lang];
+    }
+    return name;
 };
 
 // Product specific translations dictionary
 export const productTranslations = {
-    // Known sample/common products
     "P1": {
         name: { hi: "आम का पौधा (आम्रपाली)", bn: "আম গাছ (আম্রপালী)" },
         description: { hi: "स्वस्थ कलम किया हुआ आम्रपाली आम का पौधा, मीठे फलों के लिए प्रसिद्ध।", bn: "সুস্বাদু ও মিষ্টি ফলের জন্য বিখ্যাত আম্রপালী আম গাছ।" },
@@ -284,7 +334,7 @@ export const productTranslations = {
         category: { hi: "नींबू", bn: "লেবু" }
     },
     "P4": {
-        name: { hi: "थाई पिंक कटहल", bn: "থাই পিঙ্ক কাঁঠাল" },
+        name: { hi: "थाई पिंक कटहल", bn: "थाई पीन्छ কাঁঠাল" },
         description: { hi: "विदेशी थाई पिंक कटहल का पौधा।", bn: "বিখ্যাত থাই পিঙ্ক কাঁঠাল গাছ।" },
         category: { hi: "कटहल", bn: "কাঁঠাল" }
     }
@@ -310,17 +360,14 @@ export const translateProduct = (product, lang = 'en') => {
         const trans = productTranslations[product.id];
         return {
             ...product,
-            name: trans.name && trans.name[lang] ? trans.name[lang] : product.name,
-            description: trans.description && trans.description[lang] ? trans.description[lang] : product.description,
-            category: trans.category && trans.category[lang] ? trans.category[lang] : product.category,
+            name: (trans.name && trans.name[lang]) || product.name,
+            description: (trans.description && trans.description[lang]) || product.description,
+            category: (trans.category && trans.category[lang]) || translateCategoryName(product.category, lang),
         };
     }
 
     // Dynamic category translation fallback
-    let translatedCategory = product.category;
-    if (product.category && categoryTranslations[product.category] && categoryTranslations[product.category][lang]) {
-        translatedCategory = categoryTranslations[product.category][lang];
-    }
+    let translatedCategory = translateCategoryName(product.category, lang);
 
     // Simple common word replacement fallback for demo / newly added products
     let translatedName = product.name || '';
@@ -331,8 +378,13 @@ export const translateProduct = (product, lang = 'en') => {
             .replace(/Mango Plant/gi, "आम का पौधा")
             .replace(/Mango/gi, "आम")
             .replace(/Guava Plant/gi, "अमरूद का पौधा")
+            .replace(/Guava/gi, "अमरूद")
             .replace(/Lemon Plant/gi, "नींबू का पौधा")
+            .replace(/Lemon/gi, "नींबू")
             .replace(/Jackfruit/gi, "कटहल")
+            .replace(/Orange/gi, "संतरा")
+            .replace(/Coconut/gi, "नारियल")
+            .replace(/Litchi/gi, "लीची")
             .replace(/Plant/gi, "पौधा")
             .replace(/test2/gi, "परीक्षण २")
             .replace(/test/gi, "परीक्षण");
@@ -344,8 +396,13 @@ export const translateProduct = (product, lang = 'en') => {
             .replace(/Mango Plant/gi, "আম গাছ")
             .replace(/Mango/gi, "আম")
             .replace(/Guava Plant/gi, "পেয়ারা গাছ")
+            .replace(/Guava/gi, "পেয়ারা")
             .replace(/Lemon Plant/gi, "লেবু গাছ")
+            .replace(/Lemon/gi, "লেবু")
             .replace(/Jackfruit/gi, "কাঁঠাল")
+            .replace(/Orange/gi, "কমলালেবু")
+            .replace(/Coconut/gi, "নারকেল")
+            .replace(/Litchi/gi, "লিচু")
             .replace(/Plant/gi, "গাছ")
             .replace(/test2/gi, "পরীক্ষা ২")
             .replace(/test/gi, "পরীক্ষা");

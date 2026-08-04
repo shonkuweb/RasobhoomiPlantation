@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
-// import { categories } from '../utils/categories';
+import { useLanguage } from '../context/LanguageContext';
+import { translateCategoryName } from '../utils/translations';
 import ProductCard from '../components/ProductCard';
 import SEO from '../components/SEO';
 
@@ -9,8 +10,9 @@ const CategoryPage = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const { products } = useShop();
+    const { language, t } = useLanguage();
     const [categoryProducts, setCategoryProducts] = useState([]);
-    const [title, setTitle] = useState('');
+    const [rawTitle, setRawTitle] = useState('');
     const [categories, setCategories] = useState([]);
 
     useEffect(() => {
@@ -30,7 +32,7 @@ const CategoryPage = () => {
         if (categories.length === 0) return;
         const category = categories.find(c => c.slug === slug);
         const categoryName = category ? category.name : 'Unknown Category';
-        setTitle(categoryName);
+        setRawTitle(categoryName);
 
         if (products.length > 0) {
             const filtered = products.filter(p => p.category === categoryName);
@@ -38,15 +40,19 @@ const CategoryPage = () => {
         }
     }, [slug, products, categories]);
 
+    const displayTitle = translateCategoryName(rawTitle, language);
+
     return (
         <main style={{ padding: '1rem', maxWidth: '1440px', margin: '0 auto' }}>
             <SEO
-                title={`${title} Collection`}
-                description={`Browse our exclusive collection of ${title} at Rasobhoomi Plantation.`}
+                title={`${displayTitle} Collection`}
+                description={`Browse our exclusive collection of ${displayTitle} at Rasobhoomi Plantation.`}
             />
             <div style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <Link to="/" style={{ textDecoration: 'none', color: '#2C1B10', fontWeight: 'bold' }}>← Back to Home</Link>
-                <h1 style={{ fontSize: '1.5rem', textTransform: 'uppercase' }}>{title}</h1>
+                <Link to="/" style={{ textDecoration: 'none', color: '#2C1B10', fontWeight: 'bold' }}>
+                    ← {t('nav_home')}
+                </Link>
+                <h1 style={{ fontSize: '1.5rem', textTransform: 'uppercase' }}>{displayTitle}</h1>
             </div>
 
             <section className="product-grid" style={{

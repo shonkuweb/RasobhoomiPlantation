@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst } from '../utils/categories';
-import { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { translateCategoryName } from '../utils/translations';
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
+    const { language, t } = useLanguage();
 
     useEffect(() => {
         fetch('/api/categories')
@@ -15,19 +17,22 @@ const Categories = () => {
 
     return (
         <main style={{ padding: '1rem' }}>
-            <h1 className="text-red" style={{ textAlign: 'center', marginBottom: '2rem' }}>CATEGORIES</h1>
+            <h1 className="text-red" style={{ textAlign: 'center', marginBottom: '2rem', textTransform: 'uppercase' }}>
+                {t('nav_categories')}
+            </h1>
 
             <div
                 className="category-grid-page"
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
                     gap: '1.5rem',
                     justifyContent: 'center',
                 }}
             >
                 {sortCategoriesWithMangoFirst(categories).map(cat => {
                     const imgSrc = resolveCategoryImageUrl(cat);
+                    const displayName = translateCategoryName(cat.name, language);
                     return (
                         <Link
                             to={`/category/${cat.slug}`}
@@ -38,7 +43,7 @@ const Categories = () => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
-                                gap: '0.5rem',
+                                gap: '0.6rem',
                             }}
                         >
                             <div
@@ -53,12 +58,13 @@ const Categories = () => {
                                     justifyContent: 'center',
                                     alignItems: 'center',
                                     background: '#f5f5f5',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
                                 }}
                             >
                                 {imgSrc ? (
                                     <img
                                         src={imgSrc}
-                                        alt={cat.name}
+                                        alt={displayName}
                                         width={120}
                                         height={120}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -67,17 +73,25 @@ const Categories = () => {
                                 ) : (
                                     <span
                                         style={{
-                                            fontSize: '0.75rem',
+                                            fontSize: '0.8rem',
                                             fontWeight: 'bold',
                                             color: '#1A4D2E',
                                             textAlign: 'center',
                                             padding: '0.5rem',
                                         }}
                                     >
-                                        {cat.name}
+                                        {displayName}
                                     </span>
                                 )}
                             </div>
+                            <span style={{
+                                fontWeight: '700',
+                                fontSize: '0.9rem',
+                                color: '#1A4D2E',
+                                textAlign: 'center'
+                            }}>
+                                {displayName}
+                            </span>
                         </Link>
                     );
                 })}
