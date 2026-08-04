@@ -1111,9 +1111,9 @@ function setupListeners() {
                         },
                         columnStyles: {
                             0: { cellWidth: 'auto', fontStyle: 'bold' },
-                            1: { cellWidth: 35, halign: 'right', fontStyle: 'bold', textColor: [22, 101, 52] },
+                            1: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: [22, 101, 52] },
                             2: { cellWidth: 30, halign: 'center' },
-                            3: { cellWidth: 35, halign: 'right', textColor: MUTED_GRAY }
+                            3: { cellWidth: 35, halign: 'center', textColor: MUTED_GRAY }
                         },
                         alternateRowStyles: {
                             fillColor: [248, 250, 252]
