@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const CartSidebar = ({ isOpen, onClose }) => {
     const { cart, products, updateQty, getCartTotal } = useShop();
+    const { t, translateProduct } = useLanguage();
 
     return (
         <div className={`cart-sidebar ${isOpen ? 'active' : ''}`} id="cart-sidebar">
@@ -15,15 +17,16 @@ const CartSidebar = ({ isOpen, onClose }) => {
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                YOUR CART
+                {t('your_cart')}
             </div>
 
             <div className="cart-items">
                 {cart.length === 0 ? (
-                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>Your cart is empty</div>
+                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>{t('cart_empty')}</div>
                 ) : (
                     cart.map(item => {
-                        const product = products.find(p => p.id === item.id) || item;
+                        const rawProduct = products.find(p => p.id === item.id) || item;
+                        const product = translateProduct(rawProduct);
                         return (
                             <div className="cart-item" key={item.id}>
                                 <div className="cart-item-img">
@@ -36,8 +39,8 @@ const CartSidebar = ({ isOpen, onClose }) => {
                                 <div className="cart-item-details">
                                     <div className="cart-item-title">{product.name}</div>
                                     <div className="cart-item-text">
-                                        Price: ₹{product.price}<br />
-                                        Total: ₹{product.price * item.qty}
+                                        {t('price')}: ₹{product.price}<br />
+                                        {t('total')}: ₹{product.price * item.qty}
                                     </div>
                                 </div>
                                 <div className="qty-selector">
@@ -53,7 +56,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
 
             <div style={{ padding: '1rem', borderTop: '1px solid #eee' }}>
                 <Link to="/checkout" className="btn-add-product-modern" style={{ display: 'flex', justifyContent: 'center', textDecoration: 'none' }} onClick={onClose}>
-                    CHECKOUT - ₹{getCartTotal()}
+                    {t('checkout')} - ₹{getCartTotal()}
                 </Link>
             </div>
         </div>

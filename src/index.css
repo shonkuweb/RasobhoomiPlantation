@@ -113,6 +113,44 @@ main.home-main {
   align-items: center;
 }
 
+.language-selector-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  padding: 3px 8px;
+  color: var(--color-text-on-primary, #ffffff);
+  transition: all 0.2s ease;
+}
+
+.language-selector-wrapper:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.language-selector-wrapper .lang-icon {
+  color: var(--color-text-on-primary, #ffffff);
+  flex-shrink: 0;
+}
+
+.language-select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  padding-right: 2px;
+}
+
+.language-select option {
+  background: #ffffff;
+  color: #1e293b;
+  font-weight: 500;
+}
+
 .nav-icon {
   font-size: 1.5rem;
   cursor: pointer;

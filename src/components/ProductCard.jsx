@@ -1,10 +1,13 @@
 import React from 'react';
 import { useShop } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Link } from 'react-router-dom';
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product: rawProduct }) => {
     const { addToCart } = useShop();
+    const { t, translateProduct } = useLanguage();
 
+    const product = translateProduct(rawProduct);
     const hasDiscount = product.compare_price > product.price;
     const discountPercent = hasDiscount ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100) : 0;
 
@@ -17,7 +20,7 @@ const ProductCard = ({ product }) => {
                         color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10,
                         boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
                     }}>
-                        {discountPercent}% OFF
+                        {discountPercent}% {t('off')}
                     </div>
                 )}
                 <div className="product-image-placeholder">
@@ -41,16 +44,16 @@ const ProductCard = ({ product }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         {hasDiscount && (
                             <span style={{ textDecoration: 'line-through', color: '#888', fontSize: '0.75rem', lineHeight: '1' }}>
-                                Rs {product.compare_price}
+                                ₹{product.compare_price}
                             </span>
                         )}
-                        <span className="product-price" style={{ lineHeight: '1', marginTop: hasDiscount ? '2px' : '0' }}>Rs {product.price}</span>
+                        <span className="product-price" style={{ lineHeight: '1', marginTop: hasDiscount ? '2px' : '0' }}>₹{product.price}</span>
                     </div>
                     <button className="add-cart-pill" onClick={(e) => {
                         e.preventDefault();
                         addToCart(product.id);
                     }}>
-                        Add
+                        {t('add')}
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"></line>

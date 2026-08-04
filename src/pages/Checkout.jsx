@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useShop } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
 const DEFAULT_ORDER_SETTINGS = {
@@ -14,6 +15,7 @@ const DEFAULT_ORDER_SETTINGS = {
 
 const Checkout = () => {
     const { cart, products, getCartTotal, clearCart } = useShop();
+    const { t, translateProduct } = useLanguage();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
@@ -409,8 +411,9 @@ const Checkout = () => {
                         {/* Items List with Thumbnails */}
                         <div className="checkout-items-list-modern">
                             {cart.map(item => {
-                                const product = products.find(p => p.id === item.id);
-                                if (!product) return null;
+                                const rawProduct = products.find(p => p.id === item.id);
+                                if (!rawProduct) return null;
+                                const product = translateProduct(rawProduct);
                                 return (
                                     <div key={item.id} className="checkout-item-row">
                                         <div className="checkout-item-left">

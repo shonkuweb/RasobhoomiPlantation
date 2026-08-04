@@ -95,11 +95,13 @@ function AppContent() {
 
 const App = () => {
     return (
-        <ShopProvider>
-            <Router>
-                <AppContent />
-            </Router>
-        </ShopProvider>
+        <LanguageProvider>
+            <ShopProvider>
+                <Router>
+                    <AppContent />
+                </Router>
+            </ShopProvider>
+        </LanguageProvider>
     );
 };
 

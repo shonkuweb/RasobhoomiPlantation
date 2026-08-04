@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useShop } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
 import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst, sortProductsWithMangoFirst } from '../utils/categories';
+import { categoryTranslations } from '../utils/translations';
 
 const Home = () => {
     const { products, searchQuery, isLoadingInitial } = useShop();
+    const { language, t } = useLanguage();
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [activeFilters, setActiveFilters] = useState({});
@@ -53,6 +56,14 @@ const Home = () => {
     const handleApplyFilter = (filters) => {
         setActiveFilters(filters);
         setIsFilterOpen(false);
+    };
+
+    const formatCategoryName = (name) => {
+        if (!name) return '';
+        if (categoryTranslations[name] && categoryTranslations[name][language]) {
+            return categoryTranslations[name][language];
+        }
+        return name;
     };
 
     return (
@@ -104,30 +115,29 @@ const Home = () => {
             </section>
 
             {/* Categories */}
-            {/* Categories */}
             <section className="category-list">
                 {sortCategoriesWithMangoFirst(
                     categories.filter(cat => cat.name === 'Drum Plants' || products.some(p => p.category === cat.name))
                 ).map(cat => (
-                        <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
-                            <div className="cat-circle">
-                                {resolveCategoryImageUrl(cat) ? (
-                                    <img
-                                        src={resolveCategoryImageUrl(cat)}
-                                        alt=""
-                                        className="cat-circle-img"
-                                        width={75}
-                                        height={75}
-                                        loading="lazy"
-                                        decoding="async"
-                                    />
-                                ) : (
-                                    <span className="cat-circle-text">{cat.name}</span>
-                                )}
-                            </div>
-                            <span className="cat-label">{cat.name}</span>
-                        </Link>
-                    ))}
+                    <Link to={`/category/${cat.slug}`} key={cat.id} className="category-item" style={{ textDecoration: 'none' }}>
+                        <div className="cat-circle">
+                            {resolveCategoryImageUrl(cat) ? (
+                                <img
+                                    src={resolveCategoryImageUrl(cat)}
+                                    alt=""
+                                    className="cat-circle-img"
+                                    width={75}
+                                    height={75}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            ) : (
+                                <span className="cat-circle-text">{formatCategoryName(cat.name)}</span>
+                            )}
+                        </div>
+                        <span className="cat-label">{formatCategoryName(cat.name)}</span>
+                    </Link>
+                ))}
             </section>
 
             {/* Product Grid */}

@@ -16,6 +16,56 @@ function clearAdminToken() {
     sessionStorage.removeItem('adminToken');
 }
 
+function translateProductAdmin(p, lang = 'en') {
+    if (!p) return p;
+    if (lang === 'en') return p;
+    const categoryTranslations = {
+        "Indian Mangoes": { hi: "भारतीय आम", bn: "ভারতীয় আম" },
+        "Foreigner Mango": { hi: "विदेशी आम", bn: "বিদেশী আম" },
+        "Fruit Plants": { hi: "फलदार पौधे", bn: "ফল গাছ" },
+        "Guava": { hi: "अमरूद", bn: "পেয়ারা" },
+        "Lemon": { hi: "नींबू", bn: "লেবু" },
+        "Jackfruit": { hi: "कटहल", bn: "কাঁঠাল" }
+    };
+    const productTranslations = {
+        "P1": {
+            name: { hi: "आम का पौधा (आम्रपाली)", bn: "আম গাছ (আম্রপালী)" },
+            category: { hi: "भारतीय आम", bn: "ভারতীয় আম" }
+        },
+        "P2": {
+            name: { hi: "लाल अमरूद का पौधा", bn: "लाल पेय़ारा গাছ" },
+            category: { hi: "अमरूद", bn: "পেয়ারা" }
+        },
+        "P3": {
+            name: { hi: "कोलकाता पाती नींबू", bn: "কলকাতা পাতি লেবু" },
+            category: { hi: "नींबू", bn: "লেবু" }
+        },
+        "P4": {
+            name: { hi: "थाई पिंक कटहल", bn: "থাই পিঙ্ক কাঁঠাল" },
+            category: { hi: "कटहल", bn: "কাঁঠাল" }
+        }
+    };
+    if (p.id && productTranslations[p.id]) {
+        const trans = productTranslations[p.id];
+        return {
+            ...p,
+            name: (trans.name && trans.name[lang]) || p.name,
+            category: (trans.category && trans.category[lang]) || p.category
+        };
+    }
+    let translatedName = p.name || '';
+    let translatedCategory = p.category || '';
+    if (p.category && categoryTranslations[p.category] && categoryTranslations[p.category][lang]) {
+        translatedCategory = categoryTranslations[p.category][lang];
+    }
+    if (lang === 'hi') {
+        translatedName = translatedName.replace(/Mango Plant/gi, "आम का पौधा").replace(/Mango/gi, "आम").replace(/Guava Plant/gi, "अमरूद का पौधा").replace(/Lemon Plant/gi, "नींबू का पौधा").replace(/Jackfruit/gi, "कटहल").replace(/Plant/gi, "पौधा").replace(/test2/gi, "परीक्षण २").replace(/test/gi, "परीक्षण");
+    } else if (lang === 'bn') {
+        translatedName = translatedName.replace(/Mango Plant/gi, "আম গাছ").replace(/Mango/gi, "আম").replace(/Guava Plant/gi, "পেয়ারা গাছ").replace(/Lemon Plant/gi, "লেবু গাছ").replace(/Jackfruit/gi, "কাঁঠাল").replace(/Plant/gi, "গাছ").replace(/test2/gi, "পরীক্ষা ২").replace(/test/gi, "পরীক্ষা");
+    }
+    return { ...p, name: translatedName, category: translatedCategory };
+}
+
 // Authentication - Redirect to login page if not authenticated
 async function checkAuth() {
     const token = getAdminToken();
@@ -365,6 +415,15 @@ async function saveOrderSettings(e) {
 }
 
 function setupListeners() {
+    const adminLangSelect = document.getElementById('admin-lang-select');
+    if (adminLangSelect) {
+        adminLangSelect.value = localStorage.getItem('app_language') || 'en';
+        adminLangSelect.addEventListener('change', (e) => {
+            localStorage.setItem('app_language', e.target.value);
+            render();
+        });
+    }
+
     // Sidebar Logic
     const menuBtn = document.getElementById('menu-btn');
     const sidebar = document.getElementById('sidebar');
@@ -1601,6 +1660,8 @@ function render() {
         let detailsHtml = '';
 
         if (currentView === 'products') {
+            const lang = localStorage.getItem('app_language') || 'en';
+            const displayItem = translateProductAdmin(item, lang);
             const isOut = Number(item.qty) <= 0;
             const isLow = Number(item.qty) > 0 && Number(item.qty) <= 5;
             const qtyClass = isOut || isLow ? 'low-qty' : '';
@@ -1616,9 +1677,9 @@ function render() {
                 <div class="admin-item-details">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
                         <span class="item-id">ID #${item.id}</span>
-                        <span style="font-size:0.68rem; color:var(--admin-primary); background:#e6f4ea; padding:2px 8px; border-radius:10px; font-weight:800; text-transform:uppercase;">${item.category || 'General'}</span>
+                        <span style="font-size:0.68rem; color:var(--admin-primary); background:#e6f4ea; padding:2px 8px; border-radius:10px; font-weight:800; text-transform:uppercase;">${displayItem.category || 'General'}</span>
                     </div>
-                    <h3 class="item-name">${item.name}</h3>
+                    <h3 class="item-name">${displayItem.name}</h3>
                     <div class="item-meta">
                         <span class="price-badge">₹${item.price}</span>
                         <span class="qty-badge ${qtyClass}">Stock: ${item.qty} ${isOut ? '⚠️ Out of Stock' : isLow ? '⚠️ Low Stock' : ''}</span>

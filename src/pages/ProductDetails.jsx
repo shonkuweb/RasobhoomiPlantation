@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
+import { useLanguage } from '../context/LanguageContext';
 import SEO from '../components/SEO';
 
 const ProductDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { products, addToCart } = useShop();
-    const [product, setProduct] = useState(null);
+    const { t, translateProduct } = useLanguage();
+    const [rawProduct, setRawProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -22,21 +24,21 @@ const ProductDetails = () => {
             try {
                 const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
                 if (!res.ok) {
-                    if (!cancelled && !fromContext) setProduct(null);
+                    if (!cancelled && !fromContext) setRawProduct(null);
                     return;
                 }
                 const full = await res.json();
-                if (!cancelled) setProduct(full);
+                if (!cancelled) setRawProduct(full);
             } catch (err) {
                 console.error('Failed to load product', err);
-                if (!cancelled && !fromContext) setProduct(null);
+                if (!cancelled && !fromContext) setRawProduct(null);
             } finally {
                 if (!cancelled) setLoading(false);
             }
         };
 
         if (fromContext) {
-            setProduct(fromContext);
+            setRawProduct(fromContext);
         }
 
         loadFullProduct();
@@ -46,21 +48,23 @@ const ProductDetails = () => {
         };
     }, [id, products]);
 
-    if (loading && !product) {
+    if (loading && !rawProduct) {
         return (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <p>Loading product details...</p>
+                <p>Loading...</p>
             </div>
         );
     }
 
-    if (!product) {
+    if (!rawProduct) {
         return (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
                 <p>Product not found.</p>
             </div>
         );
     }
+
+    const product = translateProduct(rawProduct);
 
     const images = product.images && product.images.length > 0
         ? product.images
@@ -109,7 +113,7 @@ const ProductDetails = () => {
                             color: 'white', padding: '6px 12px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 'bold', zIndex: 10,
                             boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
                         }}>
-                            {discountPercent}% OFF
+                            {discountPercent}% {t('off')}
                         </div>
                     )}
                     {images.length > 0 ? (
@@ -159,13 +163,13 @@ const ProductDetails = () => {
 
                 <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ color: '#666' }}>Category</span>
+                        <span style={{ color: '#666' }}>{t('category')}</span>
                         <span style={{ fontWeight: 'bold' }}>{product.category || 'N/A'}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: '#666' }}>Availability</span>
                         <span style={{ fontWeight: 'bold', color: product.qty > 0 ? 'green' : 'red' }}>
-                            {product.qty > 0 ? 'In Stock' : 'Out of Stock'}
+                            {product.qty > 0 ? 'In Stock' : t('out_of_stock')}
                         </span>
                     </div>
                 </div>
@@ -184,7 +188,7 @@ const ProductDetails = () => {
                 }}>
                     {product.qty <= 0 ? (
                         <button style={{ flex: 1, padding: '1rem', background: '#ccc', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed' }} disabled>
-                            OUT OF STOCK
+                            {t('out_of_stock')}
                         </button>
                     ) : (
                         <>
@@ -201,7 +205,7 @@ const ProductDetails = () => {
                                 alignItems: 'center',
                                 gap: '0.5rem'
                             }}>
-                                Add to Cart
+                                {t('add_to_cart')}
                             </button>
                             <button onClick={handleBuyNow} style={{
                                 flex: 1,
@@ -213,7 +217,7 @@ const ProductDetails = () => {
                                 fontWeight: 'bold',
                                 textTransform: 'uppercase'
                             }}>
-                                Buy Now
+                                {t('buy_now')}
                             </button>
                         </>
                     )}

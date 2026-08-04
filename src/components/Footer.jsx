@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const Footer = () => {
+    const { t } = useLanguage();
+
     return (
         <footer className="footer">
             <div className="footer-grid">
@@ -9,37 +12,37 @@ const Footer = () => {
                 <div className="footer-col brand-col">
                     <h2 className="footer-logo">Rasobhoomi</h2>
                     <p className="footer-tagline">
-                        Bringing nature to your doorstep. Authentic plants, sustainably grown for a greener home.
+                        {t('footer_tagline')}
                     </p>
                 </div>
 
                 {/* Column 2: Quick Links */}
                 <div className="footer-col">
-                    <h3 className="footer-heading">Quick Links</h3>
+                    <h3 className="footer-heading">{t('quick_links')}</h3>
                     <ul className="footer-links-list">
-                        <li><Link to="/" className="footer-link-item">Home</Link></li>
-                        <li><Link to="/categories" className="footer-link-item">Shop Categories</Link></li>
-                        <li><Link to="/about" className="footer-link-item">About Us</Link></li>
-                        <li><Link to="/contact" className="footer-link-item">Contact</Link></li>
+                        <li><Link to="/" className="footer-link-item">{t('nav_home')}</Link></li>
+                        <li><Link to="/categories" className="footer-link-item">{t('nav_categories')}</Link></li>
+                        <li><Link to="/about" className="footer-link-item">{t('nav_about')}</Link></li>
+                        <li><Link to="/contact" className="footer-link-item">{t('nav_contact')}</Link></li>
                     </ul>
                 </div>
 
                 {/* Column 3: Customer Care */}
                 <div className="footer-col">
-                    <h3 className="footer-heading">Customer Care</h3>
+                    <h3 className="footer-heading">{t('customer_care')}</h3>
                     <ul className="footer-links-list">
-                        <li><Link to="/track-order" className="footer-link-item">Track Order</Link></li>
-                        <li><Link to="/refund" className="footer-link-item">Refund Policy</Link></li>
-                        <li><Link to="/terms" className="footer-link-item">Terms & Conditions</Link></li>
-                        <li><Link to="/return" className="footer-link-item">Return Policy</Link></li>
-                        <li><Link to="/shipping" className="footer-link-item">Shipping Policy</Link></li>
-                        <li><Link to="/privacy" className="footer-link-item">Privacy Policy</Link></li>
+                        <li><Link to="/track-order" className="footer-link-item">{t('nav_track')}</Link></li>
+                        <li><Link to="/refund" className="footer-link-item">{t('nav_refund')}</Link></li>
+                        <li><Link to="/terms" className="footer-link-item">{t('nav_terms')}</Link></li>
+                        <li><Link to="/return" className="footer-link-item">{t('nav_return')}</Link></li>
+                        <li><Link to="/shipping" className="footer-link-item">{t('nav_shipping')}</Link></li>
+                        <li><Link to="/privacy" className="footer-link-item">{t('nav_privacy')}</Link></li>
                     </ul>
                 </div>
 
                 {/* Column 4: Stay Connected */}
                 <div className="footer-col">
-                    <h3 className="footer-heading">Stay Connected</h3>
+                    <h3 className="footer-heading">{t('stay_connected')}</h3>
                     <div className="social-icons">
                         <a href="https://wa.me/918972076182?text=Hi" target="_blank" rel="noreferrer" className="social-icon" title="WhatsApp">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -80,7 +83,7 @@ const Footer = () => {
             </div>
 
             <div className="copyright">
-                &copy; {new Date().getFullYear()} Rasobhoomi. All rights reserved.
+                &copy; {new Date().getFullYear()} Rasobhoomi. {t('all_rights_reserved')}
             </div>
         </footer>
     );
