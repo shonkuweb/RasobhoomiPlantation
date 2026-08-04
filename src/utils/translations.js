@@ -2680,13 +2680,25 @@ export const translateProduct = (product, lang = 'en') => {
 🌿 रोगमुक्त एवं रोपण के लिए तैयार पौधा
 📦 सुरक्षित पैकिंग के साथ भेजा जाता है`;
 
+    const defaultBengaliDesc = `✅ প্রিমিয়াম মানের কলম/গ্রাফটেড চারা
+🌱 সুস্থ ও শক্তিশালী শিকড়যুক্ত
+🍃 দ্রুত বৃদ্ধি ও ভালো শাখা-প্রশাখা গঠন
+🍎 সঠিক পরিচর্যায় উন্নত মানের ফল উৎপাদন
+☀️ প্রতিদিন ৫–৮ ঘণ্টা রোদ প্রয়োজন
+💧 নিয়মিত সেচ ও পানি নিষ্কাশনযুক্ত মাটি উপযোগী
+🏡 বাড়ির বাগান, ছাদ বাগান, বারান্দা, কিচেন গার্ডেন ও বাণিজ্যিক চাষের জন্য উপযুক্ত
+🪴 টব এবং মাটি—উভয় স্থানেই রোপণ করা যায়
+🌿 রোগমুক্ত ও রোপণের জন্য সম্পূর্ণ প্রস্তুত চারা
+📦 নিরাপদ প্যাকেজিংয়ের মাধ্যমে সরবরাহ করা হয়`;
+
     // Check by ID first
     if (product.id && productTranslations[product.id]) {
         const trans = productTranslations[product.id];
         const translatedName = (trans.name && trans.name[lang]) || product.name;
         let translatedDesc = (trans.description && trans.description[lang]);
-        if (!translatedDesc && lang === 'hi') {
-            translatedDesc = defaultHindiDesc;
+        if (!translatedDesc) {
+            if (lang === 'hi') translatedDesc = defaultHindiDesc;
+            else if (lang === 'bn') translatedDesc = defaultBengaliDesc;
         }
         return {
             ...product,
@@ -2701,7 +2713,9 @@ export const translateProduct = (product, lang = 'en') => {
 
     // Simple common word replacement fallback for demo / newly added products
     let translatedName = product.name || '';
-    let translatedDesc = (lang === 'hi') ? defaultHindiDesc : (product.description || '');
+    let translatedDesc = product.description || '';
+    if (lang === 'hi') translatedDesc = defaultHindiDesc;
+    else if (lang === 'bn') translatedDesc = defaultBengaliDesc;
 
     if (lang === 'hi') {
         translatedName = translatedName
