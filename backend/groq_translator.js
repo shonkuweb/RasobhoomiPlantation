@@ -23,7 +23,7 @@ export async function translateProductsWithGroq(products, targetLang) {
 
     const langName = targetLang === 'hi' ? 'Hindi' : 'Bengali';
     const payloadItems = products.map(p => ({
-        id: p.id,
+        id: String(p.id),
         name: p.name || '',
         description: p.description || '',
         category: p.category || ''
@@ -32,15 +32,17 @@ export async function translateProductsWithGroq(products, targetLang) {
     const systemPrompt = `You are a professional botanical and horticultural translator for an Indian plant nursery. 
 Translate the provided plant products into fluent, natural ${langName}.
 Maintain accuracy for plant varieties, fruits, and farming terms.
-You MUST output valid JSON ONLY with key "translations" containing an array of objects:
-[
-  {
-    "id": "product_id",
-    "name": "translated name in ${langName}",
-    "description": "translated description in ${langName}",
-    "category": "translated category in ${langName}"
-  }
-]`;
+You MUST output a JSON object containing an array under key "translations":
+{
+  "translations": [
+    {
+      "id": "exact_product_id",
+      "name": "translated plant name in ${langName}",
+      "description": "translated description in ${langName}",
+      "category": "translated category in ${langName}"
+    }
+  ]
+}`;
 
     try {
         console.log(`[GROQ] Requesting ${langName} translations for ${products.length} products...`);
@@ -56,7 +58,7 @@ You MUST output valid JSON ONLY with key "translations" containing an array of o
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: JSON.stringify(payloadItems) }
                 ],
-                temperature: 0.2,
+                temperature: 0.1,
                 response_format: { type: 'json_object' }
             })
         });
@@ -71,10 +73,51 @@ You MUST output valid JSON ONLY with key "translations" containing an array of o
         const rawContent = data.choices?.[0]?.message?.content;
         if (!rawContent) return [];
 
+        console.log(`[GROQ] Raw response received (${rawContent.length} chars)`);
         const parsed = JSON.parse(rawContent);
-        const resultList = Array.isArray(parsed) ? parsed : (parsed.translations || parsed.items || []);
-        console.log(`[GROQ] Successfully translated ${resultList.length} products to ${langName}.`);
-        return resultList;
+
+        let rawList = [];
+        if (Array.isArray(parsed)) {
+            rawList = parsed;
+        } else if (Array.isArray(parsed.translations)) {
+            rawList = parsed.translations;
+        } else if (Array.isArray(parsed.products)) {
+            rawList = parsed.products;
+        } else if (Array.isArray(parsed.items)) {
+            rawList = parsed.items;
+        } else if (parsed && typeof parsed === 'object') {
+            if (parsed.id && (parsed.name || parsed.title)) {
+                rawList = [parsed];
+            } else {
+                rawList = Object.keys(parsed).map(key => {
+                    const item = parsed[key];
+                    if (typeof item === 'object' && item !== null) {
+                        return { id: key, ...item };
+                    }
+                    return null;
+                }).filter(Boolean);
+            }
+        }
+
+        const normalizedList = rawList.map(item => {
+            if (!item) return null;
+            const itemId = String(item.id || item.productId || item.product_id || '');
+            if (!itemId) return null;
+
+            const name = item.name || item.translated_name || item[`${langName.toLowerCase()}_name`] || item.title || '';
+            const description = item.description || item.translated_description || item[`${langName.toLowerCase()}_description`] || '';
+            const category = item.category || item.translated_category || item[`${langName.toLowerCase()}_category`] || '';
+
+            return {
+                id: itemId,
+                name,
+                description,
+                category
+            };
+        }).filter(Boolean);
+
+        console.log(`[GROQ] Successfully parsed and normalized ${normalizedList.length} product translations for '${targetLang}'.`);
+        return normalizedList;
     } catch (err) {
         console.error('[GROQ] Failed to translate products:', err.message);
         return [];
@@ -96,10 +139,10 @@ export async function getTranslatedProducts(db, products, lang) {
             async (err, cachedRows) => {
                 const cachedMap = new Map();
                 if (!err && Array.isArray(cachedRows)) {
-                    cachedRows.forEach(row => cachedMap.set(row.product_id, row));
+                    cachedRows.forEach(row => cachedMap.set(String(row.product_id), row));
                 }
 
-                const missingProducts = products.filter(p => !cachedMap.has(p.id));
+                const missingProducts = products.filter(p => !cachedMap.has(String(p.id)));
 
                 if (missingProducts.length > 0) {
                     console.log(`[GROQ] Found ${missingProducts.length} missing product translations for '${lang}'. Requesting Groq AI...`);
@@ -107,8 +150,9 @@ export async function getTranslatedProducts(db, products, lang) {
 
                     newTranslations.forEach(tItem => {
                         if (tItem && tItem.id) {
-                            cachedMap.set(tItem.id, {
-                                product_id: tItem.id,
+                            const strId = String(tItem.id);
+                            cachedMap.set(strId, {
+                                product_id: strId,
                                 lang: lang,
                                 name: tItem.name,
                                 description: tItem.description,
@@ -121,13 +165,13 @@ export async function getTranslatedProducts(db, products, lang) {
                                  VALUES (?, ?, ?, ?, ?) 
                                  ON CONFLICT(product_id, lang) DO UPDATE SET 
                                  name=excluded.name, description=excluded.description, category=excluded.category`,
-                                [tItem.id, lang, tItem.name || '', tItem.description || '', tItem.category || ''],
+                                [strId, lang, tItem.name || '', tItem.description || '', tItem.category || ''],
                                 (insErr) => {
                                     if (insErr) {
                                         // SQLite fallback syntax if ON CONFLICT failed
                                         db.run(
                                             `INSERT OR REPLACE INTO product_translations (product_id, lang, name, description, category) VALUES (?, ?, ?, ?, ?)`,
-                                            [tItem.id, lang, tItem.name || '', tItem.description || '', tItem.category || '']
+                                            [strId, lang, tItem.name || '', tItem.description || '', tItem.category || '']
                                         );
                                     }
                                 }
@@ -138,7 +182,7 @@ export async function getTranslatedProducts(db, products, lang) {
 
                 // Construct final array preserving original product metadata
                 const result = products.map(p => {
-                    const trans = cachedMap.get(p.id);
+                    const trans = cachedMap.get(String(p.id));
                     if (trans) {
                         return {
                             ...p,
