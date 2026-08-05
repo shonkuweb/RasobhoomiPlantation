@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 import { useLanguage } from '../context/LanguageContext';
 import SEO from '../components/SEO';
+import YouMayAlsoLike from '../components/YouMayAlsoLike';
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -84,7 +85,7 @@ const ProductDetails = () => {
     const discountPercent = hasDiscount ? Math.round(((product.compare_price - product.price) / product.compare_price) * 100) : 0;
 
     return (
-        <main style={{ padding: '1rem', paddingBottom: '5rem' }}>
+        <main style={{ padding: '1rem', paddingBottom: '7rem' }}>
             <SEO
                 title={product.name}
                 description={product.description && product.description.substring(0, 160)}
@@ -173,6 +174,9 @@ const ProductDetails = () => {
                         </span>
                     </div>
                 </div>
+
+                {/* You May Also Like Section */}
+                <YouMayAlsoLike currentProduct={rawProduct} />
 
                 <div style={{
                     position: 'fixed',

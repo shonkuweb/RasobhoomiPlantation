@@ -3732,3 +3732,39 @@ footer {
   font-size: 0.85rem;
   opacity: 0.95;
 }
+
+/* You May Also Like Recommendations Styling */
+.you-may-also-like-section {
+  width: 100%;
+}
+
+.recommended-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important;
+  border-color: #2e7d32 !important;
+}
+
+.recommended-card:hover .recommended-img {
+  transform: scale(1.08) !important;
+}
+
+.view-btn-hover:hover {
+  background: #1b4332 !important;
+  box-shadow: 0 4px 10px rgba(27, 67, 50, 0.25);
+}
+
+.add-cart-icon-btn:hover {
+  background: #2e7d32 !important;
+  color: #ffffff !important;
+}
+
+@media (max-width: 640px) {
+  .recommendations-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.85rem !important;
+  }
+  
+  .recommended-card {
+    border-radius: 8px !important;
+  }
+}
