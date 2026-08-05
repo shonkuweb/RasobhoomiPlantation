@@ -56,7 +56,9 @@ const HeroVideoBanner = ({ url, isShorts }) => {
                     loop: 1,
                     playlist: videoId,
                     iv_load_policy: 3,
-                    showinfo: 0
+                    showinfo: 0,
+                    fs: 0,
+                    autohide: 1
                 },
                 events: {
                     onReady: (event) => {
