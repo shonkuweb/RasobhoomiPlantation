@@ -165,6 +165,14 @@ function initDb() {
             category TEXT,
             PRIMARY KEY (product_id, lang)
         )`,
+        `CREATE TABLE IF NOT EXISTS tutorials (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            video_url TEXT NOT NULL,
+            description TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
         `CREATE INDEX IF NOT EXISTS idx_products_created_at_desc ON products (created_at DESC)`,
         `CREATE INDEX IF NOT EXISTS idx_orders_created_at_desc ON orders (created_at DESC)`
     ];

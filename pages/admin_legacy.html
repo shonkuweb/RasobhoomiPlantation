@@ -1011,6 +1011,46 @@
 
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
 
+                <!-- Video Tutorials Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    📹 Video Tutorials & Chapter Guides
+                </h2>
+                <form id="settings-tutorial-form" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">
+                        Add chapter titles and YouTube video links for planting and gardening tutorials. These will be listed cleanly on the Video Tutorials page (`/tutorials`).
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="tutorial-title" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Tutorial / Chapter Title *</label>
+                        <input type="text" id="tutorial-title" placeholder="e.g. How to Plant Mango Sapling in Container" class="modern-input" required>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="tutorial-url" style="font-weight: 600; color: #475569; font-size: 0.85rem;">YouTube Video / Shorts Link *</label>
+                        <input type="url" id="tutorial-url" placeholder="https://www.youtube.com/watch?v=... or https://youtube.com/shorts/..." class="modern-input" required>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="tutorial-desc" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Description / Chapter Notes (Optional)</label>
+                        <textarea id="tutorial-desc" placeholder="Brief details or steps for this chapter guide..." class="modern-input" rows="2"></textarea>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="tutorial-order" style="font-weight: 600; color: #475569; font-size: 0.85rem;">Display Order (Default 0)</label>
+                        <input type="number" id="tutorial-order" placeholder="0" value="0" class="modern-input">
+                    </div>
+                    <div id="tutorial-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600;"></div>
+                    <div id="tutorial-success" style="color: #166534; font-size: 0.85rem; font-weight: 600;"></div>
+                    <button type="submit" id="tutorial-save-btn" class="btn-add-product-modern" style="width: 100%; margin-top: 0.25rem; background: #16a34a;">
+                        + ADD TUTORIAL CHAPTER
+                    </button>
+                </form>
+
+                <div id="admin-tutorials-list-container" style="margin-top: 1rem; margin-bottom: 2rem;">
+                    <h3 style="font-size: 1rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem;">Existing Tutorial Chapters</h3>
+                    <div id="admin-tutorials-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <p style="font-size: 0.85rem; color: #64748b;">Loading tutorials...</p>
+                    </div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
+
                 <!-- Password Change Section -->
                 <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                     🔒 Security: Change Admin Password

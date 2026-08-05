@@ -22,6 +22,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <Link to="/categories" className="menu-item" onClick={onClose}>{t('nav_categories')}</Link>
                 <Link to="/about" className="menu-item" onClick={onClose}>{t('nav_about')}</Link>
                 <Link to="/contact" className="menu-item" onClick={onClose}>{t('nav_contact')}</Link>
+                <Link to="/tutorials" className="menu-item" onClick={onClose}>{t('nav_tutorials')}</Link>
                 <Link to="/refund" className="menu-item" onClick={onClose}>{t('nav_refund')}</Link>
                 <Link to="/track-order" className="menu-item" onClick={onClose}>{t('nav_track')}</Link>
             </div>

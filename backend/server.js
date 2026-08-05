@@ -317,6 +317,68 @@ app.post('/api/admin/settings/hero-video', requireAuth, (req, res) => {
     });
 });
 
+// --- TUTORIALS ENDPOINTS ---
+app.get('/api/tutorials', (req, res) => {
+    db.all("SELECT * FROM tutorials ORDER BY sort_order ASC, created_at DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows || []);
+    });
+});
+
+app.post('/api/admin/tutorials', requireAuth, (req, res) => {
+    const { title, videoUrl, description, sortOrder } = req.body || {};
+    if (!title || typeof title !== 'string' || !title.trim()) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.trim()) {
+        return res.status(400).json({ error: 'Video URL is required' });
+    }
+    const id = `tut_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const cleanTitle = title.trim();
+    const cleanUrl = videoUrl.trim();
+    const cleanDesc = description ? description.trim() : '';
+    const order = Number(sortOrder) || 0;
+
+    db.run(
+        "INSERT INTO tutorials (id, title, video_url, description, sort_order) VALUES (?, ?, ?, ?, ?)",
+        [id, cleanTitle, cleanUrl, cleanDesc, order],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({
+                success: true,
+                tutorial: { id, title: cleanTitle, video_url: cleanUrl, description: cleanDesc, sort_order: order }
+            });
+        }
+    );
+});
+
+app.delete('/api/admin/tutorials/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    db.run("DELETE FROM tutorials WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.put('/api/admin/tutorials/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { title, videoUrl, description, sortOrder } = req.body || {};
+    if (!title || typeof title !== 'string' || !title.trim()) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+    if (!videoUrl || typeof videoUrl !== 'string' || !videoUrl.trim()) {
+        return res.status(400).json({ error: 'Video URL is required' });
+    }
+    db.run(
+        "UPDATE tutorials SET title = ?, video_url = ?, description = ?, sort_order = ? WHERE id = ?",
+        [title.trim(), videoUrl.trim(), description ? description.trim() : '', Number(sortOrder) || 0, id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        }
+    );
+});
+
 
 // --- SHIPROCKET SERVICEABILITY ENDPOINTS ---
 let shiprocketToken = null;

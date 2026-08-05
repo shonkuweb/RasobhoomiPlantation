@@ -353,6 +353,7 @@ function init() {
     setupListeners();
     fetchOrderSettings();
     fetchHeroVideoSetting();
+    fetchTutorialsAdmin();
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
@@ -499,6 +500,123 @@ async function saveHeroVideoSettings(e) {
         if (settingsHeroVideoSaveBtn) {
             settingsHeroVideoSaveBtn.disabled = false;
             settingsHeroVideoSaveBtn.textContent = 'SAVE HERO VIDEO SETTINGS';
+        }
+    }
+}
+
+async function fetchTutorialsAdmin() {
+    const listContainer = document.getElementById('admin-tutorials-list');
+    if (!listContainer) return;
+
+    try {
+        const res = await fetch('/api/tutorials');
+        if (!res.ok) throw new Error('Failed to fetch tutorials');
+        const tutorials = await res.json();
+
+        if (!Array.isArray(tutorials) || tutorials.length === 0) {
+            listContainer.innerHTML = `<p style="font-size: 0.85rem; color: #64748b; font-style: italic;">No tutorial chapters added yet.</p>`;
+            return;
+        }
+
+        listContainer.innerHTML = tutorials.map((t, idx) => `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem; flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px;">Chapter ${idx + 1}</span>
+                        <strong style="font-size: 0.9rem; color: #1e293b;">${escapeHtml(t.title)}</strong>
+                    </div>
+                    ${t.description ? `<p style="font-size: 0.8rem; color: #64748b; margin: 2px 0 0 0;">${escapeHtml(t.description)}</p>` : ''}
+                    <a href="${escapeHtml(t.video_url)}" target="_blank" rel="noreferrer" style="font-size: 0.78rem; color: #2563eb; text-decoration: none; word-break: break-all; width: fit-content;">
+                        🔗 ${escapeHtml(t.video_url)}
+                    </a>
+                </div>
+                <button type="button" class="btn-delete-tutorial" data-id="${t.id}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">
+                    🗑️ Delete
+                </button>
+            </div>
+        `).join('');
+
+        listContainer.querySelectorAll('.btn-delete-tutorial').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (!id) return;
+                if (!confirm('Are you sure you want to delete this tutorial chapter?')) return;
+                try {
+                    const delRes = await fetch(`/api/admin/tutorials/${id}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    const delData = await delRes.json();
+                    if (!delRes.ok || !delData.success) {
+                        throw new Error(delData.error || 'Failed to delete tutorial');
+                    }
+                    fetchTutorialsAdmin();
+                } catch (err) {
+                    alert(err.message || 'Failed to delete tutorial chapter.');
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error('Error loading admin tutorials:', err);
+        listContainer.innerHTML = `<p style="font-size: 0.85rem; color: #dc2626;">Failed to load tutorials.</p>`;
+    }
+}
+
+async function saveTutorial(e) {
+    e.preventDefault();
+    const titleInput = document.getElementById('tutorial-title');
+    const urlInput = document.getElementById('tutorial-url');
+    const descInput = document.getElementById('tutorial-desc');
+    const orderInput = document.getElementById('tutorial-order');
+    const errorDiv = document.getElementById('tutorial-error');
+    const successDiv = document.getElementById('tutorial-success');
+    const saveBtn = document.getElementById('tutorial-save-btn');
+
+    if (errorDiv) errorDiv.textContent = '';
+    if (successDiv) successDiv.textContent = '';
+
+    const title = titleInput?.value?.trim() || '';
+    const videoUrl = urlInput?.value?.trim() || '';
+    const description = descInput?.value?.trim() || '';
+    const sortOrder = Number(orderInput?.value) || 0;
+
+    if (!title || !videoUrl) {
+        if (errorDiv) errorDiv.textContent = 'Please enter both Title and YouTube Video URL.';
+        return;
+    }
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SAVING...';
+    }
+
+    try {
+        const res = await fetch('/api/admin/tutorials', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ title, videoUrl, description, sortOrder })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to add tutorial');
+        }
+
+        if (successDiv) successDiv.textContent = 'Tutorial chapter added successfully!';
+        if (titleInput) titleInput.value = '';
+        if (urlInput) urlInput.value = '';
+        if (descInput) descInput.value = '';
+        if (orderInput) orderInput.value = '0';
+
+        fetchTutorialsAdmin();
+
+    } catch (err) {
+        console.error('Failed to save tutorial:', err);
+        if (errorDiv) errorDiv.textContent = err.message || 'Failed to save tutorial.';
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '+ ADD TUTORIAL CHAPTER';
         }
     }
 }
@@ -676,6 +794,11 @@ function setupListeners() {
 
     if (settingsHeroVideoForm) {
         settingsHeroVideoForm.addEventListener('submit', saveHeroVideoSettings);
+    }
+
+    const settingsTutorialForm = document.getElementById('settings-tutorial-form');
+    if (settingsTutorialForm) {
+        settingsTutorialForm.addEventListener('submit', saveTutorial);
     }
 
     // Filter Toggle Logic

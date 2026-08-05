@@ -26,6 +26,7 @@ const Return = lazy(() => import('./pages/Return'));
 const Shipping = lazy(() => import('./pages/Shipping'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const WhatsAppQR = lazy(() => import('./pages/WhatsAppQR'));
+const Tutorials = lazy(() => import('./pages/Tutorials'));
 
 const PageFallback = () => (
     <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
@@ -86,6 +87,7 @@ function AppContent() {
                     <Route path="/return" element={<Return />} />
                     <Route path="/shipping" element={<Shipping />} />
                     <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/tutorials" element={<Tutorials />} />
                     <Route path="/wa" element={<WhatsAppQR />} />
                 </Routes>
             </Suspense>

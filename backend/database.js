@@ -176,6 +176,18 @@ function initDb() {
             if (err) console.error("Error creating product_translations table:", err);
         });
 
+        // Tutorials Table
+        db.run(`CREATE TABLE IF NOT EXISTS tutorials (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            video_url TEXT NOT NULL,
+            description TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error("Error creating tutorials table:", err);
+        });
+
         console.log('Database tables initialized.');
     });
 }
