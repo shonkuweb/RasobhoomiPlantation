@@ -114,35 +114,73 @@ main.home-main {
 }
 
 .language-selector-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 20px;
-  padding: 3px 8px;
-  color: var(--color-text-on-primary, #ffffff);
-  transition: all 0.2s ease;
 }
 
-.language-selector-wrapper:hover {
-  background: rgba(255, 255, 255, 0.28);
+.lang-code-badge {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  background-color: #e11d48;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.language-selector-wrapper .lang-icon {
-  color: var(--color-text-on-primary, #ffffff);
-  flex-shrink: 0;
+.language-popover-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+  border: 1px solid #eaeaea;
+  padding: 6px;
+  z-index: 1000;
+  min-width: 135px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: fadeIn 0.15s ease-in-out;
 }
 
-.language-select {
-  background: transparent;
+.lang-option-btn {
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
   border: none;
-  color: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  background: transparent;
+  border-radius: 6px;
   cursor: pointer;
-  outline: none;
-  padding-right: 2px;
+  font-weight: 600;
+  color: #2C1B10;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lang-option-btn span {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.lang-option-btn:hover {
+  background: #f3f4f6;
+}
+
+.lang-option-btn.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: 700;
 }
 
 .language-select option {

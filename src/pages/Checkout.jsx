@@ -248,7 +248,7 @@ const Checkout = () => {
     if (cart.length === 0) {
         return (
             <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <h2>Your Cart is Empty</h2>
+                <h2>{t('cart_empty') || 'Your Cart is Empty'}</h2>
                 <button
                     onClick={() => navigate('/')}
                     style={{
@@ -261,7 +261,7 @@ const Checkout = () => {
                         cursor: 'pointer'
                     }}
                 >
-                    Continue Shopping
+                    {t('shop_now') || 'Continue Shopping'}
                 </button>
             </div>
         );
@@ -269,7 +269,7 @@ const Checkout = () => {
 
     return (
         <main className="checkout-page-container">
-            <h1 className="checkout-page-title">CHECKOUT</h1>
+            <h1 className="checkout-page-title">{t('checkout_title') || 'CHECKOUT'}</h1>
 
             {/* Minimum Order Notification */}
             {showMinOrderNotice && (
@@ -299,12 +299,12 @@ const Checkout = () => {
                 <form onSubmit={handleSubmit} className="checkout-card">
                     <div className="checkout-section-header">
                         <span className="step-badge">1</span>
-                        <h3 className="checkout-section-title">Shipping Details</h3>
+                        <h3 className="checkout-section-title">{t('shipping_details') || 'Shipping Details'}</h3>
                     </div>
 
                     <div className="form-group">
                         <input
-                            type="text" name="name" placeholder="Full Name *" required
+                            type="text" name="name" placeholder={t('placeholder_full_name') || 'Full Name *'} required
                             value={formData.name} onChange={handleChange}
                             className="modern-input"
                         />
@@ -312,7 +312,7 @@ const Checkout = () => {
 
                     <div className="form-group">
                         <input
-                            type="tel" name="phone" placeholder="Phone Number *" required
+                            type="tel" name="phone" placeholder={t('placeholder_phone') || 'Phone Number *'} required
                             value={formData.phone} onChange={handleChange}
                             className="modern-input"
                         />
@@ -320,7 +320,7 @@ const Checkout = () => {
 
                     <div className="form-group">
                         <textarea
-                            name="address" placeholder="Delivery Address *" required
+                            name="address" placeholder={t('placeholder_address') || 'Delivery Address *'} required
                             value={formData.address} onChange={handleChange}
                             rows="3"
                             className="modern-input"
@@ -330,7 +330,7 @@ const Checkout = () => {
                     <div className="form-row">
                         <div className="form-group">
                             <input
-                                type="text" name="city" placeholder="City *" required
+                                type="text" name="city" placeholder={t('placeholder_city') || 'City *'} required
                                 value={formData.city} onChange={handleChange}
                                 className="modern-input"
                             />
@@ -338,7 +338,7 @@ const Checkout = () => {
                         <div className="form-group">
                             <div className="zip-input-wrapper">
                                 <input
-                                    type="text" name="zip" placeholder="Pincode *" required
+                                    type="text" name="zip" placeholder={t('placeholder_pincode') || 'Pincode *'} required
                                     value={formData.zip} onChange={handleChange}
                                     maxLength={6}
                                     className="modern-input zip-input"
@@ -349,7 +349,7 @@ const Checkout = () => {
                                     onClick={() => checkPincodeServiceability(formData.zip)}
                                     disabled={pincodeState.loading || !formData.zip}
                                 >
-                                    {pincodeState.loading ? 'Checking...' : 'Check Service'}
+                                    {pincodeState.loading ? (t('checking') || 'Checking...') : (t('check_service') || 'Check Service')}
                                 </button>
                             </div>
                         </div>
@@ -394,7 +394,7 @@ const Checkout = () => {
                         className="btn-primary btn-block desktop-pay-btn"
                         style={{ fontSize: '1.05rem', opacity: isSubmitting ? 0.7 : 1 }}
                     >
-                        {isSubmitting ? 'Processing Order...' : `PAY ₹${total} NOW`}
+                        {isSubmitting ? (t('processing_order') || 'Processing Order...') : (t('pay_now') ? `${t('pay_now')} ₹${total}` : `PAY ₹${total} NOW`)}
                     </button>
                     <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#6b7280', marginTop: '0.85rem' }}>
                         🔒 100% Secure Payment via PhonePe
@@ -405,7 +405,7 @@ const Checkout = () => {
                 <div className="checkout-card">
                     <div className="checkout-section-header">
                         <span className="step-badge">2</span>
-                        <h3 className="checkout-section-title">Order Summary</h3>
+                        <h3 className="checkout-section-title">{t('order_summary') || 'Order Summary'}</h3>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -436,7 +436,7 @@ const Checkout = () => {
 
                         <div className="summary-total">
                             <div className="summary-row" style={{ fontSize: '0.95rem' }}>
-                                <span>Item Subtotal</span>
+                                <span>{t('subtotal') || 'Item Subtotal'}</span>
                                 <span>₹{subtotal}</span>
                             </div>
                             <div className="summary-row" style={{ fontSize: '0.88rem', color: '#6b7280' }}>
@@ -444,9 +444,9 @@ const Checkout = () => {
                                 <span>{totalQty}</span>
                             </div>
                             <div className="summary-row" style={{ fontSize: '0.95rem' }}>
-                                <span>Delivery Charges</span>
+                                <span>{t('shipping_fee') || 'Delivery Charges'}</span>
                                 <span style={{ color: '#059669', fontWeight: '700' }}>
-                                    {orderSettings.freeDeliveryActive || deliveryCharge === 0 ? 'FREE' : `+ ₹${deliveryCharge}`}
+                                    {orderSettings.freeDeliveryActive || deliveryCharge === 0 ? (t('free') || 'FREE') : `+ ₹${deliveryCharge}`}
                                 </span>
                             </div>
                             {appliedDiscounts.length > 0 && (
@@ -457,7 +457,7 @@ const Checkout = () => {
                                     {appliedDiscounts.map((disc, idx) => (
                                         <div key={disc.id || idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#15803d', fontWeight: '600' }}>
                                             <span>• {disc.name}</span>
-                                            <span>{disc.type === 'free_delivery' ? 'FREE DELIVERY' : `- ₹${disc.amount}`}</span>
+                                            <span>{disc.type === 'free_delivery' ? (t('free') || 'FREE DELIVERY') : `- ₹${disc.amount}`}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -469,7 +469,7 @@ const Checkout = () => {
                                 </div>
                             )}
                             <div className="summary-row" style={{ marginTop: '0.5rem', borderTop: '2px dashed #e2e8f0', paddingTop: '0.75rem' }}>
-                                <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>Grand Total</span>
+                                <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{t('total') || 'Grand Total'}</span>
                                 <span style={{ fontSize: '1.35rem', fontWeight: '900', color: '#1A4D2E' }}>₹{total}</span>
                             </div>
                         </div>
@@ -481,7 +481,7 @@ const Checkout = () => {
             {/* Mobile Sticky Bottom Pay Bar */}
             <div className="mobile-checkout-bar">
                 <div className="mobile-checkout-total">
-                    <span className="mobile-total-label">Grand Total</span>
+                    <span className="mobile-total-label">{t('total') || 'Grand Total'}</span>
                     <span className="mobile-total-val">₹{total}</span>
                 </div>
                 <button
@@ -499,7 +499,7 @@ const Checkout = () => {
                     disabled={isSubmitting}
                     className="mobile-pay-btn"
                 >
-                    {isSubmitting ? 'Processing...' : `PAY ₹${total} NOW`}
+                    {isSubmitting ? (t('processing_order') || 'Processing...') : (t('pay_now') ? `${t('pay_now')} ₹${total}` : `PAY ₹${total} NOW`)}
                 </button>
             </div>
         </main>

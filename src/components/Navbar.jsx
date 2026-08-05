@@ -8,7 +8,9 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
     const { cart, products, searchQuery, setSearchQuery } = useShop();
     const { language, setLanguage, t, translateProduct } = useLanguage();
     const [searchOpen, setSearchOpen] = useState(false);
+    const [langOpen, setLangOpen] = useState(false);
     const searchRef = useRef(null);
+    const langRef = useRef(null);
 
     const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -33,9 +35,15 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
             if (searchRef.current && !searchRef.current.contains(event.target)) {
                 setSearchOpen(false);
             }
+            if (langRef.current && !langRef.current.contains(event.target)) {
+                setLangOpen(false);
+            }
         };
         const handleEsc = (event) => {
-            if (event.key === 'Escape') setSearchOpen(false);
+            if (event.key === 'Escape') {
+                setSearchOpen(false);
+                setLangOpen(false);
+            }
         };
         document.addEventListener('mousedown', handleOutsideClick);
         document.addEventListener('keydown', handleEsc);
@@ -118,25 +126,47 @@ const Navbar = ({ onMenuClick, onCartClick }) => {
             </div>
 
             <div className="nav-actions" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                {/* Language Selector Dropdown */}
-                <div className="language-selector-wrapper" title={t('language')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lang-icon">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                    </svg>
-                    <select
-                        id="language-select-dropdown"
-                        className="language-select"
-                        value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
+                {/* Language Selector Icon Button & Popover */}
+                <div className="language-selector-wrapper" ref={langRef} style={{ position: 'relative' }}>
+                    <button
+                        id="language-toggle-btn"
+                        className="nav-icon"
+                        onClick={() => setLangOpen(!langOpen)}
+                        title={t('language')}
                         aria-label={t('language')}
+                        style={{ position: 'relative' }}
                     >
-                        <option value="en">English</option>
-                        <option value="hi">हिंदी</option>
-                        <option value="bn">বাংলা</option>
-                    </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <span className="lang-code-badge">{language.toUpperCase()}</span>
+                    </button>
+
+                    {langOpen && (
+                        <div className="language-popover-menu">
+                            <button
+                                className={`lang-option-btn ${language === 'en' ? 'active' : ''}`}
+                                onClick={() => { setLanguage('en'); setLangOpen(false); }}
+                            >
+                                English <span>(EN)</span>
+                            </button>
+                            <button
+                                className={`lang-option-btn ${language === 'hi' ? 'active' : ''}`}
+                                onClick={() => { setLanguage('hi'); setLangOpen(false); }}
+                            >
+                                हिंदी <span>(HI)</span>
+                            </button>
+                            <button
+                                className={`lang-option-btn ${language === 'bn' ? 'active' : ''}`}
+                                onClick={() => { setLanguage('bn'); setLangOpen(false); }}
+                            >
+                                বাংলা <span>(BN)</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <a href="/admin" className="nav-icon" title={t('admin_panel')}>
