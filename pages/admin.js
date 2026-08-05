@@ -513,6 +513,10 @@ function setupListeners() {
         adminLangSelect.addEventListener('change', (e) => {
             const selectedLang = e.target.value;
             localStorage.setItem('app_language', selectedLang);
+            const modalInvoiceLangSelect = document.getElementById('modal-invoice-lang-select');
+            if (modalInvoiceLangSelect) {
+                modalInvoiceLangSelect.value = selectedLang;
+            }
             if (selectedLang !== 'en') {
                 fetchAdminAiTranslations(selectedLang);
             }
@@ -1676,6 +1680,12 @@ function openOrderModal(id) {
 
     updateCourierFields(currentCourier, order.tracking_id);
 
+    const invoiceLangSelect = document.getElementById('modal-invoice-lang-select');
+    if (invoiceLangSelect) {
+        const activeLang = localStorage.getItem('app_language') || 'en';
+        invoiceLangSelect.value = activeLang;
+    }
+
     const invoiceBtn = document.getElementById('modal-download-invoice-btn');
     if (invoiceBtn) {
         invoiceBtn.onclick = async (e) => {
@@ -1702,8 +1712,10 @@ function openOrderModal(id) {
                 }
             }
 
+            const selectedInvoiceLang = document.getElementById('modal-invoice-lang-select')?.value || localStorage.getItem('app_language') || 'en';
+
             // Instantly generate PDF on the fly and open in a new browser window/tab
-            window.open(`/api/orders/${order.id}/invoice?t=${Date.now()}`, '_blank');
+            window.open(`/api/orders/${order.id}/invoice?lang=${selectedInvoiceLang}&t=${Date.now()}`, '_blank');
         };
     }
 

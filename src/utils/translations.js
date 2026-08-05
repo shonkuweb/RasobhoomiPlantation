@@ -20,6 +20,14 @@ export const uiTranslations = {
         nav_shipping: "Shipping Policy",
         nav_return: "Return Policy",
 
+        // About Us Page
+        about_founder_subtitle: "Subir Chanda - Founder of Rasobhoomi",
+        about_p1: "At Rasobhoomi, we believe in the magic of nature and the peace it brings to our lives. Rooted in a passion for greenery, our mission is to bring the finest collection of fruit plants, exotic trees, and gardening essentials directly to your doorstep.",
+        about_p2: "Each plant in our nursery is nurtured with care and expertise. From the sweetest Indian Mangoes to rare Foreigner varieties, every sapling reflects our commitment to quality and growth. We ensure that what you receive is healthy, vibrant, and ready to thrive in your garden.",
+        about_p3: "We work closely with expert horticulturists to maintain a diverse and sustainable collection. By choosing Rasobhoomi, you are not just buying a plant — you are inviting nature into your home, supporting a greener planet, and cultivating a legacy of growth.",
+        about_p4: "Whether you are a seasoned gardener or just starting your green journey, Rasobhoomi is here to grow with you. Our plants are more than just products; they are living companions that bring joy and fresh air to your life.",
+        about_tagline: "Cultivating nature, delivering joy.",
+
         // Cart Sidebar
         your_cart: "YOUR CART",
         cart_empty: "Your cart is empty",
@@ -125,6 +133,14 @@ export const uiTranslations = {
         nav_terms: "नियम एवं शर्तें",
         nav_shipping: "शिपिंग नीति",
         nav_return: "वापसी नीति",
+
+        // About Us Page
+        about_founder_subtitle: "सुबीर चंदा - रसोभूमि के संस्थापक",
+        about_p1: "रसोभूमि में, हम प्रकृति के जादू और इससे हमारे जीवन में मिलने वाली शांति में विश्वास करते हैं। हरियाली के प्रति जुनून से प्रेरित होकर, हमारा मिशन बेहतरीन फलदार पौधों, विदेशी पेड़ों और बागवानी के सामान को सीधे आपके दरवाजे तक पहुंचाना है।",
+        about_p2: "हमारी नर्सरी के प्रत्येक पौधे की देखभाल और विशेषज्ञता के साथ परवरिश की जाती है। सबसे मीठे भारतीय आमों से लेकर दुर्लभ विदेशी किस्मों तक, हर पौधा गुणवत्ता और विकास के प्रति हमारी प्रतिबद्धता को दर्शाता है। हम यह सुनिश्चित करते हैं कि आपको जो मिले वह स्वस्थ, जीवंत और आपके बगीचे में फलने-फूलने के लिए तैयार हो।",
+        about_p3: "हम एक विविध और टिकाऊ संग्रह बनाए रखने के लिए विशेषज्ञ बागवानों के साथ मिलकर काम करते हैं। रसोभूमि को चुनकर, आप सिर्फ एक पौधा नहीं खरीद रहे हैं — आप प्रकृति को अपने घर में आमंत्रित कर रहे हैं, एक हरे-भरे ग्रह का समर्थन कर रहे हैं और विकास की विरासत को संजो रहे हैं।",
+        about_p4: "चाहे आप एक अनुभवी माली हों या अपनी हरी-भरी यात्रा शुरू कर रहे हों, रसोभूमि आपके साथ बढ़ने के लिए यहाँ है। हमारे पौधे सिर्फ उत्पाद नहीं हैं; वे जीवित साथी हैं जो आपके जीवन में खुशियाँ और ताज़ी हवा लाते हैं।",
+        about_tagline: "प्रकृति का संवर्धन, खुशियों का वितरण।",
 
         // Cart Sidebar
         your_cart: "आपकी कार्ट",

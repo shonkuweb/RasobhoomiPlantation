@@ -1227,9 +1227,21 @@
                         <input type="text" id="modal-tracking-id" placeholder="e.g. D12345678" class="modern-input" style="width: 100%; box-sizing: border-box; margin: 0; background: white;">
                         <p id="modal-courier-hint" style="margin: 0.4rem 0 0 0; font-size: 0.72rem; color: #64748b; font-weight: 600;"></p>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
-                        <button id="modal-update-status-btn" class="btn-add-product-modern" style="flex: 1; margin: 0; padding: 0.85rem;">UPDATE ORDER</button>
-                        <a id="modal-download-invoice-btn" href="#" target="_blank" class="view-btn" style="background: #0f172a; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem;">📄 INVOICE PDF</a>
+                    <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 10px; border: 1px solid #cbd5e1; margin-top: 0.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <label style="font-size: 0.78rem; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 0.3rem;">
+                                🌐 INVOICE LANGUAGE
+                            </label>
+                            <select id="modal-invoice-lang-select" class="modern-input" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; font-weight: 700; border-radius: 8px; border: 1.5px solid #0f172a; background: white; color: #0f172a;">
+                                <option value="en">English (English)</option>
+                                <option value="hi">हिंदी (Hindi)</option>
+                                <option value="bn">বাংলা (Bengali)</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="modal-update-status-btn" class="btn-add-product-modern" style="flex: 1; margin: 0; padding: 0.85rem;">UPDATE ORDER</button>
+                            <a id="modal-download-invoice-btn" href="#" target="_blank" class="view-btn" style="background: #0f172a; color: white; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0 1rem; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 0.85rem;">📄 INVOICE PDF</a>
+                        </div>
                     </div>
                 </div>
             </div>

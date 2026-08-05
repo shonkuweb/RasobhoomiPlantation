@@ -1,20 +1,23 @@
 import React from 'react';
 import SEO from '../components/SEO';
+import { useLanguage } from '../context/LanguageContext';
 
 const About = () => {
+    const { t } = useLanguage();
+
     return (
         <main style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', lineHeight: '1.8', color: '#333' }}>
             <SEO
-                title="About Us"
+                title={t('nav_about') || 'About Us'}
                 description="Learn about Rasobhoomi Plantation and our commitment to providing authentic plants."
             />
             <h1 className="text-red"
                 style={{ textAlign: 'center', marginBottom: '1.5rem', fontFamily: 'Great Vibes, cursive', fontSize: '3.5rem' }}>
-                About Us
+                {t('nav_about') || 'About Us'}
             </h1>
 
-            {/* Circular Owner Image */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+            {/* Circular Owner Image & Caption */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2.5rem' }}>
                 <div style={{
                     width: '180px',
                     height: '180px',
@@ -26,37 +29,40 @@ const About = () => {
                 }}>
                     <img
                         src="https://pub-ce8688bc6c654bcfb99716f7c9373bcd.r2.dev/rasobhoomi/WhatsApp%20Image%202026-08-05%20at%205.25.59%20PM.jpeg"
-                        alt="Owner of Rasobhoomi Plantation"
+                        alt="Subir Chanda - Founder of Rasobhoomi"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                 </div>
+                <h3 style={{
+                    marginTop: '0.85rem',
+                    fontWeight: '700',
+                    fontSize: '1.1rem',
+                    color: '#2C1B10',
+                    textAlign: 'center',
+                    letterSpacing: '0.3px'
+                }}>
+                    {t('about_founder_subtitle') || 'Subir Chanda - Founder of Rasobhoomi'}
+                </h3>
             </div>
 
-            <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                At <strong>Rasobhoomi</strong>, we believe in the magic of nature and the peace it brings to our lives.
-                Rooted in a passion for greenery, our mission is to bring the finest collection of fruit plants, exotic trees,
-                and gardening essentials directly to your doorstep.
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                {t('about_p1')}
             </p>
 
-            <p style={{ marginBottom: '1.5rem' }}>
-                Each plant in our nursery is nurtured with care and expertise. From the sweetest <strong>Indian Mangoes</strong> to
-                rare <strong>Foreigner varieties</strong>, every sapling reflects our commitment to quality and growth.
-                We ensure that what you receive is healthy, vibrant, and ready to thrive in your garden.
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                {t('about_p2')}
             </p>
 
-            <p style={{ marginBottom: '1.5rem' }}>
-                We work closely with expert horticulturists to maintain a diverse and sustainable collection.
-                By choosing Rasobhoomi, you are not just buying a plant — you are inviting nature into your home,
-                supporting a greener planet, and cultivating a legacy of growth.
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                {t('about_p3')}
             </p>
 
-            <p style={{ marginBottom: '1.5rem' }}>
-                Whether you are a seasoned gardener or just starting your green journey, <strong>Rasobhoomi</strong> is here to grow with you.
-                Our plants are more than just products; they are living companions that bring joy and fresh air to your life.
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                {t('about_p4')}
             </p>
 
-            <p style={{ textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold', marginTop: '3rem', color: '#2C1B10' }}>
-                Cultivating nature, delivering joy.
+            <p style={{ textAlign: 'center', fontStyle: 'italic', fontWeight: 'bold', marginTop: '3rem', color: '#2C1B10', fontSize: '1.1rem' }}>
+                {t('about_tagline') || 'Cultivating nature, delivering joy.'}
             </p>
         </main>
     );

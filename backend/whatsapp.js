@@ -427,7 +427,8 @@ export async function sendOrderPaymentNotification(order) {
         // Generate PDF Invoice
         let pdfMedia = null;
         try {
-            const pdfBuffer = await generateInvoicePdf(order);
+            const pdfLang = order.lang || 'en';
+            const pdfBuffer = await generateInvoicePdf(order, pdfLang);
             pdfMedia = new MessageMedia('application/pdf', pdfBuffer.toString('base64'), `Invoice_${order.id}.pdf`);
         } catch (pdfErr) {
             console.error('[WHATSAPP] Failed to generate PDF invoice:', pdfErr);
