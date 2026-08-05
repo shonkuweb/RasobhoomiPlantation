@@ -1196,6 +1196,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
     // Check for credentials - use test mode fallback if credentials aren't set in environment
     if (!process.env.PHONEPE_CLIENT_ID || !process.env.PHONEPE_CLIENT_SECRET) {
         console.warn(`[PAYMENT] PhonePe credentials missing in .env. Operating in Test Simulation mode for order ${orderId}`);
+        const baseUrl = APP_BE_URL || `http://localhost:${PORT}`;
         const testRedirectUrl = `${baseUrl}/api/phonepe/callback?merchantOrderId=${encodeURIComponent(orderId)}&code=PAYMENT_SUCCESS`;
         return res.json({
             success: true,
