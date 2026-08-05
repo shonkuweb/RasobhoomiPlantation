@@ -8,8 +8,14 @@ export function extractYouTubeId(url) {
     return (match && match[2].length === 11) ? match[2] : null;
 }
 
-const HeroVideoBanner = ({ url }) => {
+export function isYouTubeShorts(url) {
+    if (!url || typeof url !== 'string') return false;
+    return url.toLowerCase().includes('/shorts/');
+}
+
+const HeroVideoBanner = ({ url, isShorts }) => {
     const videoId = extractYouTubeId(url);
+    const isShortsVideo = isShorts ?? isYouTubeShorts(url);
     const containerRef = useRef(null);
     const playerRef = useRef(null);
     const iframeRef = useRef(null);
@@ -226,7 +232,7 @@ const HeroVideoBanner = ({ url }) => {
     if (!videoId) return null;
 
     return (
-        <div className="hero-video-wrapper" ref={containerRef}>
+        <div className={`hero-video-wrapper ${isShortsVideo ? 'is-shorts' : ''}`} ref={containerRef}>
             <div className="hero-video-aspect-box">
                 <div className="hero-video-iframe-holder" ref={iframeRef}></div>
             </div>

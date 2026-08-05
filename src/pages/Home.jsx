@@ -5,7 +5,7 @@ import ProductCard from '../components/ProductCard';
 import { Link } from 'react-router-dom';
 import FilterModal from '../components/FilterModal';
 import SEO from '../components/SEO';
-import HeroVideoBanner, { extractYouTubeId } from '../components/HeroVideoBanner';
+import HeroVideoBanner, { extractYouTubeId, isYouTubeShorts } from '../components/HeroVideoBanner';
 import { resolveCategoryImageUrl, sortCategoriesWithMangoFirst, sortProductsWithMangoFirst } from '../utils/categories';
 import { translateCategoryName } from '../utils/translations';
 
@@ -74,6 +74,7 @@ const Home = () => {
     };
 
     const hasValidHeroVideo = Boolean(extractYouTubeId(heroVideoUrl));
+    const isShortsVideo = isYouTubeShorts(heroVideoUrl);
 
     return (
         <main className="home-main">
@@ -90,9 +91,9 @@ const Home = () => {
                 }}
             />
             {/* Hero Section */}
-            <section className={`hero-carousel ${hasValidHeroVideo ? 'has-video' : ''}`} aria-label="Rasobhoomi Plantation">
+            <section className={`hero-carousel ${hasValidHeroVideo ? 'has-video' : ''} ${isShortsVideo ? 'is-shorts' : ''}`} aria-label="Rasobhoomi Plantation">
                 {hasValidHeroVideo ? (
-                    <HeroVideoBanner url={heroVideoUrl} />
+                    <HeroVideoBanner url={heroVideoUrl} isShorts={isShortsVideo} />
                 ) : (
                     <div className="carousel-track">
                         <img
