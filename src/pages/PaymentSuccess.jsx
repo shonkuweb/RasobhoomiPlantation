@@ -10,7 +10,7 @@ const PaymentSuccess = () => {
 
     useEffect(() => {
         clearCart();
-    }, [clearCart]);
+    }, []);
 
     return (
         <div className="payment-status-container status-bg-success">

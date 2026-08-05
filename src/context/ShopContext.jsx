@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { sortProductsWithMangoFirst } from '../utils/categories';
 
 const ShopContext = createContext();
@@ -16,6 +16,14 @@ export const ShopProvider = ({ children }) => {
     });
     const [isLoadingInitial, setIsLoadingInitial] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        } catch (e) {
+            console.error('Failed to save cart', e);
+        }
+    }, [cart]);
 
     useEffect(() => {
         let cancelled = false;
@@ -90,7 +98,9 @@ export const ShopProvider = ({ children }) => {
         ));
     };
 
-    const clearCart = () => setCart([]);
+    const clearCart = useCallback(() => {
+        setCart([]);
+    }, []);
 
     const getCartTotal = () => {
         return cart.reduce((acc, item) => {
