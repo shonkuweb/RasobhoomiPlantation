@@ -504,13 +504,23 @@ async function saveHeroVideoSettings(e) {
     }
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 async function fetchTutorialsAdmin() {
     const listContainer = document.getElementById('admin-tutorials-list');
     if (!listContainer) return;
 
     try {
         const res = await fetch('/api/tutorials');
-        if (!res.ok) throw new Error('Failed to fetch tutorials');
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch tutorials`);
         const tutorials = await res.json();
 
         if (!Array.isArray(tutorials) || tutorials.length === 0) {
@@ -530,7 +540,7 @@ async function fetchTutorialsAdmin() {
                         🔗 ${escapeHtml(t.video_url)}
                     </a>
                 </div>
-                <button type="button" class="btn-delete-tutorial" data-id="${t.id}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">
+                <button type="button" class="btn-delete-tutorial" data-id="${escapeHtml(t.id)}" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                     🗑️ Delete
                 </button>
             </div>
@@ -538,20 +548,21 @@ async function fetchTutorialsAdmin() {
 
         listContainer.querySelectorAll('.btn-delete-tutorial').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
+                const id = btn.getAttribute('data-id') || e.currentTarget?.getAttribute('data-id');
                 if (!id) return;
                 if (!confirm('Are you sure you want to delete this tutorial chapter?')) return;
                 try {
-                    const delRes = await fetch(`/api/admin/tutorials/${id}`, {
+                    const delRes = await fetch(`/api/admin/tutorials/${encodeURIComponent(id)}`, {
                         method: 'DELETE',
                         headers: getAuthHeaders()
                     });
                     const delData = await delRes.json();
                     if (!delRes.ok || !delData.success) {
-                        throw new Error(delData.error || 'Failed to delete tutorial');
+                        throw new Error(delData.error || 'Failed to delete tutorial chapter');
                     }
                     fetchTutorialsAdmin();
                 } catch (err) {
+                    console.error('Delete tutorial error:', err);
                     alert(err.message || 'Failed to delete tutorial chapter.');
                 }
             });
@@ -559,7 +570,7 @@ async function fetchTutorialsAdmin() {
 
     } catch (err) {
         console.error('Error loading admin tutorials:', err);
-        listContainer.innerHTML = `<p style="font-size: 0.85rem; color: #dc2626;">Failed to load tutorials.</p>`;
+        listContainer.innerHTML = `<p style="font-size: 0.85rem; color: #dc2626;">Failed to load tutorials: ${escapeHtml(err.message)}</p>`;
     }
 }
 
