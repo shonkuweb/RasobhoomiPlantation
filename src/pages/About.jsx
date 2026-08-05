@@ -9,9 +9,28 @@ const About = () => {
                 description="Learn about Rasobhoomi Plantation and our commitment to providing authentic plants."
             />
             <h1 className="text-red"
-                style={{ textAlign: 'center', marginBottom: '2rem', fontFamily: 'Great Vibes, cursive', fontSize: '3.5rem' }}>
+                style={{ textAlign: 'center', marginBottom: '1.5rem', fontFamily: 'Great Vibes, cursive', fontSize: '3.5rem' }}>
                 About Us
             </h1>
+
+            {/* Circular Owner Image */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                <div style={{
+                    width: '180px',
+                    height: '180px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '4px solid #2e7d32',
+                    boxShadow: '0 8px 24px rgba(46, 125, 50, 0.2)',
+                    background: '#f3f4f6'
+                }}>
+                    <img
+                        src="https://pub-ce8688bc6c654bcfb99716f7c9373bcd.r2.dev/rasobhoomi/WhatsApp%20Image%202026-08-05%20at%205.25.59%20PM.jpeg"
+                        alt="Owner of Rasobhoomi Plantation"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                </div>
+            </div>
 
             <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem' }}>
                 At <strong>Rasobhoomi</strong>, we believe in the magic of nature and the peace it brings to our lives.
