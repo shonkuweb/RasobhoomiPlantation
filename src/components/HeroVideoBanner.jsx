@@ -265,6 +265,8 @@ const HeroVideoBanner = ({ url, isShorts }) => {
         <div className={`hero-video-wrapper ${isShortsVideo ? 'is-shorts' : ''}`} ref={containerRef}>
             <div className="hero-video-aspect-box">
                 <div className="hero-video-iframe-holder" ref={iframeRef}></div>
+                {/* Click shield to intercept taps and prevent native YouTube center play/pause & video switch buttons */}
+                <div className="hero-video-click-shield" onClick={togglePlayPause} aria-hidden="true" />
             </div>
 
             {/* Custom Overlay Controls - Play/Pause, Sound, and Fullscreen */}

@@ -416,7 +416,17 @@ main.home-main {
   width: 100% !important;
   height: 100% !important;
   border: 0;
-  pointer-events: none;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* Click Shield to block native YouTube center controls */
+.hero-video-click-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: pointer;
+  background: transparent;
 }
 
 /* Custom Overlay Controls - Exactly 3 Controllers (Play/Pause, Mute, Fullscreen) */
