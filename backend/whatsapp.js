@@ -416,7 +416,7 @@ export async function sendOrderPaymentNotification(order) {
         return { success: true, duplicate: true };
     }
 
-    if (connectionState !== 'CONNECTED' || !client) {
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
         console.warn(`[WHATSAPP] Cannot send notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
@@ -522,7 +522,7 @@ export async function sendPendingPaymentNotification(order) {
         return { success: true, duplicate: true };
     }
 
-    if (connectionState !== 'CONNECTED' || !client) {
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
         console.warn(`[WHATSAPP] Cannot send pending payment notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
@@ -671,7 +671,7 @@ Thank you for trusting *Rasobhoomi Plantation* for a greener world! 🪴💚`;
 export async function sendOrderStatusNotification(order, newStatus) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
 
-    if (connectionState !== 'CONNECTED' || !client) {
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
         console.warn(`[WHATSAPP] Cannot send order status notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
@@ -706,7 +706,7 @@ export async function sendOrderStatusNotification(order, newStatus) {
  * Send a custom test message to verify connection
  */
 export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER) {
-    if (connectionState !== 'CONNECTED' || !client) {
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
         throw new Error(`WhatsApp is not connected (Current status: ${connectionState})`);
     }
     const jid = formatWhatsAppJid(targetNumber);
