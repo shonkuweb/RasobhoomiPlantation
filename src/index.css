@@ -315,9 +315,18 @@ main.home-main {
   background-color: var(--color-grey);
 }
 
-@media (max-width: 600px) {
+.hero-carousel.has-video {
+  height: auto;
+  max-height: none;
+}
+
+@media (max-width: 768px) {
   .hero-carousel {
     aspect-ratio: 4 / 3;
+  }
+  .hero-carousel.has-video {
+    aspect-ratio: 9 / 16;
+    max-height: none;
   }
 }
 
@@ -347,8 +356,14 @@ main.home-main {
 .hero-video-aspect-box {
   width: 100%;
   position: relative;
-  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  aspect-ratio: 16 / 9;
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .hero-video-aspect-box {
+    aspect-ratio: 9 / 16;
+  }
 }
 
 .hero-video-iframe-holder {

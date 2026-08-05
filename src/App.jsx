@@ -15,6 +15,7 @@ const Checkout = lazy(() => import('./pages/Checkout'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'));
 const PaymentFailure = lazy(() => import('./pages/PaymentFailure'));
 const PaymentPending = lazy(() => import('./pages/PaymentPending'));
+const PaymentSimulate = lazy(() => import('./pages/PaymentSimulate'));
 const Categories = lazy(() => import('./pages/Categories'));
 const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
@@ -76,6 +77,7 @@ function AppContent() {
                     <Route path="/payment/success" element={<PaymentSuccess />} />
                     <Route path="/payment/failure" element={<PaymentFailure />} />
                     <Route path="/payment/pending" element={<PaymentPending />} />
+                    <Route path="/payment/simulate" element={<PaymentSimulate />} />
                     <Route path="/track-order" element={<TrackOrder />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />

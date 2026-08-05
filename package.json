@@ -8,7 +8,8 @@
     "dev:all": "concurrently \"node backend/server.js\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "whatsapp:logs": "node scripts/whatsapp_logs.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.2",

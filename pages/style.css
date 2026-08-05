@@ -212,9 +212,18 @@ main.home-main {
   background-color: var(--color-grey);
 }
 
-@media (max-width: 600px) {
+.hero-carousel.has-video {
+  height: auto;
+  max-height: none;
+}
+
+@media (max-width: 768px) {
   .hero-carousel {
     aspect-ratio: 4/3;
+  }
+  .hero-carousel.has-video {
+    aspect-ratio: 9/16;
+    max-height: none;
   }
 }
 

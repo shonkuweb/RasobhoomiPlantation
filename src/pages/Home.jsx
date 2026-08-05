@@ -90,7 +90,7 @@ const Home = () => {
                 }}
             />
             {/* Hero Section */}
-            <section className="hero-carousel" aria-label="Rasobhoomi Plantation">
+            <section className={`hero-carousel ${hasValidHeroVideo ? 'has-video' : ''}`} aria-label="Rasobhoomi Plantation">
                 {hasValidHeroVideo ? (
                     <HeroVideoBanner url={heroVideoUrl} />
                 ) : (
