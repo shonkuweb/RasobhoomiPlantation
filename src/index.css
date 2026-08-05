@@ -417,8 +417,6 @@ main.home-main {
   height: 100% !important;
   border: 0;
   pointer-events: none;
-  transform: scale(1.25);
-  transform-origin: center center;
 }
 
 /* Custom Overlay Controls - Exactly 3 Controllers (Play/Pause, Mute, Fullscreen) */
