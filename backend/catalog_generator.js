@@ -76,8 +76,33 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
 
     return new Promise((resolve, reject) => {
         try {
-            // Translate all products for target language
-            const productList = (rawProducts || []).map(p => translateProduct(p, selectedLang));
+            // Step 1: Filter out duplicate product IDs from raw input
+            const seenIds = new Set();
+            const uniqueRaw = (rawProducts || []).filter(p => {
+                const id = p && (p.id || p.product_id);
+                if (!id) return true;
+                const idStr = String(id).trim();
+                if (seenIds.has(idStr)) return false;
+                seenIds.add(idStr);
+                return true;
+            });
+
+            // Step 2: Translate products for target language
+            const translatedList = uniqueRaw.map(p => translateProduct(p, selectedLang));
+
+            // Step 3: Deduplicate by Name + Category + Price so PDF table has no redundant duplicate rows
+            const seenKeys = new Set();
+            const productList = [];
+            translatedList.forEach(p => {
+                const nameStr = (p.name || '').trim().toLowerCase();
+                const catStr = (p.category || '').trim().toLowerCase();
+                const priceStr = String(p.price || 0);
+                const key = `${nameStr}___${catStr}___${priceStr}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    productList.push(p);
+                }
+            });
 
             const doc = new PDFDocument({
                 margin: 36,
