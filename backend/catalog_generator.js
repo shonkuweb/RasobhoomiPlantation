@@ -2,7 +2,7 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { translateProduct, translateCategoryName } from '../src/utils/translations.js';
+import { translateProduct, translateCategoryName, canonicalCategoryKey } from '../src/utils/translations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,7 +88,13 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             });
 
             // Step 2: Translate products for target language
-            const translatedList = uniqueRaw.map(p => translateProduct(p, selectedLang));
+            const translatedList = uniqueRaw.map(p => {
+                const origCategory = p.originalCategory || p.category || 'Others';
+                const translatedP = translateProduct(p, selectedLang);
+                translatedP.originalCategory = origCategory;
+                translatedP.category = translateCategoryName(origCategory, selectedLang);
+                return translatedP;
+            });
 
             // Step 3: Deduplicate by Name + Category + Price so PDF table has no redundant duplicate rows
             const seenKeys = new Set();
@@ -153,22 +159,29 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             const margin = 36;
             const contentWidth = pageWidth - (margin * 2);
 
-            // Group products by category
+            // Group products by category accurately
             const categoryMap = {};
             productList.forEach(p => {
-                let cat = p.category ? String(p.category).trim() : 'General';
-                cat = translateCategoryName(cat, selectedLang);
+                const origCat = p.originalCategory || p.category || 'Others';
+                let cat = translateCategoryName(origCat, selectedLang) || 'General';
                 if (!categoryMap[cat]) categoryMap[cat] = [];
                 categoryMap[cat].push(p);
             });
 
-            // Sort categories (Mangoes first, then alphabetical)
+            // Sort categories (Foreigner Mango first, then Indian Mangoes, then alphabetical)
             const categoryNames = Object.keys(categoryMap).sort((a, b) => {
-                const aLower = a.toLowerCase();
-                const bLower = b.toLowerCase();
-                if ((aLower.includes('mango') || aLower.includes('আম')) && !(bLower.includes('mango') || bLower.includes('আম'))) return -1;
-                if (!(aLower.includes('mango') || aLower.includes('আম')) && (bLower.includes('mango') || bLower.includes('আম'))) return 1;
-                return a.localeCompare(b);
+                const aCanon = canonicalCategoryKey(a);
+                const bCanon = canonicalCategoryKey(b);
+
+                const priority = ['Foreigner Mango', 'Indian Mangoes'];
+                const aIdx = priority.indexOf(aCanon);
+                const bIdx = priority.indexOf(bCanon);
+
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+
+                return a.localeCompare(b, selectedLang);
             });
 
             let currentY = margin;

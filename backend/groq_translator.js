@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { translateCategoryName } from '../src/utils/translations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -212,16 +213,22 @@ export async function getTranslatedProducts(db, products, lang) {
 
                 // Construct final array preserving original product metadata
                 const result = products.map(p => {
+                    const origCat = p.originalCategory || p.category;
                     const trans = cachedMap.get(String(p.id));
                     if (trans) {
                         return {
                             ...p,
+                            originalCategory: origCat,
                             name: trans.name || p.name,
                             description: trans.description || p.description,
-                            category: trans.category || p.category
+                            category: translateCategoryName(origCat, lang) || trans.category || p.category
                         };
                     }
-                    return p;
+                    return {
+                        ...p,
+                        originalCategory: origCat,
+                        category: translateCategoryName(origCat, lang) || p.category
+                    };
                 });
 
                 resolve(result);

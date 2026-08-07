@@ -381,12 +381,51 @@ export const categoryTranslations = {
     "Others": { hi: "अन्य", bn: "অন্যান্য" }
 };
 
-export const translateCategoryName = (name, lang = 'en') => {
-    if (!name || lang === 'en') return name;
-    if (categoryTranslations[name] && categoryTranslations[name][lang]) {
-        return categoryTranslations[name][lang];
+export const canonicalCategoryKey = (inputName) => {
+    if (!inputName) return 'Others';
+    const clean = String(inputName).trim();
+    if (categoryTranslations[clean]) return clean;
+
+    const lower = clean.toLowerCase().replace(/[-_]/g, ' ');
+
+    // Match exact key case-insensitive
+    for (const key of Object.keys(categoryTranslations)) {
+        if (key.toLowerCase() === lower) return key;
     }
-    return name;
+
+    // Match by common aliases
+    if (lower === 'logan' || lower === 'longan' || lower === 'longon') return 'Longan';
+    if (lower === 'indian mango' || lower === 'indian mangoes' || lower === 'indian-mangoes') return 'Indian Mangoes';
+    if (lower === 'foreigner mango' || lower === 'foreigner mangoes' || lower === 'foreigner-mango' || lower === 'foreign mango') return 'Foreigner Mango';
+    if (lower === 'fruit tree' || lower === 'fruit plants' || lower === 'fruit-tree') return 'Fruit Plants';
+    if (lower === 'malta orange' || lower === 'malta-orange') return 'Malta Orange';
+    if (lower === 'water apple' || lower === 'water-apple') return 'Water Apple';
+    if (lower === 'betel nut' || lower === 'betel-nut') return 'Betel Nut';
+    if (lower === 'drum plants' || lower === 'drum-plants') return 'Drum Plants';
+    if (lower === 'spice plants' || lower === 'spice-plants') return 'Spice Plants';
+    if (lower === 'flower plants' || lower === 'flower-plants') return 'Flower Plants';
+    if (lower === 'currant' || lower === 'pomegranate' || lower === 'anar') return 'Anar';
+
+    // Reverse lookup from translated Bengali/Hindi strings
+    for (const [key, transObj] of Object.entries(categoryTranslations)) {
+        if (transObj.bn === clean || transObj.hi === clean) return key;
+    }
+
+    // Partial matches for Bengali/Hindi
+    if (clean.includes('भारतीय') || clean.includes('<ctrl42>भारतीय') || clean.includes('ভারতীয়')) return 'Indian Mangoes';
+    if (clean.includes('विदेशी') || clean.includes('विदेशী') || clean.includes('विदेशि')) return 'Foreigner Mango';
+
+    return clean;
+};
+
+export const translateCategoryName = (name, lang = 'en') => {
+    if (!name) return '';
+    const canonicalKey = canonicalCategoryKey(name);
+    if (lang === 'en') return canonicalKey;
+    if (categoryTranslations[canonicalKey] && categoryTranslations[canonicalKey][lang]) {
+        return categoryTranslations[canonicalKey][lang];
+    }
+    return canonicalKey;
 };
 
 // Product specific translations dictionary
@@ -2764,6 +2803,8 @@ export const translateProduct = (product, lang = 'en') => {
 🌿 রোগমুক্ত ও রোপণের জন্য সম্পূর্ণ প্রস্তুত চারা
 📦 নিরাপদ প্যাকেজিংয়ের মাধ্যমে সরবরাহ করা হয়`;
 
+    const origCat = product.originalCategory || product.category;
+
     // Check by ID first
     if (product.id && productTranslations[product.id]) {
         const trans = productTranslations[product.id];
@@ -2775,14 +2816,15 @@ export const translateProduct = (product, lang = 'en') => {
         }
         return {
             ...product,
+            originalCategory: origCat,
             name: translatedName,
             description: translatedDesc || product.description,
-            category: (trans.category && trans.category[lang]) || translateCategoryName(product.category, lang),
+            category: (trans.category && trans.category[lang]) || translateCategoryName(origCat, lang),
         };
     }
 
     // Dynamic category translation fallback
-    let translatedCategory = translateCategoryName(product.category, lang);
+    let translatedCategory = translateCategoryName(origCat, lang);
 
     // Simple common word replacement fallback for demo / newly added products
     let translatedName = product.name || '';

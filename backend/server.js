@@ -721,6 +721,7 @@ const buildProductCacheKey = (page, limit, isPaginated, summary) => {
 
 const parseProductRows = (rows) => rows.map(p => ({
     ...p,
+    originalCategory: p.originalCategory || p.category,
     images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
 }));
 
