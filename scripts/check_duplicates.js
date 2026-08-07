@@ -5,6 +5,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// If run from host shell (outside Docker), override @db: hostname to @127.0.0.1: if necessary
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('@db:')) {
+    // Check if we are inside docker container or host
+    import('fs').then(fs => {
+        if (!fs.existsSync('/.dockerenv')) {
+            process.env.DATABASE_URL = process.env.DATABASE_URL.replace('@db:', '@127.0.0.1:');
+        }
+    }).catch(() => {});
+}
+
 const isPostgres = process.env.DB_TYPE === 'postgres';
 const dbModulePath = isPostgres ? '../backend/database.pg.js' : '../backend/database.js';
 
