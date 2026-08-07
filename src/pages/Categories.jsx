@@ -96,6 +96,71 @@ const Categories = () => {
                     );
                 })}
             </div>
+
+            {/* Product Catalog PDF Download Section */}
+            <div style={{
+                marginTop: '3rem',
+                marginBottom: '1.5rem',
+                padding: '1.5rem',
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                borderRadius: '16px',
+                border: '1px solid #bbf7d0',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem'
+            }}>
+                <h2 style={{ fontSize: '1.2rem', color: '#166534', margin: 0, fontWeight: '800' }}>
+                    📄 {language === 'bn' ? 'প্রোডাক্ট ক্যাটালগ ও মূল্য তালিকা (PDF)' : 'Product Price List Catalog (PDF)'}
+                </h2>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', maxWidth: '600px' }}>
+                    {language === 'bn' ? 'বাংলা বা ইংরেজিতে আমাদের সমস্ত গাছের অফিশিয়াল রেট চার্ট ডাউনলোড করুন।' : 'Download our official price list & catalog with updated plant varieties in Bengali or English.'}
+                </p>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.25rem' }}>
+                    <a
+                        href="/api/products/catalog-pdf?lang=bn"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download="Rasobhoomi_Products_Bengali.pdf"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.65rem 1.25rem',
+                            background: '#166534',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            fontWeight: '700',
+                            fontSize: '0.85rem',
+                            textDecoration: 'none',
+                            boxShadow: '0 2px 5px rgba(22, 101, 52, 0.2)'
+                        }}
+                    >
+                        🇧🇩 {language === 'bn' ? 'বাংলা মূল্য তালিকা (PDF)' : 'Bengali Price List (PDF)'}
+                    </a>
+                    <a
+                        href="/api/products/catalog-pdf?lang=en"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download="Rasobhoomi_Products_English.pdf"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            padding: '0.65rem 1.25rem',
+                            background: '#0f172a',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            fontWeight: '700',
+                            fontSize: '0.85rem',
+                            textDecoration: 'none'
+                        }}
+                    >
+                        🇬🇧 {language === 'bn' ? 'ইংরেজি মূল্য তালিকা (PDF)' : 'English Price List (PDF)'}
+                    </a>
+                </div>
+            </div>
         </main>
     );
 };

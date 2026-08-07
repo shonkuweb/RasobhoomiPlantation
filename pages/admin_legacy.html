@@ -939,12 +939,24 @@
 
                 <!-- Product Catalog Price List PDF Section -->
                 <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    🖨️ Print Product Price List (PDF)
+                    🖨️ Print / Download Product Price List (PDF)
                 </h2>
                 <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                    <p style="color: var(--admin-text-muted); font-size: 0.85rem;">Export & print the latest updated product catalog, organized under category headings with current prices, discount %, and market prices.</p>
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem;">Export & print the latest product catalog with prices in your choice of language (Bengali or English).</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                        <label for="catalog-lang-select" style="font-weight: 700; color: #334155; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+                            🌐 Select Language / ভাষা নির্বাচন করুন:
+                        </label>
+                        <select id="catalog-lang-select" class="modern-input" style="padding: 0.65rem; border-radius: 8px; font-weight: 600; background: white; border: 1px solid #cbd5e1; color: #1e293b;">
+                            <option value="bn" selected>🇧🇩 Bengali (বাংলা) - Product names in Bengali</option>
+                            <option value="en">🇬🇧 English (English) - Product names in English</option>
+                            <option value="hi">🇮🇳 Hindi (हिंदी) - Product names in Hindi</option>
+                        </select>
+                    </div>
+
                     <button id="btn-print-product-list-pdf" class="btn-add-product-modern" style="background: #16a34a; width: 100%; margin-top: 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                        <span>🖨️ PRINT PRODUCT LIST PDF</span>
+                        <span>🖨️ DOWNLOAD PRODUCT LIST PDF</span>
                     </button>
                 </div>
 

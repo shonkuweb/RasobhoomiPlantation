@@ -12,6 +12,7 @@ import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import { generateInvoicePdf } from './invoice_generator.js';
+import { generateCatalogPdf } from './catalog_generator.js';
 import {
     initWhatsApp,
     getWhatsAppStatus,
@@ -783,6 +784,31 @@ const getPhonePeTransactionId = (payload = {}) =>
 // --- API ENDPOINTS ---
 
 // PRODUCTS
+app.get('/api/products/catalog-pdf', (req, res) => {
+    const lang = req.query.lang || 'bn';
+    db.all("SELECT * FROM products ORDER BY id DESC", [], async (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        try {
+            const rawProducts = parseProductRows(rows);
+            let products = rawProducts;
+            if (lang !== 'en') {
+                try {
+                    products = await getTranslatedProducts(db, rawProducts, lang);
+                } catch (tErr) {
+                    console.warn('[CATALOG PDF] Translation notice, using local dictionary:', tErr.message);
+                }
+            }
+            const pdfBuffer = await generateCatalogPdf(products, lang);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="Rasobhoomi_Products_${lang}.pdf"`);
+            res.send(pdfBuffer);
+        } catch (pdfErr) {
+            console.error('Catalog PDF generation error:', pdfErr);
+            res.status(500).json({ error: 'Failed to generate catalog PDF' });
+        }
+    });
+});
+
 app.get('/api/products/translations', (req, res) => {
     const lang = req.query.lang || 'en';
     db.all("SELECT * FROM products ORDER BY id DESC", [], async (err, rows) => {

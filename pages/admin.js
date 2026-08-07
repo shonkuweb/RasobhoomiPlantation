@@ -1114,177 +1114,31 @@ function setupListeners() {
     if (btnPrintProductListPdf) {
         btnPrintProductListPdf.addEventListener('click', async () => {
             const originalBtnText = btnPrintProductListPdf.innerHTML;
+            const selectedLang = document.getElementById('catalog-lang-select')?.value || 'bn';
+
             btnPrintProductListPdf.disabled = true;
-            btnPrintProductListPdf.innerHTML = `<span>⏳ GENERATING PDF...</span>`;
+            btnPrintProductListPdf.innerHTML = `<span>⏳ GENERATING PDF (${selectedLang.toUpperCase()})...</span>`;
             try {
-                const res = await fetch('/api/products');
-                if (!res.ok) throw new Error('Failed to fetch updated products list');
-                const raw = await res.json();
-                const productList = Array.isArray(raw) ? raw : (raw.products || []);
+                const res = await fetch(`/api/products/catalog-pdf?lang=${selectedLang}`);
+                if (!res.ok) throw new Error('Failed to generate catalog PDF');
 
-                if (!productList || productList.length === 0) {
-                    window.showToast('No products available to print', 'error');
-                    return;
-                }
-
-                // Group products by category
-                const categoryMap = {};
-                productList.forEach(p => {
-                    const cat = (p.category && String(p.category).trim()) ? String(p.category).trim() : 'General / Uncategorized';
-                    if (!categoryMap[cat]) categoryMap[cat] = [];
-                    categoryMap[cat].push(p);
-                });
-
-                // Sort categories (Mangoes first, then alphabetical)
-                const categoryNames = Object.keys(categoryMap).sort((a, b) => {
-                    if (a.toLowerCase().includes('mango') && !b.toLowerCase().includes('mango')) return -1;
-                    if (!a.toLowerCase().includes('mango') && b.toLowerCase().includes('mango')) return 1;
-                    return a.localeCompare(b);
-                });
-
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('portrait', 'mm', 'a4');
-                const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-                const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-
-                // Colors
-                const PRIMARY_COLOR = [22, 101, 52]; // Dark Green
-                const TEXT_DARK = [30, 41, 59]; // Slate Dark
-                const MUTED_GRAY = [100, 116, 139]; // Slate Muted
-
-                // Document Header
-                let currentY = 16;
-
-                doc.setFillColor(22, 101, 52);
-                doc.rect(14, currentY, pageWidth - 28, 22, 'F');
-
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text('RASOBHOOMI PLANTATION', 20, currentY + 9);
-
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Product Catalog & Official Price List', 20, currentY + 16);
-
-                const dateStr = new Date().toLocaleDateString('en-IN', {
-                    day: '2-digit', month: 'short', year: 'numeric'
-                });
-                doc.setFontSize(9);
-                doc.text(`Date: ${dateStr}`, pageWidth - 20, currentY + 9, { align: 'right' });
-                doc.text(`Total Products: ${productList.length}`, pageWidth - 20, currentY + 16, { align: 'right' });
-
-                currentY += 28;
-
-                // Loop over categories
-                categoryNames.forEach((catName) => {
-                    const catProducts = categoryMap[catName];
-                    if (!catProducts || catProducts.length === 0) return;
-
-                    // Check remaining vertical space before rendering category banner & headers
-                    if (currentY + 35 > pageHeight - 20) {
-                        doc.addPage();
-                        currentY = 20;
-                    }
-
-                    // Category Banner Header
-                    doc.setFillColor(240, 253, 244);
-                    doc.setDrawColor(187, 247, 208);
-                    doc.roundedRect(14, currentY, pageWidth - 28, 9, 2, 2, 'FD');
-
-                    doc.setFontSize(11);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(22, 101, 52);
-                    doc.text(`CATEGORY: ${catName.toUpperCase()}`, 18, currentY + 6.5);
-
-                    doc.setFontSize(9);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(71, 85, 105);
-                    doc.text(`(${catProducts.length} item${catProducts.length === 1 ? '' : 's'})`, pageWidth - 18, currentY + 6.5, { align: 'right' });
-
-                    currentY += 12;
-
-                    // Table rows
-                    const tableColumn = ["Product Name", "Current Price", "Discount %", "Market Price"];
-                    const tableRows = catProducts.map(p => {
-                        const price = Number(p.price || 0);
-                        const comparePrice = Number(p.compare_price || 0);
-                        let marketPrice = price;
-                        let discountPercent = 0;
-
-                        if (comparePrice > price) {
-                            marketPrice = comparePrice;
-                            discountPercent = Math.round(((comparePrice - price) / comparePrice) * 100);
-                        }
-
-                        const priceFormatted = `${price.toLocaleString('en-IN')}`;
-                        const marketPriceFormatted = `${marketPrice.toLocaleString('en-IN')}`;
-                        const discountFormatted = discountPercent > 0 ? `${discountPercent}%` : '0%';
-
-                        return [
-                            p.name || 'Unnamed Product',
-                            priceFormatted,
-                            discountFormatted,
-                            marketPriceFormatted
-                        ];
-                    });
-
-                    doc.autoTable({
-                        head: [tableColumn],
-                        body: tableRows,
-                        startY: currentY,
-                        theme: 'striped',
-                        margin: { left: 14, right: 14 },
-                        styles: {
-                            fontSize: 9,
-                            cellPadding: 3,
-                            textColor: TEXT_DARK,
-                            font: 'helvetica'
-                        },
-                        headStyles: {
-                            fillColor: PRIMARY_COLOR,
-                            textColor: [255, 255, 255],
-                            fontStyle: 'bold',
-                            fontSize: 9
-                        },
-                        columnStyles: {
-                            0: { cellWidth: 'auto', fontStyle: 'bold' },
-                            1: { cellWidth: 35, halign: 'center', fontStyle: 'bold', textColor: [22, 101, 52] },
-                            2: { cellWidth: 30, halign: 'center' },
-                            3: { cellWidth: 35, halign: 'center', textColor: MUTED_GRAY }
-                        },
-                        alternateRowStyles: {
-                            fillColor: [248, 250, 252]
-                        }
-                    });
-
-                    currentY = doc.lastAutoTable.finalY + 10;
-                });
-
-                // Add footer page numbers to all pages
-                const totalPages = doc.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    doc.setPage(i);
-                    doc.setFontSize(8);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(148, 163, 184);
-
-                    doc.setDrawColor(226, 232, 240);
-                    doc.line(14, pageHeight - 14, pageWidth - 14, pageHeight - 14);
-
-                    doc.text('Rasobhoomi Plantation • Quality Plants & Nursery Services', 14, pageHeight - 8);
-                    doc.text(`Page ${i} of ${totalPages}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
-                }
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
 
                 // Open blob URL for instant preview & printing
-                const blobUrl = doc.output('bloburl');
                 window.open(blobUrl, '_blank');
 
-                // Save PDF file download
+                // Trigger direct file download
+                const downloadLink = document.createElement('a');
+                downloadLink.href = blobUrl;
                 const todayStr = new Date().toISOString().slice(0, 10);
-                doc.save(`Rasobhoomi_Product_Price_List_${todayStr}.pdf`);
+                downloadLink.download = `Rasobhoomi_Product_Price_List_${selectedLang}_${todayStr}.pdf`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
 
-                window.showToast('Product price list PDF generated successfully!', 'success');
+                const langName = selectedLang === 'bn' ? 'Bengali / বাংলা' : selectedLang === 'hi' ? 'Hindi / हिंदी' : 'English';
+                window.showToast(`Product price list PDF in ${langName} downloaded successfully!`, 'success');
             } catch (err) {
                 console.error('Error generating product list PDF:', err);
                 window.showToast('Error generating product price list PDF', 'error');
