@@ -1890,6 +1890,7 @@ app.use((err, req, res, next) => {
  *   - Message 1: Sent ~15-30 minutes after payment failure
  *   - Message 2: Sent 72 hours (3 days) after Message 1 as a gentle follow-up
  * Rate-Limiting & Safety:
+ *   - PHONE DEDUPLICATION: Exactly 1 message per customer phone number (even if customer has multiple failed order attempts)
  *   - STRICT DAILY LIMIT: Max 5 unique customer messages per 24-hour day across system
  *   - Auto-expires any orders older than 72 hours without sending messages
  *   - 5-second pause between dispatches
@@ -1900,7 +1901,7 @@ async function processPaymentRecoveryQueue() {
         const MAX_DAILY_RECOVERY_LIMIT = 5;
         const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
 
-        // Check how many unique customer messages have been sent in the last 24 hours
+        // Check how many unique customer phone numbers received a recovery message in the last 24 hours
         db.get(
             `SELECT COUNT(DISTINCT phone) as count FROM orders WHERE last_recovery_sent_at >= ? AND COALESCE(recovery_phase, 0) > 0`,
             [cutoff24h],
@@ -1921,7 +1922,7 @@ async function processPaymentRecoveryQueue() {
                       AND LOWER(COALESCE(payment_status, '')) != 'paid'
                       AND LOWER(COALESCE(status, '')) = 'pending_payment'
                       AND COALESCE(recovery_phase, 0) < 2
-                    ORDER BY created_at ASC
+                    ORDER BY created_at DESC
                 `;
 
                 db.all(query, [], async (err, rows) => {
@@ -1929,10 +1930,28 @@ async function processPaymentRecoveryQueue() {
 
                     const now = Date.now();
                     let sentInThisCycle = 0;
+                    const processedPhones = new Set();
 
+                    // DEDUPLICATE ORDERS BY CUSTOMER PHONE NUMBER
+                    // Group rows by 10-digit clean phone number
+                    const uniqueCustomerOrders = [];
                     for (const order of rows) {
+                        const cleanPhone = String(order.phone || '').replace(/\D/g, '').slice(-10);
+                        if (!cleanPhone) continue;
+
+                        if (processedPhones.has(cleanPhone)) {
+                            // Secondary order for the same customer — automatically mark phase to match primary order
+                            db.run("UPDATE orders SET recovery_phase = 2 WHERE id = ?", [order.id]);
+                            continue;
+                        }
+
+                        processedPhones.add(cleanPhone);
+                        uniqueCustomerOrders.push({ order, cleanPhone });
+                    }
+
+                    for (const { order, cleanPhone } of uniqueCustomerOrders) {
                         if (sentInThisCycle >= remainingDailyQuota) {
-                            console.log(`[RECOVERY WORKER] Reached remaining daily quota (${sentInThisCycle} sent in this batch, total 5/day limit). Pausing worker.`);
+                            console.log(`[RECOVERY WORKER] Reached remaining daily quota (${sentInThisCycle} sent in this batch). Pausing.`);
                             break;
                         }
 
@@ -1945,7 +1964,10 @@ async function processPaymentRecoveryQueue() {
 
                         // Auto-expire historical orders older than 72 hours so old backlogs never send
                         if (currentPhase === 0 && ageHours > 72) {
-                            db.run("UPDATE orders SET recovery_phase = 2 WHERE id = ?", [order.id]);
+                            db.run(
+                                "UPDATE orders SET recovery_phase = 2 WHERE phone LIKE ? AND LOWER(COALESCE(payment_status, '')) != 'paid'",
+                                [`%${cleanPhone}`]
+                            );
                             continue;
                         }
 
@@ -1963,18 +1985,23 @@ async function processPaymentRecoveryQueue() {
                             console.log(`[RECOVERY WORKER] Triggering Phase ${targetPhase} for Order #${order.id} (Phone: ${order.phone})...`);
                             const result = await sendPaymentRecoveryWhatsApp(order, targetPhase);
 
+                            const updateTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
                             if (result.success && !result.skipped) {
                                 sentInThisCycle++;
-                                const updateTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                                // UPDATE ALL ORDERS FOR THIS PHONE NUMBER so no duplicate row triggers a second message
                                 db.run(
-                                    "UPDATE orders SET recovery_phase = ?, last_recovery_sent_at = ? WHERE id = ?",
-                                    [targetPhase, updateTime, order.id]
+                                    "UPDATE orders SET recovery_phase = ?, last_recovery_sent_at = ? WHERE phone LIKE ? AND LOWER(COALESCE(payment_status, '')) != 'paid'",
+                                    [targetPhase, updateTime, `%${cleanPhone}`]
                                 );
                                 // Delay 5 seconds between sending messages to different customers
                                 await new Promise(res => setTimeout(res, 5000));
                             } else if (result.skipped) {
                                 // Order was already paid in interim
-                                db.run("UPDATE orders SET recovery_phase = 2 WHERE id = ?", [order.id]);
+                                db.run(
+                                    "UPDATE orders SET recovery_phase = 2 WHERE phone LIKE ?",
+                                    [`%${cleanPhone}`]
+                                );
                             }
                         }
                     }
