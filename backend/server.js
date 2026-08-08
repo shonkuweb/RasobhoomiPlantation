@@ -1885,7 +1885,13 @@ app.use((err, req, res, next) => {
 });
 
 /**
- * Automated 3-Step Failed Payment Recovery Queue Processor
+ * Automated Failed Payment Recovery Queue Processor
+ * Flow: 
+ *   - Message 1: Sent ~15-30 minutes after payment failure
+ *   - Message 2: Sent 72 hours (3 days) after Message 1 as a gentle follow-up
+ * Rate-Limiting & Safety:
+ *   - Auto-expires any orders older than 72 hours without sending messages
+ *   - Max 2 messages processed per batch cycle with a 5-second pause between dispatches
  */
 async function processPaymentRecoveryQueue() {
     if (!db) return;
@@ -1895,7 +1901,7 @@ async function processPaymentRecoveryQueue() {
             WHERE (is_deleted = FALSE OR is_deleted IS NULL)
               AND LOWER(COALESCE(payment_status, '')) != 'paid'
               AND LOWER(COALESCE(status, '')) = 'pending_payment'
-              AND COALESCE(recovery_phase, 0) < 3
+              AND COALESCE(recovery_phase, 0) < 2
             ORDER BY created_at ASC
         `;
 
@@ -1903,26 +1909,33 @@ async function processPaymentRecoveryQueue() {
             if (err || !Array.isArray(rows) || rows.length === 0) return;
 
             const now = Date.now();
+            let sentInThisCycle = 0;
+            const MAX_SENT_PER_CYCLE = 2;
 
             for (const order of rows) {
+                if (sentInThisCycle >= MAX_SENT_PER_CYCLE) break;
+
                 const currentPhase = Number(order.recovery_phase || 0);
                 const createdAt = new Date(order.created_at).getTime();
                 const lastSentAt = order.last_recovery_sent_at ? new Date(order.last_recovery_sent_at).getTime() : createdAt;
 
-                const ageMinutes = (now - createdAt) / (1000 * 60);
-                const sinceLastMinutes = (now - lastSentAt) / (1000 * 60);
+                const ageHours = (now - createdAt) / (1000 * 60 * 60);
+                const sinceLastHours = (now - lastSentAt) / (1000 * 60 * 60);
+
+                // Auto-expire historical orders older than 72 hours so old backlogs never send
+                if (currentPhase === 0 && ageHours > 72) {
+                    db.run("UPDATE orders SET recovery_phase = 2 WHERE id = ?", [order.id]);
+                    continue;
+                }
 
                 let targetPhase = 0;
 
-                if (currentPhase === 0 && ageMinutes >= 15) {
-                    // Phase 1: 15-30 minutes after failure
+                if (currentPhase === 0 && (now - createdAt) >= 15 * 60 * 1000) {
+                    // Message 1: 15-30 minutes after payment failure
                     targetPhase = 1;
-                } else if (currentPhase === 1 && sinceLastMinutes >= 180) {
-                    // Phase 2: ~3 hours after Phase 1
+                } else if (currentPhase === 1 && sinceLastHours >= 72) {
+                    // Message 2: 72 hours (3 days) after Message 1
                     targetPhase = 2;
-                } else if (currentPhase === 2 && sinceLastMinutes >= 1200) {
-                    // Phase 3: ~20 hours after Phase 2
-                    targetPhase = 3;
                 }
 
                 if (targetPhase > 0) {
@@ -1930,14 +1943,17 @@ async function processPaymentRecoveryQueue() {
                     const result = await sendPaymentRecoveryWhatsApp(order, targetPhase);
 
                     if (result.success && !result.skipped) {
+                        sentInThisCycle++;
                         const updateTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
                         db.run(
                             "UPDATE orders SET recovery_phase = ?, last_recovery_sent_at = ? WHERE id = ?",
                             [targetPhase, updateTime, order.id]
                         );
+                        // Delay 5 seconds between sending messages to different customers
+                        await new Promise(res => setTimeout(res, 5000));
                     } else if (result.skipped) {
                         // Order was already paid in interim
-                        db.run("UPDATE orders SET recovery_phase = 3 WHERE id = ?", [order.id]);
+                        db.run("UPDATE orders SET recovery_phase = 2 WHERE id = ?", [order.id]);
                     }
                 }
             }

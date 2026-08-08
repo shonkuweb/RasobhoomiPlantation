@@ -754,9 +754,9 @@ export async function logoutWhatsApp() {
 }
 
 /**
- * Build 3-Step WhatsApp Recovery Notification Copy for Failed/Pending Orders
+ * Build 2-Step WhatsApp Recovery Notification Copy for Failed/Pending Orders
  * @param {Object} order Order record from DB
- * @param {Number} phase 1 (Nudge), 2 (Support), 3 (Urgency)
+ * @param {Number} phase 1 (Immediate Nudge: 15-30m), 2 (72-Hour Follow Up)
  * @returns {String} Formatted WhatsApp message copy
  */
 export function buildRecoveryNotificationMessage(order, phase = 1) {
@@ -768,7 +768,7 @@ export function buildRecoveryNotificationMessage(order, phase = 1) {
     const checkoutLink = `https://rasobhoomiplantation.com/checkout?order_id=${encodeURIComponent(orderId)}`;
 
     if (phase === 1) {
-        // Phase 1: Gentle Nudge (~15-30 mins after failure)
+        // Message 1: Gentle Nudge (~15-30 mins after payment failure)
         if (isBn) {
             return `🪴 *নমস্কার ${customerName}! আপনার গাছের চারাগুলি অপেক্ষায় আছে।*
 
@@ -792,45 +792,28 @@ Need help? Reply directly to this WhatsApp message or call +91 89720 76182 📞
 
 — *Rasobhoomi Plantation*`;
         }
-    } else if (phase === 2) {
-        // Phase 2: Care & Support Offer (~2-4 hours after failure)
-        if (isBn) {
-            return `🪴 *${customerName}, রসোভূমি থেকে কোনো সাহায্যের প্রয়োজন?*
-
-আমরা লক্ষ্য করেছি আপনার অর্ডার *#${orderId}* (মূল্য: ₹${total}) এখনো বাকি রয়েছে। গাছের সঠিক বাছাই বা পেমেন্ট নিয়ে কোনো প্রশ্ন থাকলে আমরা সাহায্য করতে প্রস্তুত! 🌱
-
-🌿 *আপনার সংরক্ষিত অর্ডারটি নিশ্চিত করতে এখানে যান:*
-${checkoutLink}
-
-📞 রসোভূমির বিশেষজ্ঞের সাথে কথা বলতে এই মেসেজে উত্তর দিন।`;
-        } else {
-            return `🪴 *Need any assistance with your order, ${customerName}?*
-
-We noticed your order *#${orderId}* (Total: ₹${total}) is still pending. If you have questions about plant care, delivery, or payment options, we're here to help! 🌱
-
-🌿 *Resume & confirm your order here:*
-${checkoutLink}
-
-📞 Reply to this message to chat with our nursery horticulturists.`;
-        }
     } else {
-        // Phase 3: Stock Urgency Notice (~20-24 hours after failure)
+        // Message 2: Follow-up (~72 hours / 3 days after failure)
         if (isBn) {
-            return `⏳ *জরুরি বিজ্ঞপ্তি: ${customerName}, আপনার গাছের রিজার্ভেশন মেয়াদ শেষ হতে চলেছে!*
+            return `🪴 *নমস্কার ${customerName}, রসোভূমি থেকে কোনো সাহায্যের প্রয়োজন?*
 
-আপনার অর্ডার *#${orderId}*-এর স্টক খুব সীমিত। পেমেন্ট সম্পন্ন না হলে চারাগুলি অন্যান্য গ্রাহকদের জন্য উন্মুক্ত করে দেওয়া হবে। 🌿
+আমরা লক্ষ্য করেছি আপনার অর্ডার *#${orderId}* (মূল্য: ₹${total}) এখনো বাকি রয়েছে। গাছের সঠিক পরিচর্যা, চারা নির্বাচন বা পেমেন্ট সংক্রান্ত যেকোনো তথ্যের জন্য আমরা আপনাকে সাহায্য করতে প্রস্তুত! 🌱
 
-🛑 *আপনার পছন্দের গাছগুলি মিস না করতে এখনই পেমেন্ট সম্পন্ন করুন:*
+🌿 *আপনার সংরক্ষিত অর্ডারটি দেখতে ও সম্পন্ন করতে এখানে যান:*
 ${checkoutLink}
+
+📞 আমাদের নার্সারি বিশেষজ্ঞের সাথে কথা বলতে সরাসরি এই মেসেজে উত্তর দিন।
 
 — *রসোভূমি প্ল্যান্টেশন টিম*`;
         } else {
-            return `⏳ *Final Notice: ${customerName}, your plant reservation is expiring!*
+            return `🪴 *Need any assistance with your order, ${customerName}?*
 
-Stock for items in your order *#${orderId}* is limited. Unconfirmed saplings will be released back to other buyers soon. 🌿
+We noticed your order *#${orderId}* (Total: ₹${total}) is still pending. If you have any questions about plant care, sapling selection, or payment options, we're happy to help! 🌱
 
-🛑 *Don't miss out! Secure your plants now:*
+🌿 *Click here to review & complete your order:*
 ${checkoutLink}
+
+📞 Reply to this message anytime to chat with our nursery horticulturists.
 
 — *Rasobhoomi Plantation Team*`;
         }
