@@ -752,3 +752,124 @@ export async function logoutWhatsApp() {
 
     return { success: true };
 }
+
+/**
+ * Build 3-Step WhatsApp Recovery Notification Copy for Failed/Pending Orders
+ * @param {Object} order Order record from DB
+ * @param {Number} phase 1 (Nudge), 2 (Support), 3 (Urgency)
+ * @returns {String} Formatted WhatsApp message copy
+ */
+export function buildRecoveryNotificationMessage(order, phase = 1) {
+    const lang = (order.lang || 'bn').toLowerCase();
+    const isBn = lang === 'bn';
+    const customerName = (order.name || (isBn ? 'গ্রাহক' : 'Customer')).trim();
+    const orderId = order.id || 'N/A';
+    const total = order.total || 0;
+    const checkoutLink = `https://rasobhoomiplantation.com/checkout?order_id=${encodeURIComponent(orderId)}`;
+
+    if (phase === 1) {
+        // Phase 1: Gentle Nudge (~15-30 mins after failure)
+        if (isBn) {
+            return `🪴 *নমস্কার ${customerName}! আপনার গাছের চারাগুলি অপেক্ষায় আছে।*
+
+আপনার অর্ডার *#${orderId}*-এর পেমেন্টটি কোনো কারণে অসম্পূর্ণ রয়ে গেছে। চিন্তা করবেন না, আপনার পছন্দের চারা গাছগুলি আপনার কার্টে নিরাপদেই সংরক্ষিত আছে! 🌿
+
+🛒 *আপনার অর্ডার সম্পন্ন করতে নিচের লিঙ্কে ক্লিক করুন:*
+${checkoutLink}
+
+যেকোনো সহায়তার জন্য সরাসরি এই মেসেজের উত্তর দিন অথবা কল করুন: +91 89720 76182 📞
+
+— *রসোভূমি প্ল্যান্টেশন*`;
+        } else {
+            return `🪴 *Hi ${customerName}! Your saplings are waiting for you.*
+
+It looks like your payment for Order *#${orderId}* was not completed. Don't worry, your selected plants are safely held in your cart! 🌿
+
+🛒 *Click here to complete your order now:*
+${checkoutLink}
+
+Need help? Reply directly to this WhatsApp message or call +91 89720 76182 📞
+
+— *Rasobhoomi Plantation*`;
+        }
+    } else if (phase === 2) {
+        // Phase 2: Care & Support Offer (~2-4 hours after failure)
+        if (isBn) {
+            return `🪴 *${customerName}, রসোভূমি থেকে কোনো সাহায্যের প্রয়োজন?*
+
+আমরা লক্ষ্য করেছি আপনার অর্ডার *#${orderId}* (মূল্য: ₹${total}) এখনো বাকি রয়েছে। গাছের সঠিক বাছাই বা পেমেন্ট নিয়ে কোনো প্রশ্ন থাকলে আমরা সাহায্য করতে প্রস্তুত! 🌱
+
+🌿 *আপনার সংরক্ষিত অর্ডারটি নিশ্চিত করতে এখানে যান:*
+${checkoutLink}
+
+📞 রসোভূমির বিশেষজ্ঞের সাথে কথা বলতে এই মেসেজে উত্তর দিন।`;
+        } else {
+            return `🪴 *Need any assistance with your order, ${customerName}?*
+
+We noticed your order *#${orderId}* (Total: ₹${total}) is still pending. If you have questions about plant care, delivery, or payment options, we're here to help! 🌱
+
+🌿 *Resume & confirm your order here:*
+${checkoutLink}
+
+📞 Reply to this message to chat with our nursery horticulturists.`;
+        }
+    } else {
+        // Phase 3: Stock Urgency Notice (~20-24 hours after failure)
+        if (isBn) {
+            return `⏳ *জরুরি বিজ্ঞপ্তি: ${customerName}, আপনার গাছের রিজার্ভেশন মেয়াদ শেষ হতে চলেছে!*
+
+আপনার অর্ডার *#${orderId}*-এর স্টক খুব সীমিত। পেমেন্ট সম্পন্ন না হলে চারাগুলি অন্যান্য গ্রাহকদের জন্য উন্মুক্ত করে দেওয়া হবে। 🌿
+
+🛑 *আপনার পছন্দের গাছগুলি মিস না করতে এখনই পেমেন্ট সম্পন্ন করুন:*
+${checkoutLink}
+
+— *রসোভূমি প্ল্যান্টেশন টিম*`;
+        } else {
+            return `⏳ *Final Notice: ${customerName}, your plant reservation is expiring!*
+
+Stock for items in your order *#${orderId}* is limited. Unconfirmed saplings will be released back to other buyers soon. 🌿
+
+🛑 *Don't miss out! Secure your plants now:*
+${checkoutLink}
+
+— *Rasobhoomi Plantation Team*`;
+        }
+    }
+}
+
+/**
+ * Send Automated Recovery WhatsApp Message to Customer (Phases 1, 2, or 3)
+ */
+export async function sendPaymentRecoveryWhatsApp(order, phase = 1) {
+    if (!order || !order.id || !order.phone) return { success: false, error: 'Invalid order or missing phone number' };
+
+    // STRICT CHECK: If order has already been paid, ABORT immediately!
+    const paymentStatus = String(order.payment_status || '').toLowerCase();
+    const orderStatus = String(order.status || '').toLowerCase();
+    if (paymentStatus === 'paid' || orderStatus === 'new' || orderStatus === 'completed') {
+        console.log(`[WHATSAPP RECOVERY] Order #${order.id} is already paid. Skipping recovery Phase ${phase}.`);
+        return { success: true, skipped: true, reason: 'Already paid' };
+    }
+
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+        console.warn(`[WHATSAPP RECOVERY] Cannot send Phase ${phase} message. WhatsApp state is '${connectionState}'`);
+        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
+    }
+
+    try {
+        const customerJid = formatWhatsAppJid(order.phone);
+        if (!customerJid) {
+            return { success: false, error: 'Invalid WhatsApp JID format' };
+        }
+
+        const msgText = buildRecoveryNotificationMessage(order, phase);
+        console.log(`[WHATSAPP RECOVERY] Sending Phase ${phase} recovery message for order #${order.id} to ${customerJid}...`);
+
+        await client.sendMessage(customerJid, msgText);
+        console.log(`[WHATSAPP RECOVERY] Phase ${phase} recovery message successfully delivered to ${customerJid}!`);
+        return { success: true };
+    } catch (err) {
+        console.error(`[WHATSAPP RECOVERY] Error sending Phase ${phase} message for order #${order.id}:`, err);
+        return { success: false, error: err.message };
+    }
+}

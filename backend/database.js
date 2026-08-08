@@ -55,6 +55,8 @@ function initDb() {
             transaction_id TEXT,
             tracking_id TEXT,
             courier_name TEXT DEFAULT 'dtdc',
+            recovery_phase INTEGER DEFAULT 0,
+            last_recovery_sent_at DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating orders table:", err);
@@ -65,6 +67,8 @@ function initDb() {
         db.run(`ALTER TABLE orders ADD COLUMN delivery_charge REAL DEFAULT 0`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0`, (mErr) => {});
         db.run(`ALTER TABLE orders ADD COLUMN lang TEXT DEFAULT 'en'`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN recovery_phase INTEGER DEFAULT 0`, (mErr) => {});
+        db.run(`ALTER TABLE orders ADD COLUMN last_recovery_sent_at DATETIME`, (mErr) => {});
 
         // Categories Table
         db.run(`CREATE TABLE IF NOT EXISTS categories (

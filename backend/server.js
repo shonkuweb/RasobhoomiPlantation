@@ -20,6 +20,7 @@ import {
     sendOrderPaymentNotification,
     sendPendingPaymentNotification,
     sendOrderStatusNotification,
+    sendPaymentRecoveryWhatsApp,
     sendTestMessage,
     logoutWhatsApp
 } from './whatsapp.js';
@@ -1883,8 +1884,75 @@ app.use((err, req, res, next) => {
     });
 });
 
+/**
+ * Automated 3-Step Failed Payment Recovery Queue Processor
+ */
+async function processPaymentRecoveryQueue() {
+    if (!db) return;
+    try {
+        const query = `
+            SELECT * FROM orders 
+            WHERE (is_deleted = FALSE OR is_deleted IS NULL)
+              AND LOWER(COALESCE(payment_status, '')) != 'paid'
+              AND LOWER(COALESCE(status, '')) = 'pending_payment'
+              AND COALESCE(recovery_phase, 0) < 3
+            ORDER BY created_at ASC
+        `;
+
+        db.all(query, [], async (err, rows) => {
+            if (err || !Array.isArray(rows) || rows.length === 0) return;
+
+            const now = Date.now();
+
+            for (const order of rows) {
+                const currentPhase = Number(order.recovery_phase || 0);
+                const createdAt = new Date(order.created_at).getTime();
+                const lastSentAt = order.last_recovery_sent_at ? new Date(order.last_recovery_sent_at).getTime() : createdAt;
+
+                const ageMinutes = (now - createdAt) / (1000 * 60);
+                const sinceLastMinutes = (now - lastSentAt) / (1000 * 60);
+
+                let targetPhase = 0;
+
+                if (currentPhase === 0 && ageMinutes >= 15) {
+                    // Phase 1: 15-30 minutes after failure
+                    targetPhase = 1;
+                } else if (currentPhase === 1 && sinceLastMinutes >= 180) {
+                    // Phase 2: ~3 hours after Phase 1
+                    targetPhase = 2;
+                } else if (currentPhase === 2 && sinceLastMinutes >= 1200) {
+                    // Phase 3: ~20 hours after Phase 2
+                    targetPhase = 3;
+                }
+
+                if (targetPhase > 0) {
+                    console.log(`[RECOVERY WORKER] Triggering Phase ${targetPhase} for Order #${order.id} (Phone: ${order.phone})...`);
+                    const result = await sendPaymentRecoveryWhatsApp(order, targetPhase);
+
+                    if (result.success && !result.skipped) {
+                        const updateTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                        db.run(
+                            "UPDATE orders SET recovery_phase = ?, last_recovery_sent_at = ? WHERE id = ?",
+                            [targetPhase, updateTime, order.id]
+                        );
+                    } else if (result.skipped) {
+                        // Order was already paid in interim
+                        db.run("UPDATE orders SET recovery_phase = 3 WHERE id = ?", [order.id]);
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('[RECOVERY WORKER] Error processing recovery queue:', e.message);
+    }
+}
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Callback Base URL: ${APP_BE_URL}`);
     initWhatsApp();
+
+    // Start 15-minute background recovery worker
+    setInterval(processPaymentRecoveryQueue, 15 * 60 * 1000);
+    setTimeout(processPaymentRecoveryQueue, 30 * 1000);
 });

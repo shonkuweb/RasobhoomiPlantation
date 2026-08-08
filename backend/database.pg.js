@@ -129,6 +129,8 @@ function initDb() {
             tracking_id TEXT,
             courier_name TEXT DEFAULT 'dtdc',
             is_deleted BOOLEAN DEFAULT FALSE,
+            recovery_phase INTEGER DEFAULT 0,
+            last_recovery_sent_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_id TEXT`,
@@ -136,6 +138,8 @@ function initDb() {
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_charge REAL DEFAULT 0`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount REAL DEFAULT 0`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS lang TEXT DEFAULT 'en'`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS recovery_phase INTEGER DEFAULT 0`,
+        `ALTER TABLE orders ADD COLUMN IF NOT EXISTS last_recovery_sent_at TIMESTAMP`,
         `CREATE TABLE IF NOT EXISTS categories (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
