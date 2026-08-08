@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "node backend/server.js",
-    "whatsapp:logs": "node scripts/whatsapp_logs.js"
+    "whatsapp:logs": "node scripts/whatsapp_logs.js",
+    "failed-payments": "node scripts/failed_payments.js"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.2",
