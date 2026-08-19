@@ -111,9 +111,10 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             });
 
             const doc = new PDFDocument({
-                margin: 36,
+                margins: { top: 32, bottom: 0, left: 32, right: 32 },
                 size: 'A4',
-                bufferPages: true
+                bufferPages: true,
+                autoFirstPage: true
             });
 
             const buffers = [];
@@ -156,8 +157,9 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
 
             const pageWidth = 595.28;
             const pageHeight = 841.89;
-            const margin = 36;
+            const margin = 32;
             const contentWidth = pageWidth - (margin * 2);
+            const maxY = pageHeight - 38; // Usable vertical boundary before footer
 
             // Group products by category accurately
             const categoryMap = {};
@@ -187,80 +189,88 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             let currentY = margin;
 
             // Draw Header Banner on Page 1
-            doc.rect(margin, currentY, contentWidth, 54).fill(PRIMARY_COLOR);
+            const bannerHeight = 48;
+            doc.rect(margin, currentY, contentWidth, bannerHeight).fill(PRIMARY_COLOR);
 
             doc.fillColor('#FFFFFF')
                .font(FONT_BOLD)
-               .fontSize(16)
-               .text(t.title, margin + 14, currentY + 10);
+               .fontSize(15)
+               .text(t.title, margin + 12, currentY + 8, { lineBreak: false });
 
             doc.font(FONT_REGULAR)
-               .fontSize(9.5)
-               .text(t.subtitle, margin + 14, currentY + 32);
+               .fontSize(9)
+               .text(t.subtitle, margin + 12, currentY + 28, { lineBreak: false });
 
             const dateStr = new Date().toLocaleDateString(selectedLang === 'bn' ? 'bn-IN' : selectedLang === 'hi' ? 'hi-IN' : 'en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             });
 
-            doc.fontSize(8.5)
-               .text(`${t.dateLabel} ${dateStr}`, margin, currentY + 12, { align: 'right', width: contentWidth - 14 })
-               .text(`${t.totalProductsLabel} ${productList.length}`, margin, currentY + 28, { align: 'right', width: contentWidth - 14 });
+            doc.fontSize(8)
+               .text(`${t.dateLabel} ${dateStr}`, margin, currentY + 10, { align: 'right', width: contentWidth - 12, lineBreak: false })
+               .text(`${t.totalProductsLabel} ${productList.length}`, margin, currentY + 26, { align: 'right', width: contentWidth - 12, lineBreak: false });
 
-            currentY += 66;
+            currentY += bannerHeight + 10;
+
+            const colWidths = {
+                name: 247,
+                price: 92,
+                discount: 82,
+                marketPrice: 110
+            };
+            const colX = {
+                name: margin,
+                price: margin + colWidths.name,
+                discount: margin + colWidths.name + colWidths.price,
+                marketPrice: margin + colWidths.name + colWidths.price + colWidths.discount
+            };
+
+            const rowHeight = 18;
+            const categoryHeaderHeight = 20;
+            const tableHeaderHeight = 18;
+
+            const drawTableHeader = (y) => {
+                doc.rect(margin, y, contentWidth, tableHeaderHeight).fill(PRIMARY_COLOR);
+                doc.fillColor('#FFFFFF')
+                   .font(FONT_BOLD)
+                   .fontSize(8);
+
+                doc.text(t.tableHeaders.name, colX.name + 8, y + 5, { width: colWidths.name - 16, lineBreak: false });
+                doc.text(t.tableHeaders.price, colX.price, y + 5, { width: colWidths.price, align: 'center', lineBreak: false });
+                doc.text(t.tableHeaders.discount, colX.discount, y + 5, { width: colWidths.discount, align: 'center', lineBreak: false });
+                doc.text(t.tableHeaders.marketPrice, colX.marketPrice, y + 5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
+            };
 
             // Iterate over categories
             categoryNames.forEach(catName => {
                 const catProducts = categoryMap[catName];
                 if (!catProducts || catProducts.length === 0) return;
 
-                // Check remaining vertical space before starting new category section
-                if (currentY + 60 > pageHeight - 50) {
+                // Ensure category header, table header, and at least 1 product fit together; otherwise start on next page
+                const minCategorySpace = categoryHeaderHeight + tableHeaderHeight + rowHeight + 8;
+                if (currentY + minCategorySpace > maxY) {
                     doc.addPage();
                     currentY = margin;
                 }
 
                 // Category Header Box
-                doc.roundedRect(margin, currentY, contentWidth, 22, 3)
+                doc.roundedRect(margin, currentY, contentWidth, categoryHeaderHeight, 2)
                    .fillAndStroke(PRIMARY_LIGHT_BG, PRIMARY_BORDER);
 
                 doc.fillColor(PRIMARY_COLOR)
                    .font(FONT_BOLD)
-                   .fontSize(10.5)
-                   .text(`${t.categoryPrefix} ${catName.toUpperCase()}`, margin + 10, currentY + 6);
+                   .fontSize(9.5)
+                   .text(`${t.categoryPrefix} ${catName.toUpperCase()}`, margin + 8, currentY + 5, { lineBreak: false });
 
                 doc.fillColor(TEXT_MUTED)
                    .font(FONT_REGULAR)
-                   .fontSize(8.5)
-                   .text(t.itemsCount(catProducts.length), margin, currentY + 7, { align: 'right', width: contentWidth - 10 });
+                   .fontSize(8)
+                   .text(t.itemsCount(catProducts.length), margin, currentY + 6, { align: 'right', width: contentWidth - 8, lineBreak: false });
 
-                currentY += 28;
+                currentY += categoryHeaderHeight + 3;
 
-                // Table Header Row
-                const colWidths = {
-                    name: 243,
-                    price: 90,
-                    discount: 80,
-                    marketPrice: 110
-                };
-                const colX = {
-                    name: margin,
-                    price: margin + colWidths.name,
-                    discount: margin + colWidths.name + colWidths.price,
-                    marketPrice: margin + colWidths.name + colWidths.price + colWidths.discount
-                };
-
-                doc.rect(margin, currentY, contentWidth, 20).fill(PRIMARY_COLOR);
-
-                doc.fillColor('#FFFFFF')
-                   .font(FONT_BOLD)
-                   .fontSize(8.5);
-
-                doc.text(t.tableHeaders.name, colX.name + 8, currentY + 5.5, { width: colWidths.name - 16 });
-                doc.text(t.tableHeaders.price, colX.price, currentY + 5.5, { width: colWidths.price, align: 'center' });
-                doc.text(t.tableHeaders.discount, colX.discount, currentY + 5.5, { width: colWidths.discount, align: 'center' });
-                doc.text(t.tableHeaders.marketPrice, colX.marketPrice, currentY + 5.5, { width: colWidths.marketPrice - 8, align: 'center' });
-
-                currentY += 20;
+                // Draw Table Header Row
+                drawTableHeader(currentY);
+                currentY += tableHeaderHeight;
 
                 // Table Product Rows
                 catProducts.forEach((p, index) => {
@@ -278,24 +288,22 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
                     const marketPriceFormatted = `₹${marketPrice.toLocaleString('en-IN')}`;
                     const discountFormatted = discountPercent > 0 ? `${discountPercent}%` : '0%';
 
-                    const rowHeight = 20;
-
-                    if (currentY + rowHeight > pageHeight - 50) {
+                    if (currentY + rowHeight > maxY) {
                         doc.addPage();
                         currentY = margin;
 
-                        // Re-draw table header on new page
-                        doc.rect(margin, currentY, contentWidth, 20).fill(PRIMARY_COLOR);
-                        doc.fillColor('#FFFFFF')
+                        // Continuation category banner
+                        doc.roundedRect(margin, currentY, contentWidth, 16, 2)
+                           .fillAndStroke(PRIMARY_LIGHT_BG, PRIMARY_BORDER);
+                        doc.fillColor(PRIMARY_COLOR)
                            .font(FONT_BOLD)
-                           .fontSize(8.5);
+                           .fontSize(8)
+                           .text(`${t.categoryPrefix} ${catName.toUpperCase()} (${selectedLang === 'bn' ? 'চলমান' : selectedLang === 'hi' ? 'जारी' : 'Contd.'})`, margin + 6, currentY + 4, { lineBreak: false });
+                        currentY += 19;
 
-                        doc.text(t.tableHeaders.name, colX.name + 8, currentY + 5.5, { width: colWidths.name - 16 });
-                        doc.text(t.tableHeaders.price, colX.price, currentY + 5.5, { width: colWidths.price, align: 'center' });
-                        doc.text(t.tableHeaders.discount, colX.discount, currentY + 5.5, { width: colWidths.discount, align: 'center' });
-                        doc.text(t.tableHeaders.marketPrice, colX.marketPrice, currentY + 5.5, { width: colWidths.marketPrice - 8, align: 'center' });
-
-                        currentY += 20;
+                        // Re-draw table header on new page
+                        drawTableHeader(currentY);
+                        currentY += tableHeaderHeight;
                     }
 
                     // Background stripe
@@ -309,50 +317,51 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
                     // Name
                     doc.fillColor(TEXT_DARK)
                        .font(FONT_BOLD)
-                       .fontSize(8.5)
-                       .text(p.name || 'Unnamed Product', colX.name + 8, currentY + 5.5, { width: colWidths.name - 16, lineBreak: false });
+                       .fontSize(8)
+                       .text(p.name || 'Unnamed Product', colX.name + 8, currentY + 4.5, { width: colWidths.name - 16, lineBreak: false });
 
                     // Current Price
                     doc.fillColor(PRIMARY_COLOR)
                        .font(FONT_BOLD)
-                       .fontSize(8.5)
-                       .text(priceFormatted, colX.price, currentY + 5.5, { width: colWidths.price, align: 'center' });
+                       .fontSize(8)
+                       .text(priceFormatted, colX.price, currentY + 4.5, { width: colWidths.price, align: 'center', lineBreak: false });
 
                     // Discount %
                     doc.fillColor(TEXT_DARK)
                        .font(FONT_REGULAR)
-                       .fontSize(8.5)
-                       .text(discountFormatted, colX.discount, currentY + 5.5, { width: colWidths.discount, align: 'center' });
+                       .fontSize(8)
+                       .text(discountFormatted, colX.discount, currentY + 4.5, { width: colWidths.discount, align: 'center', lineBreak: false });
 
                     // Market Price
                     doc.fillColor(TEXT_MUTED)
                        .font(FONT_REGULAR)
-                       .fontSize(8.5)
-                       .text(marketPriceFormatted, colX.marketPrice, currentY + 5.5, { width: colWidths.marketPrice - 8, align: 'center' });
+                       .fontSize(8)
+                       .text(marketPriceFormatted, colX.marketPrice, currentY + 4.5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
 
                     currentY += rowHeight;
                 });
 
-                currentY += 14;
+                currentY += 8;
             });
 
-            // Footer Page Numbers across all pages
+            // Footer Page Numbers across all pages (Rendered safely without overflowing printable height)
             const range = doc.bufferedPageRange();
             const totalPages = range.count;
 
             for (let i = 0; i < totalPages; i++) {
                 doc.switchToPage(i);
 
-                doc.rect(margin, pageHeight - 32, contentWidth, 0.5).fill('#E2E8F0');
+                doc.rect(margin, pageHeight - 26, contentWidth, 0.5).fill('#E2E8F0');
 
                 doc.fillColor(TEXT_MUTED)
                    .font(FONT_REGULAR)
-                   .fontSize(8)
-                   .text(t.footerText, margin, pageHeight - 24);
+                   .fontSize(7.5)
+                   .text(t.footerText, margin, pageHeight - 19, { lineBreak: false });
 
-                doc.text(t.pageLabel(i + 1, totalPages), margin, pageHeight - 24, {
+                doc.text(t.pageLabel(i + 1, totalPages), margin, pageHeight - 19, {
                     align: 'right',
-                    width: contentWidth
+                    width: contentWidth,
+                    lineBreak: false
                 });
             }
 

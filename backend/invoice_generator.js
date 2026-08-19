@@ -180,7 +180,11 @@ export function generateInvoicePdf(order, lang = 'en') {
 
     return new Promise((resolve, reject) => {
         try {
-            const doc = new PDFDocument({ margin: 36, size: 'A4' });
+            const doc = new PDFDocument({
+                margins: { top: 28, bottom: 0, left: 36, right: 36 },
+                size: 'A4',
+                autoFirstPage: true
+            });
             const buffers = [];
             doc.on('data', chunk => buffers.push(chunk));
             doc.on('end', () => resolve(Buffer.concat(buffers)));
@@ -413,8 +417,8 @@ export function generateInvoicePdf(order, lang = 'en') {
             doc.moveTo(36, footerY).lineTo(559, footerY).strokeColor(BORDER_COLOR).lineWidth(0.75).stroke();
             
             doc.fontSize(8).font(FONT_REGULAR).fillColor(TEXT_MUTED)
-               .text(t.footer1, 36, footerY + 8, { align: 'center', width: 523 })
-               .text(t.footer2, 36, footerY + 18, { align: 'center', width: 523 });
+               .text(t.footer1, 36, footerY + 8, { align: 'center', width: 523, lineBreak: false })
+               .text(t.footer2, 36, footerY + 18, { align: 'center', width: 523, lineBreak: false });
 
             doc.end();
         } catch (err) {
