@@ -144,8 +144,10 @@ function initDb() {
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             slug TEXT UNIQUE,
-            image TEXT
+            image TEXT,
+            is_visible INTEGER DEFAULT 1
         )`,
+        `ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_visible INTEGER DEFAULT 1`,
         `CREATE TABLE IF NOT EXISTS admin_settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -153,6 +155,7 @@ function initDb() {
         `CREATE TABLE IF NOT EXISTS discounts (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            category TEXT DEFAULT 'ALL',
             amount1 REAL DEFAULT 0,
             operator TEXT DEFAULT '>=',
             amount2 REAL DEFAULT 0,
@@ -161,6 +164,7 @@ function initDb() {
             is_enabled BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
+        `ALTER TABLE discounts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'ALL'`,
         `CREATE TABLE IF NOT EXISTS product_translations (
             product_id TEXT,
             lang TEXT,
@@ -206,6 +210,7 @@ function initDb() {
         `UPDATE categories SET image = '/assets/fruittree.png' WHERE slug = 'fruit-tree'`,
         `UPDATE categories SET image = '/assets/others.png' WHERE slug = 'others'`,
         `UPDATE categories SET image = '/assets/drumplants.png' WHERE slug = 'drum-plants'`,
+        `UPDATE categories SET is_visible = 1 WHERE is_visible IS NULL`,
         `ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`
     ];
 

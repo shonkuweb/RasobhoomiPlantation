@@ -774,6 +774,78 @@
                 margin: 0 auto 0.75rem auto;
             }
         }
+
+        /* --- Storefront Category Visibility Card Styles --- */
+        .category-vis-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+        .category-vis-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+        }
+        .category-vis-card.is-hidden {
+            background: #f8fafc;
+            border-color: #f1f5f9;
+        }
+        .cat-thumb {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .cat-vis-switch {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 24px;
+            flex-shrink: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+        .cat-vis-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+        .cat-vis-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #cbd5e1;
+            transition: 0.25s ease;
+            border-radius: 24px;
+        }
+        .cat-vis-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.25s ease;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        .cat-vis-switch input:checked + .cat-vis-slider {
+            background-color: #16a34a;
+        }
+        .cat-vis-switch input:checked + .cat-vis-slider:before {
+            transform: translateX(18px);
+        }
     </style>
 </head>
 
@@ -962,6 +1034,140 @@
 
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
 
+                <!-- Bulk Price Update Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    🏷️ Bulk Product Price Adjuster
+                </h2>
+                <form id="settings-bulk-price-form" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem;">
+                        Quickly increase or decrease the prices of all products in a selected category, or across all categories at once by a fixed amount (₹) or a percentage (%).
+                    </p>
+
+                    <!-- Category Selector -->
+                    <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                        <label for="bulk-price-category" style="font-weight: 700; color: #334155; font-size: 0.85rem;">
+                            📂 Select Category
+                        </label>
+                        <select id="bulk-price-category" class="modern-input" style="padding: 0.65rem; border-radius: 8px; font-weight: 600; background: white; border: 1px solid #cbd5e1; color: #1e293b;">
+                            <option value="all">📦 All Categories (All Products)</option>
+                        </select>
+                    </div>
+
+                    <!-- Action & Type Grid -->
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.35rem;">
+                            <label for="bulk-price-action" style="font-weight: 700; color: #334155; font-size: 0.85rem;">
+                                🔄 Action
+                            </label>
+                            <select id="bulk-price-action" class="modern-input" style="padding: 0.65rem; border-radius: 8px; font-weight: 600; background: white; border: 1px solid #cbd5e1; color: #1e293b;">
+                                <option value="increase" selected>📈 Increase Price (+)</option>
+                                <option value="decrease">📉 Decrease Price (-)</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.35rem;">
+                            <label for="bulk-price-type" style="font-weight: 700; color: #334155; font-size: 0.85rem;">
+                                📊 Adjustment Type
+                            </label>
+                            <select id="bulk-price-type" class="modern-input" style="padding: 0.65rem; border-radius: 8px; font-weight: 600; background: white; border: 1px solid #cbd5e1; color: #1e293b;">
+                                <option value="percentage" selected>Percentage (%)</option>
+                                <option value="fixed">Fixed Amount (₹)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Value Input -->
+                    <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                        <label for="bulk-price-value" id="bulk-price-value-label" style="font-weight: 700; color: #334155; font-size: 0.85rem;">
+                            Adjustment Value (%) *
+                        </label>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="number" id="bulk-price-value" min="0.01" step="any" placeholder="e.g. 10 for 10%" required class="modern-input" style="width: 100%; padding-right: 2.5rem;">
+                            <span id="bulk-price-unit" style="position: absolute; right: 12px; font-weight: 700; color: #64748b; font-size: 0.9rem; pointer-events: none;">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Checkboxes -->
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                            <input type="checkbox" id="bulk-price-update-compare" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="bulk-price-update-compare" style="font-weight: 600; color: #334155; font-size: 0.85rem; cursor: pointer;">
+                                Also update Original / Strike-through Price (MRP) proportionately
+                            </label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                            <input type="checkbox" id="bulk-price-round" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="bulk-price-round" style="font-weight: 600; color: #334155; font-size: 0.85rem; cursor: pointer;">
+                                Round prices to nearest whole Rupee (₹)
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Live Impact Preview Box -->
+                    <div id="bulk-price-preview-box" style="display: block; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.85rem; font-size: 0.82rem; color: #1e40af; line-height: 1.4;">
+                        <div style="font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <span>ℹ️ Impact Summary</span>
+                        </div>
+                        <div id="bulk-price-preview-text">
+                            Select options and enter a value above to see the calculation preview.
+                        </div>
+                    </div>
+
+                    <!-- Status messages -->
+                    <div id="bulk-price-error" style="color: #dc2626; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+                    <div id="bulk-price-success" style="color: #166534; font-size: 0.85rem; font-weight: 600; text-align: center;"></div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="btn-apply-bulk-price" class="btn-add-product-modern" style="background: #e11d48; width: 100%; margin-top: 0.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <span>⚡ APPLY BULK PRICE UPDATE</span>
+                    </button>
+                </form>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
+
+                <!-- Storefront Category Visibility Section -->
+                <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    👁️ Storefront Category Visibility
+                </h2>
+                <div style="margin-bottom: 2rem; padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Control which product categories are visible or hidden on the customer storefront. Hidden categories will be excluded from the homepage category slider, <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-family: monospace;">/categories</code> page, and filter menus.
+                    </p>
+
+                    <!-- Search & Quick Action Toolbar -->
+                    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 180px;">
+                            <input type="text" id="settings-category-search" placeholder="🔍 Search categories..." class="modern-input" style="padding: 0.55rem 0.75rem; font-size: 0.85rem; width: 100%;">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="btn-show-all-categories" class="modern-btn" style="font-size: 0.78rem; padding: 0.5rem 0.85rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                                Show All
+                            </button>
+                            <button type="button" id="btn-hide-all-categories" class="modern-btn" style="font-size: 0.78rem; padding: 0.5rem 0.85rem; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                                Hide All
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Category Status Count Summary -->
+                    <div id="settings-categories-summary" style="display: flex; gap: 1rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #64748b; font-weight: 600;">
+                        <span id="settings-cat-visible-count">Visible: 0</span>
+                        <span>•</span>
+                        <span id="settings-cat-hidden-count">Hidden: 0</span>
+                        <span>•</span>
+                        <span id="settings-cat-total-count">Total: 0</span>
+                    </div>
+
+                    <!-- Category List Container -->
+                    <div id="settings-categories-loading" style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
+                        Loading categories...
+                    </div>
+                    <div id="settings-categories-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem; max-height: 420px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Category cards populated by admin.js -->
+                    </div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.75rem 0;">
+
                 <!-- Order Rules Section -->
                 <h2 style="color: var(--admin-text-main); font-weight: 800; font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                     🚚 Order Rules & Delivery Configuration
@@ -1111,6 +1317,7 @@
                         <thead>
                             <tr style="border-bottom: 2px solid #f1f5f9; text-align: left; font-size: 0.78rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                                 <th style="padding: 0.75rem;">Rule Name</th>
+                                <th style="padding: 0.75rem;">Category</th>
                                 <th style="padding: 0.75rem;">Condition</th>
                                 <th style="padding: 0.75rem;">Type</th>
                                 <th style="padding: 0.75rem;">Value</th>
@@ -1327,6 +1534,14 @@
                 <div>
                     <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; color: #475569;">Rule Name</label>
                     <input type="text" id="discount-name" placeholder="e.g. Festive 10% Special" required class="modern-input" style="width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 0.3rem; color: #475569;">Applicable Category</label>
+                    <select id="discount-category" class="modern-input" style="width: 100%; box-sizing: border-box; font-weight: 600; background: white;">
+                        <option value="ALL">🌟 All Categories (Entire Cart)</option>
+                    </select>
+                    <p style="font-size: 0.72rem; color: #64748b; margin: 0.25rem 0 0 0;">Choose whether this discount rule applies to all categories or a specific category.</p>
                 </div>
 
                 <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0;">

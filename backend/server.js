@@ -495,7 +495,7 @@ app.get('/api/admin/discounts', requireAuth, async (req, res) => {
 });
 
 app.post('/api/admin/discounts', requireAuth, (req, res) => {
-    const { name, amount1, operator, amount2, discount_type, discount_value, is_enabled } = req.body;
+    const { name, category, amount1, operator, amount2, discount_type, discount_value, is_enabled } = req.body;
 
     if (!name || !discount_type) {
         return res.status(400).json({ error: 'Rule name and discount type are required.' });
@@ -511,10 +511,11 @@ app.post('/api/admin/discounts', requireAuth, (req, res) => {
 
     const id = 'DISC-' + Date.now();
     const isEnabledVal = is_enabled !== false && is_enabled !== 0 && is_enabled !== '0' && is_enabled !== 'false';
+    const targetCategory = category && String(category).trim() !== '' ? String(category).trim() : 'ALL';
 
     db.run(
-        `INSERT INTO discounts (id, name, amount1, operator, amount2, discount_type, discount_value, is_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, String(name).trim(), Number(amount1 || 0), selectedOp, Number(amount2 || 0), discount_type, Number(discount_value || 0), isEnabledVal],
+        `INSERT INTO discounts (id, name, category, amount1, operator, amount2, discount_type, discount_value, is_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, String(name).trim(), targetCategory, Number(amount1 || 0), selectedOp, Number(amount2 || 0), discount_type, Number(discount_value || 0), isEnabledVal],
         function (err) {
             if (err) return res.status(500).json({ error: 'Failed to create discount rule: ' + err.message });
             res.json({ success: true, id, message: 'Discount rule created successfully' });
@@ -524,7 +525,7 @@ app.post('/api/admin/discounts', requireAuth, (req, res) => {
 
 app.put('/api/admin/discounts/:id', requireAuth, (req, res) => {
     const { id } = req.params;
-    const { name, amount1, operator, amount2, discount_type, discount_value, is_enabled } = req.body;
+    const { name, category, amount1, operator, amount2, discount_type, discount_value, is_enabled } = req.body;
 
     if (!name || !discount_type) {
         return res.status(400).json({ error: 'Rule name and discount type are required.' });
@@ -534,10 +535,11 @@ app.put('/api/admin/discounts/:id', requireAuth, (req, res) => {
     const selectedOp = validOperators.includes(operator) ? operator : '>=';
 
     const isEnabledVal = is_enabled !== false && is_enabled !== 0 && is_enabled !== '0' && is_enabled !== 'false';
+    const targetCategory = category && String(category).trim() !== '' ? String(category).trim() : 'ALL';
 
     db.run(
-        `UPDATE discounts SET name = ?, amount1 = ?, operator = ?, amount2 = ?, discount_type = ?, discount_value = ?, is_enabled = ? WHERE id = ?`,
-        [String(name).trim(), Number(amount1 || 0), selectedOp, Number(amount2 || 0), discount_type, Number(discount_value || 0), isEnabledVal, id],
+        `UPDATE discounts SET name = ?, category = ?, amount1 = ?, operator = ?, amount2 = ?, discount_type = ?, discount_value = ?, is_enabled = ? WHERE id = ?`,
+        [String(name).trim(), targetCategory, Number(amount1 || 0), selectedOp, Number(amount2 || 0), discount_type, Number(discount_value || 0), isEnabledVal, id],
         function (err) {
             if (err) return res.status(500).json({ error: 'Failed to update discount rule: ' + err.message });
             res.json({ success: true, message: 'Discount rule updated successfully' });
@@ -990,12 +992,159 @@ app.put('/api/products/:id', requireAuth, validateProduct, async (req, res) => {
     }
 });
 
+// BULK PRICE UPDATE (Category-wise or All Categories)
+app.post('/api/admin/products/bulk-price-update', requireAuth, async (req, res) => {
+    try {
+        const { category, action, type, value, updateComparePrice, roundToInteger } = req.body;
+
+        const numVal = parseFloat(value);
+        if (isNaN(numVal) || numVal <= 0) {
+            return res.status(400).json({ error: 'Please provide a valid positive adjustment value.' });
+        }
+
+        if (action !== 'increase' && action !== 'decrease') {
+            return res.status(400).json({ error: 'Action must be either "increase" or "decrease".' });
+        }
+
+        if (type !== 'percentage' && type !== 'fixed') {
+            return res.status(400).json({ error: 'Type must be either "percentage" or "fixed".' });
+        }
+
+        if (type === 'percentage' && action === 'decrease' && numVal >= 100) {
+            return res.status(400).json({ error: 'Percentage decrease cannot be 100% or greater.' });
+        }
+
+        const isAll = !category || category === 'all' || category === 'ALL';
+        const selectSql = isAll
+            ? "SELECT id, name, price, compare_price, category FROM products"
+            : "SELECT id, name, price, compare_price, category FROM products WHERE LOWER(TRIM(category)) = LOWER(TRIM(?))";
+        const selectParams = isAll ? [] : [category];
+
+        db.all(selectSql, selectParams, async (err, rows) => {
+            if (err) {
+                console.error("DB Error in bulk-price-update SELECT:", err);
+                return res.status(500).json({ error: err.message });
+            }
+
+            if (!rows || rows.length === 0) {
+                return res.status(404).json({ error: 'No products found for the selected category.' });
+            }
+
+            const shouldUpdateCompare = Boolean(updateComparePrice);
+            const shouldRound = roundToInteger !== false; // default true
+
+            const calcNewPrice = (oldPrice) => {
+                const current = parseFloat(oldPrice) || 0;
+                let calculated = current;
+                if (type === 'fixed') {
+                    calculated = action === 'increase' ? current + numVal : current - numVal;
+                } else { // percentage
+                    calculated = action === 'increase'
+                        ? current * (1 + (numVal / 100))
+                        : current * (1 - (numVal / 100));
+                }
+                calculated = Math.max(0, calculated);
+                return shouldRound ? Math.round(calculated) : Math.round(calculated * 100) / 100;
+            };
+
+            const updates = rows.map(prod => {
+                const newPrice = calcNewPrice(prod.price);
+                let newComparePrice = prod.compare_price;
+                if (shouldUpdateCompare && parseFloat(prod.compare_price) > 0) {
+                    newComparePrice = calcNewPrice(prod.compare_price);
+                }
+                return {
+                    id: prod.id,
+                    price: newPrice,
+                    compare_price: newComparePrice
+                };
+            });
+
+            let updateErrors = [];
+            let completedCount = 0;
+
+            const executeUpdate = (item) => {
+                return new Promise((resolve) => {
+                    const updateSql = `UPDATE products SET price = ?, compare_price = ? WHERE id = ?`;
+                    db.run(updateSql, [item.price, item.compare_price, item.id], function (uErr) {
+                        if (uErr) {
+                            console.error(`Error updating product ${item.id}:`, uErr);
+                            updateErrors.push({ id: item.id, error: uErr.message });
+                        } else {
+                            completedCount++;
+                        }
+                        resolve();
+                    });
+                });
+            };
+
+            await Promise.all(updates.map(executeUpdate));
+
+            invalidateProductCache();
+
+            if (updateErrors.length > 0 && completedCount === 0) {
+                return res.status(500).json({ error: 'Failed to update product prices.', details: updateErrors });
+            }
+
+            res.json({
+                success: true,
+                count: completedCount,
+                message: `Successfully updated prices for ${completedCount} product(s).`
+            });
+        });
+    } catch (err) {
+        console.error("Server Exception in POST /api/admin/products/bulk-price-update:", err);
+        res.status(500).json({ error: err.message || 'Internal Server Error' });
+    }
+});
+
 // CATEGORIES
+// Public storefront: only visible categories
 app.get('/api/categories', async (req, res) => {
+    db.all("SELECT * FROM categories WHERE is_visible = 1 OR is_visible IS NULL ORDER BY id ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows || []);
+    });
+});
+
+// Admin panel: fetch all categories with visibility status
+app.get('/api/admin/categories', requireAuth, async (req, res) => {
     db.all("SELECT * FROM categories ORDER BY id ASC", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        res.json(rows || []);
     });
+});
+
+// Admin panel: toggle or update visibility for a category
+app.patch('/api/admin/categories/:id/visibility', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { is_visible } = req.body;
+    const visibleVal = (is_visible === true || is_visible === 1 || is_visible === '1') ? 1 : 0;
+
+    db.run("UPDATE categories SET is_visible = ? WHERE id = ?", [visibleVal, id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, id, is_visible: visibleVal === 1 });
+    });
+});
+
+// Admin panel: batch update category visibility (e.g. show all / hide all)
+app.post('/api/admin/categories/visibility-batch', requireAuth, (req, res) => {
+    const { is_visible, ids } = req.body;
+    const visibleVal = (is_visible === true || is_visible === 1 || is_visible === '1') ? 1 : 0;
+
+    if (Array.isArray(ids) && ids.length > 0) {
+        const placeholders = ids.map(() => '?').join(',');
+        db.run(`UPDATE categories SET is_visible = ? WHERE id IN (${placeholders})`, [visibleVal, ...ids], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, count: this.changes || ids.length, is_visible: visibleVal === 1 });
+        });
+    } else {
+        // Apply to all categories
+        db.run("UPDATE categories SET is_visible = ?", [visibleVal], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, count: this.changes, is_visible: visibleVal === 1 });
+        });
+    }
 });
 
 
@@ -1025,7 +1174,7 @@ function getActiveDiscountsFromDb() {
     });
 }
 
-function evaluateDiscounts(subtotal, deliveryCharge, discountRules) {
+function evaluateDiscounts(subtotal, deliveryCharge, discountRules, items = []) {
     let discountAmount = 0;
     let finalDeliveryCharge = deliveryCharge;
     const appliedDiscounts = [];
@@ -1034,6 +1183,19 @@ function evaluateDiscounts(subtotal, deliveryCharge, discountRules) {
         const isEnabled = rule.is_enabled === true || rule.is_enabled === 1 || rule.is_enabled === '1';
         if (!isEnabled) continue;
 
+        const isAllCategories = !rule.category || rule.category === 'ALL' || rule.category === 'all' || rule.category === '';
+        let targetSubtotal = subtotal;
+
+        if (!isAllCategories) {
+            if (Array.isArray(items) && items.length > 0) {
+                const categoryItems = items.filter(it => it && it.category === rule.category);
+                targetSubtotal = categoryItems.reduce((sum, it) => sum + (Number(it.price || 0) * Number(it.qty || 1)), 0);
+            } else {
+                targetSubtotal = 0;
+            }
+            if (targetSubtotal <= 0) continue;
+        }
+
         const amount1 = Number(rule.amount1 || 0);
         const amount2 = Number(rule.amount2 || 0);
         const op = rule.operator || '>=';
@@ -1041,29 +1203,29 @@ function evaluateDiscounts(subtotal, deliveryCharge, discountRules) {
         let matches = false;
         if (amount2 > 0) {
             if (op === '>' || op === '<') {
-                matches = subtotal > amount1 && subtotal < amount2;
+                matches = targetSubtotal > amount1 && targetSubtotal < amount2;
             } else {
-                matches = subtotal >= amount1 && subtotal <= amount2;
+                matches = targetSubtotal >= amount1 && targetSubtotal <= amount2;
             }
         } else {
-            if (op === '>') matches = subtotal > amount1;
-            else if (op === '>=') matches = subtotal >= amount1;
-            else if (op === '<') matches = subtotal < amount1;
-            else if (op === '<=') matches = subtotal <= amount1;
+            if (op === '>') matches = targetSubtotal > amount1;
+            else if (op === '>=') matches = targetSubtotal >= amount1;
+            else if (op === '<') matches = targetSubtotal < amount1;
+            else if (op === '<=') matches = targetSubtotal <= amount1;
         }
 
         if (matches) {
             if (rule.discount_type === 'free_delivery') {
                 finalDeliveryCharge = 0;
-                appliedDiscounts.push({ id: rule.id, name: rule.name, type: 'free_delivery', value: 0, amount: deliveryCharge });
+                appliedDiscounts.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'free_delivery', value: 0, amount: deliveryCharge });
             } else if (rule.discount_type === 'percentage') {
-                const percAmount = Math.round((subtotal * (Number(rule.discount_value) || 0)) / 100);
+                const percAmount = Math.round((targetSubtotal * (Number(rule.discount_value) || 0)) / 100);
                 discountAmount += percAmount;
-                appliedDiscounts.push({ id: rule.id, name: rule.name, type: 'percentage', value: rule.discount_value, amount: percAmount });
+                appliedDiscounts.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'percentage', value: rule.discount_value, amount: percAmount });
             } else if (rule.discount_type === 'fixed') {
-                const fixAmount = Math.min(subtotal, Number(rule.discount_value) || 0);
+                const fixAmount = Math.min(targetSubtotal, Number(rule.discount_value) || 0);
                 discountAmount += fixAmount;
-                appliedDiscounts.push({ id: rule.id, name: rule.name, type: 'fixed', value: rule.discount_value, amount: fixAmount });
+                appliedDiscounts.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'fixed', value: rule.discount_value, amount: fixAmount });
             }
         }
     }
@@ -1227,7 +1389,8 @@ app.post('/api/orders', validateOrder, async (req, res) => {
             verifiedItems.push({
                 ...item,
                 price: product.price,
-                name: product.name // Ensure name is also from DB truth
+                name: product.name, // Ensure name is also from DB truth
+                category: product.category
             });
         }
     } catch (err) {
@@ -1249,7 +1412,7 @@ app.post('/api/orders', validateOrder, async (req, res) => {
         console.error("Failed to load active discounts:", dErr);
     }
 
-    const { discountAmount, finalDeliveryCharge, appliedDiscounts } = evaluateDiscounts(calculatedTotal, deliveryCharge, activeDiscounts);
+    const { discountAmount, finalDeliveryCharge, appliedDiscounts } = evaluateDiscounts(calculatedTotal, deliveryCharge, activeDiscounts, verifiedItems);
     deliveryCharge = finalDeliveryCharge;
     const total = Math.max(0, calculatedTotal - discountAmount) + deliveryCharge;
     console.log(`[DEBUG] Order ID: ${orderId}, Subtotal: ${calculatedTotal}, Discount: ${discountAmount}, Delivery: ${deliveryCharge}, Total: ${total}`);

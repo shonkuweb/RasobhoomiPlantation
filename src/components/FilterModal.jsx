@@ -3,7 +3,7 @@ import { categories as allCategories, sortCategoriesWithMangoFirst } from '../ut
 import { useLanguage } from '../context/LanguageContext';
 import { translateCategoryName } from '../utils/translations';
 
-const FilterModal = ({ isOpen, onClose, onApply }) => {
+const FilterModal = ({ isOpen, onClose, onApply, categories = [] }) => {
     const { language, t } = useLanguage();
     const [sort, setSort] = useState('default');
     const [selectedCategoryNames, setSelectedCategoryNames] = useState([]);
@@ -28,7 +28,8 @@ const FilterModal = ({ isOpen, onClose, onApply }) => {
         setStock(false);
     };
 
-    const categoryOptions = sortCategoriesWithMangoFirst(allCategories).map(cat => cat.name);
+    const sourceCategories = Array.isArray(categories) && categories.length > 0 ? categories : allCategories;
+    const categoryOptions = sortCategoriesWithMangoFirst(sourceCategories).map(cat => cat.name);
 
     return (
         <div style={{

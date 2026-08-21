@@ -183,6 +183,7 @@ const Home = () => {
                 isOpen={isFilterOpen}
                 onClose={() => setIsFilterOpen(false)}
                 onApply={handleApplyFilter}
+                categories={categories}
             />
         </main>
     );

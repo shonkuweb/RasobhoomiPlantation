@@ -171,7 +171,7 @@ async function fetchData() {
         // Fetch orders and categories in parallel
         const [oRes, cRes] = await Promise.all([
             fetch('/api/orders'),
-            fetch('/api/categories')
+            fetch('/api/admin/categories', { headers: getAuthHeaders() }).catch(() => fetch('/api/categories'))
         ]);
 
         const oData = await oRes.json();
@@ -179,6 +179,7 @@ async function fetchData() {
         if (cRes.ok) {
             categories = await cRes.json();
             renderCategories();
+            renderSettingsCategories();
         }
 
         if (Array.isArray(oData)) {
@@ -225,6 +226,8 @@ async function fetchAllProducts() {
         productsPage = 1;
 
         updateProductCounterBadge();
+        populateBulkPriceCategorySelect();
+        updateBulkPricePreview();
         if (currentView === 'products') render();
     } catch (e) {
         console.error('Product fetch failed', e);
@@ -316,6 +319,33 @@ const settingsHeroVideoError = document.getElementById('settings-hero-video-erro
 const settingsHeroVideoSuccess = document.getElementById('settings-hero-video-success');
 const settingsHeroVideoSaveBtn = document.getElementById('settings-hero-video-save-btn');
 
+// Bulk Price Adjuster Elements
+const bulkPriceForm = document.getElementById('settings-bulk-price-form');
+const bulkPriceCategory = document.getElementById('bulk-price-category');
+const bulkPriceAction = document.getElementById('bulk-price-action');
+const bulkPriceType = document.getElementById('bulk-price-type');
+const bulkPriceValue = document.getElementById('bulk-price-value');
+const bulkPriceValueLabel = document.getElementById('bulk-price-value-label');
+const bulkPriceUnit = document.getElementById('bulk-price-unit');
+const bulkPriceUpdateCompare = document.getElementById('bulk-price-update-compare');
+const bulkPriceRound = document.getElementById('bulk-price-round');
+const bulkPricePreviewText = document.getElementById('bulk-price-preview-text');
+const bulkPriceError = document.getElementById('bulk-price-error');
+const bulkPriceSuccess = document.getElementById('bulk-price-success');
+const bulkPriceBtn = document.getElementById('btn-apply-bulk-price');
+
+// Category Visibility Settings Elements
+const settingsCategorySearch = document.getElementById('settings-category-search');
+const btnShowAllCategories = document.getElementById('btn-show-all-categories');
+const btnHideAllCategories = document.getElementById('btn-hide-all-categories');
+const settingsCategoriesLoading = document.getElementById('settings-categories-loading');
+const settingsCategoriesList = document.getElementById('settings-categories-list');
+const settingsCatVisibleCount = document.getElementById('settings-cat-visible-count');
+const settingsCatHiddenCount = document.getElementById('settings-cat-hidden-count');
+const settingsCatTotalCount = document.getElementById('settings-cat-total-count');
+
+let categorySearchQuery = '';
+
 
 // Discount Elements
 const discountsBtn = document.getElementById('btn-discounts');
@@ -331,6 +361,7 @@ const cancelDiscountBtn = document.getElementById('cancel-discount-btn');
 const discountForm = document.getElementById('discount-form');
 const discountModalTitle = document.getElementById('discount-modal-title');
 const discountNameInput = document.getElementById('discount-name');
+const discountCategorySelect = document.getElementById('discount-category');
 const discountAmount1Input = document.getElementById('discount-amount1');
 const discountOperatorSelect = document.getElementById('discount-operator');
 const discountAmount2Input = document.getElementById('discount-amount2');
@@ -354,6 +385,7 @@ function init() {
     fetchOrderSettings();
     fetchHeroVideoSetting();
     fetchTutorialsAdmin();
+    fetchSettingsCategories();
     // switchView called after data load or defaults
     switchView('products');
     startOrdersAutoRefresh();
@@ -504,6 +536,187 @@ async function saveHeroVideoSettings(e) {
     }
 }
 
+function populateBulkPriceCategorySelect() {
+    if (!bulkPriceCategory) return;
+    const currentVal = bulkPriceCategory.value || 'all';
+    bulkPriceCategory.innerHTML = '<option value="all">📦 All Categories (All Products)</option>';
+    if (Array.isArray(categories) && categories.length > 0) {
+        sortCategoriesWithMangoFirst(categories).forEach(cat => {
+            const count = products.filter(p => (p.category || '').toLowerCase() === cat.name.toLowerCase()).length;
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = `📁 ${cat.name} (${count} item${count === 1 ? '' : 's'})`;
+            bulkPriceCategory.appendChild(option);
+        });
+    }
+    bulkPriceCategory.value = currentVal;
+}
+
+function updateBulkPricePreview() {
+    if (!bulkPricePreviewText) return;
+
+    const action = bulkPriceAction ? bulkPriceAction.value : 'increase';
+    const type = bulkPriceType ? bulkPriceType.value : 'percentage';
+    const rawVal = bulkPriceValue ? bulkPriceValue.value : '';
+    const numVal = parseFloat(rawVal);
+    const selectedCat = bulkPriceCategory ? bulkPriceCategory.value : 'all';
+    const updateCompare = bulkPriceUpdateCompare ? bulkPriceUpdateCompare.checked : true;
+    const roundToInt = bulkPriceRound ? bulkPriceRound.checked : true;
+
+    // Update label, unit indicator, and placeholder
+    if (bulkPriceValueLabel) {
+        bulkPriceValueLabel.textContent = type === 'percentage' ? 'Adjustment Value (%) *' : 'Adjustment Value (₹) *';
+    }
+    if (bulkPriceUnit) {
+        bulkPriceUnit.textContent = type === 'percentage' ? '%' : '₹';
+    }
+    if (bulkPriceValue) {
+        bulkPriceValue.placeholder = type === 'percentage' ? 'e.g. 10 for 10%' : 'e.g. 50 for ₹50';
+    }
+
+    // Filter matching products
+    const matchingProds = selectedCat === 'all'
+        ? products
+        : products.filter(p => (p.category || '').toLowerCase() === selectedCat.toLowerCase());
+
+    const count = matchingProds.length;
+    const catName = selectedCat === 'all' ? 'All Categories' : selectedCat;
+
+    if (isNaN(numVal) || numVal <= 0) {
+        bulkPricePreviewText.innerHTML = `🎯 <strong>Target:</strong> <strong>${count}</strong> product(s) in <em>${escapeHtml(catName)}</em>.<br><span style="color:#64748b;">Enter an adjustment value above to see calculated sample prices.</span>`;
+        return;
+    }
+
+    if (type === 'percentage' && action === 'decrease' && numVal >= 100) {
+        bulkPricePreviewText.innerHTML = `<span style="color:#dc2626; font-weight: 700;">⚠️ Percentage decrease cannot be 100% or greater.</span>`;
+        return;
+    }
+
+    const sample = matchingProds.find(p => parseFloat(p.price) > 0) || matchingProds[0];
+    const actionWord = action === 'increase' ? 'Increase (+)' : 'Decrease (-)';
+    const changeDisplay = type === 'percentage' ? `${numVal}%` : `₹${numVal}`;
+
+    let sampleHtml = '';
+    if (sample) {
+        const oldPrice = parseFloat(sample.price) || 0;
+        let newPrice = type === 'fixed'
+            ? (action === 'increase' ? oldPrice + numVal : Math.max(0, oldPrice - numVal))
+            : (action === 'increase' ? oldPrice * (1 + numVal / 100) : Math.max(0, oldPrice * (1 - numVal / 100)));
+        newPrice = roundToInt ? Math.round(newPrice) : Math.round(newPrice * 100) / 100;
+
+        sampleHtml = `<br>💡 <strong>Sample [${escapeHtml(sample.name)}]:</strong> ₹${oldPrice} ➔ <strong style="color:${action === 'increase' ? '#16a34a' : '#ea580c'};">₹${newPrice}</strong>`;
+
+        if (updateCompare && sample.compare_price && parseFloat(sample.compare_price) > 0) {
+            const oldCompare = parseFloat(sample.compare_price);
+            let newCompare = type === 'fixed'
+                ? (action === 'increase' ? oldCompare + numVal : Math.max(0, oldCompare - numVal))
+                : (action === 'increase' ? oldCompare * (1 + numVal / 100) : Math.max(0, oldCompare * (1 - numVal / 100)));
+            newCompare = roundToInt ? Math.round(newCompare) : Math.round(newCompare * 100) / 100;
+            sampleHtml += ` <span style="color:#64748b;">(MRP: ₹${oldCompare} ➔ ₹${newCompare})</span>`;
+        }
+    }
+
+    bulkPricePreviewText.innerHTML = `🎯 <strong>Target:</strong> <strong>${count}</strong> product(s) in <em>${escapeHtml(catName)}</em><br>⚙️ <strong>Action:</strong> <strong>${actionWord}</strong> by <strong>${changeDisplay}</strong>${sampleHtml}`;
+}
+
+async function handleBulkPriceUpdate(e) {
+    if (e) e.preventDefault();
+    if (!bulkPriceForm) return;
+
+    if (bulkPriceError) bulkPriceError.textContent = '';
+    if (bulkPriceSuccess) bulkPriceSuccess.textContent = '';
+
+    const action = bulkPriceAction ? bulkPriceAction.value : 'increase';
+    const type = bulkPriceType ? bulkPriceType.value : 'percentage';
+    const rawVal = bulkPriceValue ? bulkPriceValue.value : '';
+    const numVal = parseFloat(rawVal);
+    const selectedCat = bulkPriceCategory ? bulkPriceCategory.value : 'all';
+    const updateCompare = bulkPriceUpdateCompare ? bulkPriceUpdateCompare.checked : true;
+    const roundToInt = bulkPriceRound ? bulkPriceRound.checked : true;
+
+    if (isNaN(numVal) || numVal <= 0) {
+        if (bulkPriceError) bulkPriceError.textContent = 'Please enter a valid positive adjustment value.';
+        return;
+    }
+
+    if (type === 'percentage' && action === 'decrease' && numVal >= 100) {
+        if (bulkPriceError) bulkPriceError.textContent = 'Percentage decrease cannot be 100% or greater.';
+        return;
+    }
+
+    const matchingProds = selectedCat === 'all'
+        ? products
+        : products.filter(p => (p.category || '').toLowerCase() === selectedCat.toLowerCase());
+
+    const count = matchingProds.length;
+    if (count === 0) {
+        if (bulkPriceError) bulkPriceError.textContent = 'No products found for the selected category.';
+        return;
+    }
+
+    const catName = selectedCat === 'all' ? 'ALL Categories' : `"${selectedCat}"`;
+    const changeDisplay = type === 'percentage' ? `${numVal}%` : `₹${numVal}`;
+    const confirmMsg = `⚠️ CONFIRM BULK PRICE UPDATE\n\nAre you sure you want to ${action.toUpperCase()} the prices of ${count} product(s) in ${catName} by ${changeDisplay}?\n\nThis will immediately modify active product prices on the live store.`;
+
+    if (!window.confirm(confirmMsg)) {
+        return;
+    }
+
+    if (bulkPriceBtn) {
+        bulkPriceBtn.disabled = true;
+        bulkPriceBtn.innerHTML = '<span>⏳ UPDATING PRODUCT PRICES...</span>';
+    }
+
+    try {
+        const payload = {
+            category: selectedCat,
+            action: action,
+            type: type,
+            value: numVal,
+            updateComparePrice: updateCompare,
+            roundToInteger: roundToInt
+        };
+
+        const res = await fetch('/api/admin/products/bulk-price-update', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update product prices.');
+        }
+
+        if (bulkPriceSuccess) {
+            bulkPriceSuccess.textContent = `✅ ${data.message || `Successfully updated prices for ${data.count} product(s)!`}`;
+        }
+        if (bulkPriceValue) {
+            bulkPriceValue.value = '';
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(`Updated prices for ${data.count} products!`, 'success');
+        }
+
+        // Refresh all products to update local state and table view
+        await fetchAllProducts();
+        populateBulkPriceCategorySelect();
+        updateBulkPricePreview();
+
+    } catch (err) {
+        console.error('Bulk price update failed:', err);
+        if (bulkPriceError) {
+            bulkPriceError.textContent = err.message || 'Network error updating prices. Try again.';
+        }
+    } finally {
+        if (bulkPriceBtn) {
+            bulkPriceBtn.disabled = false;
+            bulkPriceBtn.innerHTML = '<span>⚡ APPLY BULK PRICE UPDATE</span>';
+        }
+    }
+}
+
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -512,6 +725,221 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function getCategoryImageUrl(cat) {
+    if (!cat) return '/assets/others.png';
+    const imageMap = {
+        'indian-mangoes': '/assets/indianmango.png',
+        'foreigner-mango': '/assets/foreignmango.png',
+        'malta-orange': '/assets/maltaorange.png',
+        'orange': '/assets/orange.png',
+        'guava': '/assets/guava.png',
+        'jackfruit': '/assets/jackfruit.png',
+        'jamun': '/assets/jamun.png',
+        'water-apple': '/assets/watterapple.png',
+        'chiku': '/assets/chiku.png',
+        'coconut': '/assets/coconut.png',
+        'betel-nut': '/assets/betelnut.png',
+        'lemon': '/assets/lemon.png',
+        'amloki': '/assets/amloki.png',
+        'longon': '/assets/longan.png',
+        'litchi': '/assets/litchi.png',
+        'anar': '/assets/pomegranant.png',
+        'grape': '/assets/grapes.png',
+        'fruit-tree': '/assets/fruittree.png',
+        'others': '/assets/others.png',
+        'drum-plants': '/assets/drumplants.png'
+    };
+    return (cat.slug && imageMap[cat.slug]) || cat.image || '/assets/others.png';
+}
+
+async function fetchSettingsCategories() {
+    try {
+        const res = await fetch('/api/admin/categories', { headers: getAuthHeaders() });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                categories = data;
+                renderCategories();
+                renderSettingsCategories();
+                populateBulkPriceCategorySelect();
+            }
+        }
+    } catch (err) {
+        console.error('Failed to fetch admin categories:', err);
+    }
+}
+
+function renderSettingsCategories() {
+    const listEl = document.getElementById('settings-categories-list');
+    const loadingEl = document.getElementById('settings-categories-loading');
+    const visCountEl = document.getElementById('settings-cat-visible-count');
+    const hidCountEl = document.getElementById('settings-cat-hidden-count');
+    const totCountEl = document.getElementById('settings-cat-total-count');
+
+    if (!listEl) return;
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const sorted = sortCategoriesWithMangoFirst(categories);
+    const visibleCount = sorted.filter(c => c.is_visible !== 0 && c.is_visible !== false).length;
+    const hiddenCount = sorted.length - visibleCount;
+
+    if (visCountEl) visCountEl.textContent = `Visible: ${visibleCount}`;
+    if (hidCountEl) hidCountEl.textContent = `Hidden: ${hiddenCount}`;
+    if (totCountEl) totCountEl.textContent = `Total: ${sorted.length}`;
+
+    const query = (categorySearchQuery || '').toLowerCase().trim();
+    const filtered = sorted.filter(cat => {
+        if (!query) return true;
+        return (cat.name && cat.name.toLowerCase().includes(query)) ||
+               (cat.slug && cat.slug.toLowerCase().includes(query));
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `
+            <div style="grid-column: 1/-1; padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem; font-style: italic;">
+                No categories match "${escapeHtml(categorySearchQuery)}".
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(cat => {
+        const isVisible = cat.is_visible !== 0 && cat.is_visible !== false;
+        const imgUrl = getCategoryImageUrl(cat);
+        const prodCount = products.filter(p => (p.category || '').toLowerCase() === cat.name.toLowerCase()).length;
+
+        return `
+            <div class="category-vis-card ${isVisible ? '' : 'is-hidden'}" id="cat-card-${cat.id}">
+                <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+                    <img src="${escapeHtml(imgUrl)}" alt="" class="cat-thumb" onerror="this.src='/assets/others.png'">
+                    <div style="min-width: 0; flex: 1;">
+                        <div style="font-weight: 700; font-size: 0.88rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${escapeHtml(cat.name)}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: #64748b; margin-top: 1px;">
+                            <span>${prodCount} items</span>
+                            <span>•</span>
+                            <span id="cat-badge-${cat.id}" style="font-size: 0.7rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; ${isVisible ? 'background: #dcfce7; color: #15803d;' : 'background: #fee2e2; color: #b91c1c;'}">
+                                ${isVisible ? 'Visible' : 'Hidden'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <label class="cat-vis-switch" title="Toggle storefront visibility for ${escapeHtml(cat.name)}">
+                    <input type="checkbox" class="cat-vis-toggle-input" data-id="${cat.id}" data-name="${escapeHtml(cat.name)}" ${isVisible ? 'checked' : ''}>
+                    <span class="cat-vis-slider"></span>
+                </label>
+            </div>
+        `;
+    }).join('');
+
+    // Attach toggle listeners
+    listEl.querySelectorAll('.cat-vis-toggle-input').forEach(input => {
+        input.addEventListener('change', async (e) => {
+            const catId = e.target.getAttribute('data-id');
+            const catName = e.target.getAttribute('data-name');
+            const checked = e.target.checked;
+            await handleToggleCategoryVisibility(catId, catName, checked, e.target);
+        });
+    });
+}
+
+async function handleToggleCategoryVisibility(catId, catName, isVisible, toggleEl) {
+    const cardEl = document.getElementById(`cat-card-${catId}`);
+    const badgeEl = document.getElementById(`cat-badge-${catId}`);
+
+    // Optimistic UI update
+    if (cardEl) {
+        if (isVisible) cardEl.classList.remove('is-hidden');
+        else cardEl.classList.add('is-hidden');
+    }
+    if (badgeEl) {
+        badgeEl.textContent = isVisible ? 'Visible' : 'Hidden';
+        badgeEl.style.background = isVisible ? '#dcfce7' : '#fee2e2';
+        badgeEl.style.color = isVisible ? '#15803d' : '#b91c1c';
+    }
+
+    // Update local state
+    const cat = categories.find(c => String(c.id) === String(catId));
+    if (cat) cat.is_visible = isVisible ? 1 : 0;
+
+    // Update summary counts
+    const visibleCount = categories.filter(c => c.is_visible !== 0 && c.is_visible !== false).length;
+    const hiddenCount = categories.length - visibleCount;
+    const visCountEl = document.getElementById('settings-cat-visible-count');
+    const hidCountEl = document.getElementById('settings-cat-hidden-count');
+    if (visCountEl) visCountEl.textContent = `Visible: ${visibleCount}`;
+    if (hidCountEl) hidCountEl.textContent = `Hidden: ${hiddenCount}`;
+
+    try {
+        const res = await fetch(`/api/admin/categories/${encodeURIComponent(catId)}/visibility`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ is_visible: isVisible })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update visibility');
+        }
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(`"${catName}" is now ${isVisible ? 'visible on' : 'hidden from'} storefront`, 'success');
+        }
+    } catch (err) {
+        console.error('Error updating category visibility:', err);
+        // Rollback
+        if (toggleEl) toggleEl.checked = !isVisible;
+        if (cat) cat.is_visible = !isVisible ? 1 : 0;
+        if (cardEl) {
+            if (!isVisible) cardEl.classList.remove('is-hidden');
+            else cardEl.classList.add('is-hidden');
+        }
+        if (badgeEl) {
+            badgeEl.textContent = !isVisible ? 'Visible' : 'Hidden';
+            badgeEl.style.background = !isVisible ? '#dcfce7' : '#fee2e2';
+            badgeEl.style.color = !isVisible ? '#15803d' : '#b91c1c';
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast(err.message || 'Failed to update category visibility', 'error');
+        }
+    }
+}
+
+async function handleBatchCategoryVisibility(isVisible) {
+    const actionWord = isVisible ? 'show all categories on' : 'hide all categories from';
+    if (!isVisible) {
+        if (!window.confirm(`Are you sure you want to hide all categories from the customer storefront?`)) {
+            return;
+        }
+    }
+
+    try {
+        const res = await fetch('/api/admin/categories/visibility-batch', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ is_visible: isVisible ? 1 : 0 })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update categories batch');
+        }
+
+        categories.forEach(c => { c.is_visible = isVisible ? 1 : 0; });
+        renderSettingsCategories();
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(`All categories are now ${isVisible ? 'visible on' : 'hidden from'} storefront`, 'success');
+        }
+    } catch (err) {
+        console.error('Batch category visibility failed:', err);
+        if (typeof window.showToast === 'function') {
+            window.showToast(err.message || 'Failed to update categories batch', 'error');
+        }
+    }
 }
 
 async function fetchTutorialsAdmin() {
@@ -712,6 +1140,20 @@ function setupListeners() {
     if (discountTypeSelect) discountTypeSelect.addEventListener('change', handleDiscountTypeChange);
     if (discountForm) discountForm.addEventListener('submit', saveDiscount);
 
+    // Category Visibility Listeners
+    if (settingsCategorySearch) {
+        settingsCategorySearch.addEventListener('input', (e) => {
+            categorySearchQuery = e.target.value;
+            renderSettingsCategories();
+        });
+    }
+    if (btnShowAllCategories) {
+        btnShowAllCategories.addEventListener('click', () => handleBatchCategoryVisibility(true));
+    }
+    if (btnHideAllCategories) {
+        btnHideAllCategories.addEventListener('click', () => handleBatchCategoryVisibility(false));
+    }
+
     // Modal Courier Dropdown Change Listener
     const modalCourierSelect = document.getElementById('modal-courier-select');
     if (modalCourierSelect) {
@@ -805,6 +1247,28 @@ function setupListeners() {
 
     if (settingsHeroVideoForm) {
         settingsHeroVideoForm.addEventListener('submit', saveHeroVideoSettings);
+    }
+
+    if (bulkPriceForm) {
+        bulkPriceForm.addEventListener('submit', handleBulkPriceUpdate);
+    }
+    if (bulkPriceCategory) {
+        bulkPriceCategory.addEventListener('change', updateBulkPricePreview);
+    }
+    if (bulkPriceAction) {
+        bulkPriceAction.addEventListener('change', updateBulkPricePreview);
+    }
+    if (bulkPriceType) {
+        bulkPriceType.addEventListener('change', updateBulkPricePreview);
+    }
+    if (bulkPriceValue) {
+        bulkPriceValue.addEventListener('input', updateBulkPricePreview);
+    }
+    if (bulkPriceUpdateCompare) {
+        bulkPriceUpdateCompare.addEventListener('change', updateBulkPricePreview);
+    }
+    if (bulkPriceRound) {
+        bulkPriceRound.addEventListener('change', updateBulkPricePreview);
     }
 
     const settingsTutorialForm = document.getElementById('settings-tutorial-form');
@@ -1317,6 +1781,10 @@ function switchView(view) {
         if (settingsPasswordError) settingsPasswordError.textContent = '';
         if (settingsPasswordSuccess) settingsPasswordSuccess.textContent = '';
         fetchOrderSettings();
+        fetchSettingsCategories();
+        renderSettingsCategories();
+        populateBulkPriceCategorySelect();
+        updateBulkPricePreview();
     } else if (view === 'discounts') {
         if (discountsBtn) discountsBtn.classList.add('active');
         if (listContainer) listContainer.style.display = 'none';
@@ -1379,6 +1847,27 @@ function renderCategories() {
             categorySelect.appendChild(option);
         });
     }
+
+    // 3. Populate Discount Rule Category Dropdown
+    populateDiscountCategorySelect();
+
+    // 4. Populate Bulk Price Category Dropdown
+    populateBulkPriceCategorySelect();
+}
+
+function populateDiscountCategorySelect() {
+    if (!discountCategorySelect) return;
+    const currentVal = discountCategorySelect.value || 'ALL';
+    discountCategorySelect.innerHTML = '<option value="ALL">🌟 All Categories (Entire Cart)</option>';
+    if (Array.isArray(categories) && categories.length > 0) {
+        sortCategoriesWithMangoFirst(categories).forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = `📁 ${cat.name}`;
+            discountCategorySelect.appendChild(option);
+        });
+    }
+    discountCategorySelect.value = currentVal;
 }
 
 function updateFilterUI() {
@@ -2114,6 +2603,11 @@ function renderDiscounts() {
             valText = 'Free Delivery';
         }
 
+        const isAllCat = !rule.category || rule.category === 'ALL' || rule.category === 'all';
+        const catBadge = isAllCat
+            ? `<span style="background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">All Categories</span>`
+            : `<span style="background: #fef3c7; color: #92400e; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">📁 ${rule.category}</span>`;
+
         const isEnabled = Boolean(rule.is_enabled);
         const statusBadge = isEnabled
             ? `<span style="background: #dcfce7; color: #15803d; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">Active</span>`
@@ -2124,6 +2618,7 @@ function renderDiscounts() {
 
         tr.innerHTML = `
             <td style="padding: 0.85rem; font-weight: 700; color: #0f172a;">${rule.name}</td>
+            <td style="padding: 0.85rem;">${catBadge}</td>
             <td style="padding: 0.85rem; color: #475569; font-size: 0.85rem; font-family: monospace;">${conditionText}</td>
             <td style="padding: 0.85rem; color: #334155; font-size: 0.85rem;">${typeText}</td>
             <td style="padding: 0.85rem; font-weight: 800; color: #15803d;">${valText}</td>
@@ -2153,6 +2648,7 @@ function renderDiscounts() {
                     ${statusBadge}
                 </div>
                 <div style="font-size: 0.82rem; color: #475569; margin-bottom: 0.65rem;">
+                    <div style="margin-bottom: 0.2rem;">Category: <strong>${isAllCat ? 'All Categories' : rule.category}</strong></div>
                     <div>Condition: <strong>${conditionText}</strong></div>
                     <div>Value: <strong style="color: #15803d;">${valText}</strong> (${typeText})</div>
                 </div>
@@ -2220,11 +2716,13 @@ function openDiscountModal(discountToEdit = null) {
     if (!discountModal || !discountForm) return;
     discountForm.reset();
     if (discountFormError) discountFormError.textContent = '';
+    populateDiscountCategorySelect();
 
     if (discountToEdit) {
         editingDiscountId = discountToEdit.id;
         if (discountModalTitle) discountModalTitle.textContent = 'EDIT DISCOUNT RULE';
         if (discountNameInput) discountNameInput.value = discountToEdit.name || '';
+        if (discountCategorySelect) discountCategorySelect.value = discountToEdit.category || 'ALL';
         if (discountAmount1Input) discountAmount1Input.value = discountToEdit.amount1 ?? 0;
         if (discountOperatorSelect) discountOperatorSelect.value = discountToEdit.operator || '>=';
         if (discountAmount2Input) discountAmount2Input.value = discountToEdit.amount2 || '';
@@ -2234,6 +2732,7 @@ function openDiscountModal(discountToEdit = null) {
     } else {
         editingDiscountId = null;
         if (discountModalTitle) discountModalTitle.textContent = 'CREATE DISCOUNT RULE';
+        if (discountCategorySelect) discountCategorySelect.value = 'ALL';
         if (discountOperatorSelect) discountOperatorSelect.value = '>=';
         if (discountEnabledCheckbox) discountEnabledCheckbox.checked = true;
     }
@@ -2253,6 +2752,7 @@ async function saveDiscount(e) {
     if (discountFormError) discountFormError.textContent = '';
 
     const name = discountNameInput?.value?.trim();
+    const category = discountCategorySelect?.value || 'ALL';
     const amount1 = Number(discountAmount1Input?.value || 0);
     const operator = discountOperatorSelect?.value || '>=';
     const amount2 = Number(discountAmount2Input?.value || 0);
@@ -2272,6 +2772,7 @@ async function saveDiscount(e) {
 
     const payload = {
         name,
+        category,
         amount1,
         operator,
         amount2,

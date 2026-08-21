@@ -75,16 +75,23 @@ function initDb() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             slug TEXT UNIQUE,
-            image TEXT
+            image TEXT,
+            is_visible INTEGER DEFAULT 1
         )`, (err) => {
             if (err) {
                 console.error("Error creating categories table:", err);
             } else {
+                // Migration for existing sqlite databases to add is_visible column
+                db.run(`ALTER TABLE categories ADD COLUMN is_visible INTEGER DEFAULT 1`, (mErr) => {
+                    // Column might already exist, safe to ignore error
+                });
+                db.run(`UPDATE categories SET is_visible = 1 WHERE is_visible IS NULL`, (mErr) => {});
+
                 // Seed if empty
                 db.get("SELECT count(*) as count FROM categories", (err, row) => {
                     if (row && row.count === 0) {
                         console.log("Seeding categories...");
-                        const insert = db.prepare("INSERT INTO categories (id, name, slug, image) VALUES (?, ?, ?, ?)");
+                        const insert = db.prepare("INSERT INTO categories (id, name, slug, image, is_visible) VALUES (?, ?, ?, ?, 1)");
                         categories.forEach(cat => {
                             insert.run(cat.id, cat.name, cat.slug, cat.image);
                         });
@@ -157,6 +164,7 @@ function initDb() {
         db.run(`CREATE TABLE IF NOT EXISTS discounts (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            category TEXT DEFAULT 'ALL',
             amount1 REAL DEFAULT 0,
             operator TEXT DEFAULT '>=',
             amount2 REAL DEFAULT 0,
@@ -166,6 +174,11 @@ function initDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating discounts table:", err);
+        });
+
+        // Migration: Add category column to discounts table if not exists
+        db.run(`ALTER TABLE discounts ADD COLUMN category TEXT DEFAULT 'ALL'`, (err) => {
+            // Ignore error if column already exists
         });
 
         // Product Translations Table (Groq AI Cache)

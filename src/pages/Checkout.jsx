@@ -130,6 +130,21 @@ const Checkout = () => {
         for (const rule of discounts) {
             const isEnabled = rule.is_enabled === true || rule.is_enabled === 1 || rule.is_enabled === '1';
             if (!isEnabled) continue;
+
+            const isAllCategories = !rule.category || rule.category === 'ALL' || rule.category === 'all' || rule.category === '';
+            let targetSubtotal = subtotal;
+
+            if (!isAllCategories) {
+                targetSubtotal = cart.reduce((sum, item) => {
+                    const product = products.find(p => p.id === item.id);
+                    if (product && product.category === rule.category) {
+                        return sum + (product.price * item.qty);
+                    }
+                    return sum;
+                }, 0);
+                if (targetSubtotal <= 0) continue;
+            }
+
             const amt1 = Number(rule.amount1 || 0);
             const amt2 = Number(rule.amount2 || 0);
             const op = rule.operator || '>=';
@@ -137,29 +152,29 @@ const Checkout = () => {
             let matches = false;
             if (amt2 > 0) {
                 if (op === '>' || op === '<') {
-                    matches = subtotal > amt1 && subtotal < amt2;
+                    matches = targetSubtotal > amt1 && targetSubtotal < amt2;
                 } else {
-                    matches = subtotal >= amt1 && subtotal <= amt2;
+                    matches = targetSubtotal >= amt1 && targetSubtotal <= amt2;
                 }
             } else {
-                if (op === '>') matches = subtotal > amt1;
-                else if (op === '>=') matches = subtotal >= amt1;
-                else if (op === '<') matches = subtotal < amt1;
-                else if (op === '<=') matches = subtotal <= amt1;
+                if (op === '>') matches = targetSubtotal > amt1;
+                else if (op === '>=') matches = targetSubtotal >= amt1;
+                else if (op === '<') matches = targetSubtotal < amt1;
+                else if (op === '<=') matches = targetSubtotal <= amt1;
             }
 
             if (matches) {
                 if (rule.discount_type === 'free_delivery') {
                     fDelivery = 0;
-                    applied.push({ id: rule.id, name: rule.name, type: 'free_delivery', amount: baseDelivery });
+                    applied.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'free_delivery', amount: baseDelivery });
                 } else if (rule.discount_type === 'percentage') {
-                    const pAmt = Math.round((subtotal * Number(rule.discount_value || 0)) / 100);
+                    const pAmt = Math.round((targetSubtotal * Number(rule.discount_value || 0)) / 100);
                     dAmount += pAmt;
-                    applied.push({ id: rule.id, name: rule.name, type: 'percentage', value: rule.discount_value, amount: pAmt });
+                    applied.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'percentage', value: rule.discount_value, amount: pAmt });
                 } else if (rule.discount_type === 'fixed') {
-                    const fAmt = Math.min(subtotal, Number(rule.discount_value || 0));
+                    const fAmt = Math.min(targetSubtotal, Number(rule.discount_value || 0));
                     dAmount += fAmt;
-                    applied.push({ id: rule.id, name: rule.name, type: 'fixed', value: rule.discount_value, amount: fAmt });
+                    applied.push({ id: rule.id, name: rule.name, category: rule.category || 'ALL', type: 'fixed', value: rule.discount_value, amount: fAmt });
                 }
             }
         }

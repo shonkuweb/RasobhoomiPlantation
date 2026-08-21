@@ -31,7 +31,12 @@ const CategoryPage = () => {
     useEffect(() => {
         if (categories.length === 0) return;
         const category = categories.find(c => c.slug === slug);
-        const categoryName = category ? category.name : 'Unknown Category';
+        if (!category) {
+            setRawTitle('');
+            setCategoryProducts([]);
+            return;
+        }
+        const categoryName = category.name;
         setRawTitle(categoryName);
 
         if (products.length > 0) {
@@ -40,7 +45,8 @@ const CategoryPage = () => {
         }
     }, [slug, products, categories]);
 
-    const displayTitle = translateCategoryName(rawTitle, language);
+    const isNotFound = categories.length > 0 && !categories.some(c => c.slug === slug);
+    const displayTitle = rawTitle ? translateCategoryName(rawTitle, language) : (isNotFound ? 'Category Not Available' : 'Category');
 
     return (
         <main style={{ padding: '1rem', maxWidth: '1440px', margin: '0 auto' }}>
@@ -55,19 +61,39 @@ const CategoryPage = () => {
                 <h1 style={{ fontSize: '1.5rem', textTransform: 'uppercase' }}>{displayTitle}</h1>
             </div>
 
-            <section className="product-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                gap: '1.5rem'
-            }}>
-                {categoryProducts.length > 0 ? (
-                    categoryProducts.map(p => <ProductCard key={p.id} product={p} />)
-                ) : (
-                    <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
-                        No products found in this category.
+            {isNotFound ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                    <p style={{ fontSize: '1.1rem', color: '#64748b', marginBottom: '1.5rem' }}>
+                        This category is currently not available or has been hidden.
                     </p>
-                )}
-            </section>
+                    <Link to="/categories" style={{
+                        display: 'inline-block',
+                        padding: '0.65rem 1.5rem',
+                        background: '#1A4D2E',
+                        color: 'white',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem'
+                    }}>
+                        {t('view_all_categories') || 'View All Categories'}
+                    </Link>
+                </div>
+            ) : (
+                <section className="product-grid" style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gap: '1.5rem'
+                }}>
+                    {categoryProducts.length > 0 ? (
+                        categoryProducts.map(p => <ProductCard key={p.id} product={p} />)
+                    ) : (
+                        <p style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
+                            No products found in this category.
+                        </p>
+                    )}
+                </section>
+            )}
         </main>
     );
 };
