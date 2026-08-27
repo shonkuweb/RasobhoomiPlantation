@@ -687,11 +687,12 @@ const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000;
 let productCacheVersion = 1;
 const productResponseCache = new Map();
 
-const buildProductCacheKey = (page, limit, isPaginated, summary) => {
+const buildProductCacheKey = (page, limit, isPaginated, summary, includeHidden = false) => {
     const summaryKey = summary ? ':s1' : '';
+    const hiddenKey = includeHidden ? ':hid1' : '';
     return isPaginated
-        ? `p:${page}:l:${limit}${summaryKey}:v:${productCacheVersion}`
-        : `all${summaryKey}:v:${productCacheVersion}`;
+        ? `p:${page}:l:${limit}${summaryKey}${hiddenKey}:v:${productCacheVersion}`
+        : `all${summaryKey}${hiddenKey}:v:${productCacheVersion}`;
 };
 
 const parseProductRows = (rows) => rows.map(p => ({
@@ -762,7 +763,16 @@ const getPhonePeTransactionId = (payload = {}) =>
 // PRODUCTS
 app.get('/api/products/catalog-pdf', (req, res) => {
     const lang = req.query.lang || 'bn';
-    db.all("SELECT * FROM products ORDER BY id DESC", [], async (err, rows) => {
+    const sql = `
+        SELECT p.* FROM products p
+        WHERE NOT EXISTS (
+            SELECT 1 FROM categories c
+            WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
+              AND c.is_visible = 0
+        )
+        ORDER BY p.id DESC
+    `;
+    db.all(sql, [], async (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         try {
             const rawProducts = parseProductRows(rows);
@@ -787,7 +797,16 @@ app.get('/api/products/catalog-pdf', (req, res) => {
 
 app.get('/api/products/translations', (req, res) => {
     const lang = req.query.lang || 'en';
-    db.all("SELECT * FROM products ORDER BY id DESC", [], async (err, rows) => {
+    const sql = `
+        SELECT p.* FROM products p
+        WHERE NOT EXISTS (
+            SELECT 1 FROM categories c
+            WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
+              AND c.is_visible = 0
+        )
+        ORDER BY p.id DESC
+    `;
+    db.all(sql, [], async (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         try {
             const rawProducts = parseProductRows(rows);
@@ -800,16 +819,36 @@ app.get('/api/products/translations', (req, res) => {
 });
 
 app.get('/api/products/:id', (req, res) => {
-    const cacheKey = `one:${req.params.id}:v:${productCacheVersion}`;
+    let isAdmin = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+            jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { ignoreExpiration: true });
+            isAdmin = true;
+        } catch (e) {}
+    }
+    const includeHidden = req.query.include_hidden === '1' || req.query.include_hidden === 'true' || req.query.all === '1' || req.query.all === 'true' || isAdmin;
+
+    const cacheKey = `one:${req.params.id}:v:${productCacheVersion}:hid:${includeHidden ? 1 : 0}`;
     const cachedPayload = getCachedPayload(cacheKey);
     if (cachedPayload) {
         setProductResponseHeaders(res, cacheKey);
         return res.json(cachedPayload);
     }
 
-    db.get('SELECT * FROM products WHERE id = ?', [req.params.id], (err, row) => {
+    const sql = `
+        SELECT p.*, c.is_visible as cat_is_visible
+        FROM products p
+        LEFT JOIN categories c ON (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
+        WHERE p.id = ?
+    `;
+
+    db.get(sql, [req.params.id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Product not found' });
+        if (!includeHidden && row.cat_is_visible === 0) {
+            return res.status(404).json({ error: 'Product not found or category unavailable' });
+        }
         try {
             const [product] = parseProductRows([row]);
             setCachedPayload(cacheKey, product);
@@ -821,12 +860,35 @@ app.get('/api/products/:id', (req, res) => {
     });
 });
 
+app.get('/api/admin/products', requireAuth, (req, res) => {
+    db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        try {
+            const products = parseProductRows(rows);
+            res.json(products);
+        } catch (parseErr) {
+            res.status(500).json({ error: "Failed to parse product data" });
+        }
+    });
+});
+
 app.get('/api/products', (req, res) => {
     const page = parseInt(req.query.page) || 0;
     const limit = parseInt(req.query.limit) || 0;
     const isPaginated = page > 0 && limit > 0;
     const summary = req.query.summary === '1' || req.query.summary === 'true';
-    const cacheKey = buildProductCacheKey(page, limit, isPaginated, summary);
+
+    let isAdmin = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+            jwt.verify(authHeader.split(' ')[1], JWT_SECRET, { ignoreExpiration: true });
+            isAdmin = true;
+        } catch (e) {}
+    }
+    const includeHidden = req.query.include_hidden === '1' || req.query.include_hidden === 'true' || req.query.all === '1' || req.query.all === 'true' || isAdmin;
+
+    const cacheKey = buildProductCacheKey(page, limit, isPaginated, summary, includeHidden);
     const cachedPayload = getCachedPayload(cacheKey);
     const parseRows = summary ? parseProductRowsSummary : parseProductRows;
 
@@ -835,16 +897,24 @@ app.get('/api/products', (req, res) => {
         return res.json(cachedPayload);
     }
 
+    const whereClause = includeHidden
+        ? ""
+        : ` WHERE NOT EXISTS (
+              SELECT 1 FROM categories c
+              WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(products.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(products.category)))
+                AND c.is_visible = 0
+          )`;
+
     if (isPaginated) {
         // Get total count first, then fetch the page
-        db.get("SELECT COUNT(*) as total FROM products", [], (err, countRow) => {
+        db.get(`SELECT COUNT(*) as total FROM products${whereClause}`, [], (err, countRow) => {
             if (err) return res.status(500).json({ error: err.message });
 
-            const total = countRow.total;
+            const total = countRow ? countRow.total : 0;
             const offset = (page - 1) * limit;
             const hasMore = offset + limit < total;
 
-            db.all("SELECT * FROM products ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset], (err, rows) => {
+            db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset], (err, rows) => {
                 if (err) return res.status(500).json({ error: err.message });
                 try {
                     const products = parseRows(rows);
@@ -858,8 +928,8 @@ app.get('/api/products', (req, res) => {
             });
         });
     } else {
-        // Return all products (non-paginated, legacy)
-        db.all("SELECT * FROM products ORDER BY id DESC", [], (err, rows) => {
+        // Return all products (non-paginated)
+        db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC`, [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             try {
                 const products = parseRows(rows);
@@ -1095,6 +1165,7 @@ app.patch('/api/admin/categories/:id/visibility', requireAuth, (req, res) => {
 
     db.run("UPDATE categories SET is_visible = ? WHERE id = ?", [visibleVal, id], function (err) {
         if (err) return res.status(500).json({ error: err.message });
+        invalidateProductCache();
         res.json({ success: true, id, is_visible: visibleVal === 1 });
     });
 });
@@ -1108,12 +1179,14 @@ app.post('/api/admin/categories/visibility-batch', requireAuth, (req, res) => {
         const placeholders = ids.map(() => '?').join(',');
         db.run(`UPDATE categories SET is_visible = ? WHERE id IN (${placeholders})`, [visibleVal, ...ids], function (err) {
             if (err) return res.status(500).json({ error: err.message });
+            invalidateProductCache();
             res.json({ success: true, count: this.changes || ids.length, is_visible: visibleVal === 1 });
         });
     } else {
         // Apply to all categories
         db.run("UPDATE categories SET is_visible = ?", [visibleVal], function (err) {
             if (err) return res.status(500).json({ error: err.message });
+            invalidateProductCache();
             res.json({ success: true, count: this.changes, is_visible: visibleVal === 1 });
         });
     }

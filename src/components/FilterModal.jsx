@@ -28,7 +28,7 @@ const FilterModal = ({ isOpen, onClose, onApply, categories = [] }) => {
         setStock(false);
     };
 
-    const sourceCategories = Array.isArray(categories) && categories.length > 0 ? categories : allCategories;
+    const sourceCategories = Array.isArray(categories) ? categories : allCategories;
     const categoryOptions = sortCategoriesWithMangoFirst(sourceCategories).map(cat => cat.name);
 
     return (

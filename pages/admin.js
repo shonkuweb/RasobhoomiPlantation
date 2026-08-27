@@ -214,7 +214,10 @@ async function fetchAllProducts() {
     if (productsLoadingBatch) return;
     productsLoadingBatch = true;
     try {
-        const res = await fetch('/api/products');
+        let res = await fetch('/api/admin/products', { headers: getAuthHeaders() });
+        if (!res.ok) {
+            res = await fetch('/api/products?include_hidden=1', { headers: getAuthHeaders() });
+        }
         if (!res.ok) return;
         const raw = await res.json();
         const data = Array.isArray(raw) ? raw : (raw.products || []);

@@ -47,8 +47,16 @@ const processPayment = (req, res, next) => {
 
 // PRODUCTS
 app.get('/api/products', async (req, res) => {
+    const includeHidden = req.query.include_hidden === '1' || req.query.include_hidden === 'true' || req.query.all === '1' || req.query.all === 'true';
     try {
-        const { rows } = await db.query("SELECT * FROM products");
+        const sql = includeHidden
+            ? "SELECT * FROM products ORDER BY id DESC"
+            : `SELECT p.* FROM products p WHERE NOT EXISTS (
+                SELECT 1 FROM categories c
+                WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
+                  AND c.is_visible = 0
+               ) ORDER BY p.id DESC`;
+        const { rows } = await db.query(sql);
         // Parse JSON fields
         const products = rows.map(p => ({
             ...p,
