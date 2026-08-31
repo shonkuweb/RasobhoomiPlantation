@@ -299,7 +299,7 @@ export const uiTranslations = {
         shipping_address: "শিপিং ঠিকানা",
         city: "শহর",
         state: "রাজ্য",
-        pincode: "পিনকোর্ড",
+        pincode: "পিনকোড",
         payment_method: "পেমেন্ট পদ্ধতি",
         cod: "ক্যাশ অন ডেলিভারি",
         online_payment: "অনলাইন পেমেন্ট (ইউপিআই, কার্ড, নেটব্যাঙ্কিং)",
@@ -347,7 +347,7 @@ export const uiTranslations = {
         price_low_high: "দাম: কম থেকে বেশি",
         price_high_low: "দাম: বেশি থেকে কম",
         availability: "উপলব্ধতা",
-        in_stock_only: "কেবল স্টকে থাকা পণ্য",
+        in_stock_only: "केवल स्टॉक में उपलब्ध",
         reset: "রিসেট",
         apply: "প্রয়োগ করুন"
     }
@@ -359,7 +359,6 @@ export const categoryTranslations = {
     "Foreigner Mango": { hi: "विदेशी आम", bn: "বিদেশী আম" },
     "Malta Orange": { hi: "माल्टा संतरा", bn: "মাল্টা কমলা" },
     "Orange": { hi: "संतरा", bn: "কমলালেবু" },
-    "Guava": { hi: "अमरूद", bn: "পেয়ারা" },
     "Jackfruit": { hi: "कटहल", bn: "কাঁঠাল" },
     "Jamun": { hi: "जामुन", bn: "জাম" },
     "Water Apple": { hi: "वाटर एप्पल (जामरुल)", bn: "জামরুল" },
@@ -371,13 +370,7 @@ export const categoryTranslations = {
     "Longon": { hi: "लोंगॉन (आंशफल)", bn: "আঁশফল" },
     "Longan": { hi: "लोंगॉन (आंशफल)", bn: "আঁশফল" },
     "Litchi": { hi: "लीची", bn: "লিচু" },
-    "Anar": { hi: "अनार", bn: "বেদানা" },
     "Grape": { hi: "अंगूर", bn: "আঙুর" },
-    "Fruit Tree": { hi: "फलदार पेड़", bn: "ফল গাছ" },
-    "Fruit Plants": { hi: "फलदार पौधे", bn: "ফল গাছ" },
-    "Drum Plants": { hi: "ड्रम के पौधे", bn: "ড্রাম গাছ" },
-    "Spice Plants": { hi: "मसाले के पौधे", bn: "মশলা গাছ" },
-    "Flower Plants": { hi: "फूलों के पौधे", bn: "ফুল গাছ" },
     "Others": { hi: "अन्य", bn: "অন্যান্য" }
 };
 
@@ -397,14 +390,9 @@ export const canonicalCategoryKey = (inputName) => {
     if (lower === 'logan' || lower === 'longan' || lower === 'longon') return 'Longan';
     if (lower === 'indian mango' || lower === 'indian mangoes' || lower === 'indian-mangoes') return 'Indian Mangoes';
     if (lower === 'foreigner mango' || lower === 'foreigner mangoes' || lower === 'foreigner-mango' || lower === 'foreign mango') return 'Foreigner Mango';
-    if (lower === 'fruit tree' || lower === 'fruit plants' || lower === 'fruit-tree') return 'Fruit Plants';
     if (lower === 'malta orange' || lower === 'malta-orange') return 'Malta Orange';
     if (lower === 'water apple' || lower === 'water-apple') return 'Water Apple';
     if (lower === 'betel nut' || lower === 'betel-nut') return 'Betel Nut';
-    if (lower === 'drum plants' || lower === 'drum-plants') return 'Drum Plants';
-    if (lower === 'spice plants' || lower === 'spice-plants') return 'Spice Plants';
-    if (lower === 'flower plants' || lower === 'flower-plants') return 'Flower Plants';
-    if (lower === 'currant' || lower === 'pomegranate' || lower === 'anar') return 'Anar';
 
     // Reverse lookup from translated Bengali/Hindi strings
     for (const [key, transObj] of Object.entries(categoryTranslations)) {

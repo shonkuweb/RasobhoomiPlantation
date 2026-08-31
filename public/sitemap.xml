@@ -42,11 +42,6 @@
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://rasobhoomiplantation.com/category/guava</loc>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
         <loc>https://rasobhoomiplantation.com/category/jackfruit</loc>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
@@ -97,17 +92,7 @@
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://rasobhoomiplantation.com/category/anar</loc>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
         <loc>https://rasobhoomiplantation.com/category/grape</loc>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
-        <loc>https://rasobhoomiplantation.com/category/fruit-tree</loc>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>
     </url>

@@ -51,8 +51,6 @@ function translateProductAdmin(p, lang = 'en') {
     const categoryTranslations = {
         "Indian Mangoes": { hi: "भारतीय आम", bn: "ভারতীয় আম" },
         "Foreigner Mango": { hi: "विदेशी आम", bn: "विदेशী আম" },
-        "Fruit Plants": { hi: "फलदार पौधे", bn: "ফল গাছ" },
-        "Guava": { hi: "अमरूद", bn: "পেয়ারা" },
         "Lemon": { hi: "नींबू", bn: "লেবু" },
         "Jackfruit": { hi: "कटहल", bn: "কাঁঠাল" }
     };
@@ -737,7 +735,6 @@ function getCategoryImageUrl(cat) {
         'foreigner-mango': '/assets/foreignmango.png',
         'malta-orange': '/assets/maltaorange.png',
         'orange': '/assets/orange.png',
-        'guava': '/assets/guava.png',
         'jackfruit': '/assets/jackfruit.png',
         'jamun': '/assets/jamun.png',
         'water-apple': '/assets/watterapple.png',
@@ -748,11 +745,8 @@ function getCategoryImageUrl(cat) {
         'amloki': '/assets/amloki.png',
         'longon': '/assets/longan.png',
         'litchi': '/assets/litchi.png',
-        'anar': '/assets/pomegranant.png',
         'grape': '/assets/grapes.png',
-        'fruit-tree': '/assets/fruittree.png',
-        'others': '/assets/others.png',
-        'drum-plants': '/assets/drumplants.png'
+        'others': '/assets/others.png'
     };
     return (cat.slug && imageMap[cat.slug]) || cat.image || '/assets/others.png';
 }

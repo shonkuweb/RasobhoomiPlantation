@@ -159,7 +159,7 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             const pageHeight = 841.89;
             const margin = 32;
             const contentWidth = pageWidth - (margin * 2);
-            const maxY = pageHeight - 38; // Usable vertical boundary before footer
+            const maxY = pageHeight - 40; // Usable vertical boundary before footer
 
             // Group products by category accurately
             const categoryMap = {};
@@ -189,33 +189,33 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             let currentY = margin;
 
             // Draw Header Banner on Page 1
-            const bannerHeight = 48;
+            const bannerHeight = 52;
             doc.rect(margin, currentY, contentWidth, bannerHeight).fill(PRIMARY_COLOR);
 
             doc.fillColor('#FFFFFF')
                .font(FONT_BOLD)
-               .fontSize(15)
+               .fontSize(16.5)
                .text(t.title, margin + 12, currentY + 8, { lineBreak: false });
 
             doc.font(FONT_REGULAR)
-               .fontSize(9)
-               .text(t.subtitle, margin + 12, currentY + 28, { lineBreak: false });
+               .fontSize(10)
+               .text(t.subtitle, margin + 12, currentY + 30, { lineBreak: false });
 
             const dateStr = new Date().toLocaleDateString(selectedLang === 'bn' ? 'bn-IN' : selectedLang === 'hi' ? 'hi-IN' : 'en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             });
 
-            doc.fontSize(8)
+            doc.fontSize(9)
                .text(`${t.dateLabel} ${dateStr}`, margin, currentY + 10, { align: 'right', width: contentWidth - 12, lineBreak: false })
-               .text(`${t.totalProductsLabel} ${productList.length}`, margin, currentY + 26, { align: 'right', width: contentWidth - 12, lineBreak: false });
+               .text(`${t.totalProductsLabel} ${productList.length}`, margin, currentY + 28, { align: 'right', width: contentWidth - 12, lineBreak: false });
 
-            currentY += bannerHeight + 10;
+            currentY += bannerHeight + 12;
 
             const colWidths = {
-                name: 247,
-                price: 92,
-                discount: 82,
-                marketPrice: 110
+                name: 245,
+                price: 95,
+                discount: 85,
+                marketPrice: 106.28
             };
             const colX = {
                 name: margin,
@@ -224,20 +224,20 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
                 marketPrice: margin + colWidths.name + colWidths.price + colWidths.discount
             };
 
-            const rowHeight = 18;
-            const categoryHeaderHeight = 20;
-            const tableHeaderHeight = 18;
+            const rowHeight = 22;
+            const categoryHeaderHeight = 22;
+            const tableHeaderHeight = 20;
 
             const drawTableHeader = (y) => {
                 doc.rect(margin, y, contentWidth, tableHeaderHeight).fill(PRIMARY_COLOR);
                 doc.fillColor('#FFFFFF')
                    .font(FONT_BOLD)
-                   .fontSize(8);
+                   .fontSize(9);
 
-                doc.text(t.tableHeaders.name, colX.name + 8, y + 5, { width: colWidths.name - 16, lineBreak: false });
-                doc.text(t.tableHeaders.price, colX.price, y + 5, { width: colWidths.price, align: 'center', lineBreak: false });
-                doc.text(t.tableHeaders.discount, colX.discount, y + 5, { width: colWidths.discount, align: 'center', lineBreak: false });
-                doc.text(t.tableHeaders.marketPrice, colX.marketPrice, y + 5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
+                doc.text(t.tableHeaders.name, colX.name + 8, y + 5.5, { width: colWidths.name - 16, lineBreak: false });
+                doc.text(t.tableHeaders.price, colX.price, y + 5.5, { width: colWidths.price, align: 'center', lineBreak: false });
+                doc.text(t.tableHeaders.discount, colX.discount, y + 5.5, { width: colWidths.discount, align: 'center', lineBreak: false });
+                doc.text(t.tableHeaders.marketPrice, colX.marketPrice, y + 5.5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
             };
 
             // Iterate over categories
@@ -258,13 +258,13 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
 
                 doc.fillColor(PRIMARY_COLOR)
                    .font(FONT_BOLD)
-                   .fontSize(9.5)
-                   .text(`${t.categoryPrefix} ${catName.toUpperCase()}`, margin + 8, currentY + 5, { lineBreak: false });
+                   .fontSize(10.5)
+                   .text(`${t.categoryPrefix} ${catName.toUpperCase()}`, margin + 8, currentY + 5.5, { lineBreak: false });
 
                 doc.fillColor(TEXT_MUTED)
                    .font(FONT_REGULAR)
-                   .fontSize(8)
-                   .text(t.itemsCount(catProducts.length), margin, currentY + 6, { align: 'right', width: contentWidth - 8, lineBreak: false });
+                   .fontSize(9)
+                   .text(t.itemsCount(catProducts.length), margin, currentY + 6.5, { align: 'right', width: contentWidth - 8, lineBreak: false });
 
                 currentY += categoryHeaderHeight + 3;
 
@@ -293,13 +293,13 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
                         currentY = margin;
 
                         // Continuation category banner
-                        doc.roundedRect(margin, currentY, contentWidth, 16, 2)
+                        doc.roundedRect(margin, currentY, contentWidth, 18, 2)
                            .fillAndStroke(PRIMARY_LIGHT_BG, PRIMARY_BORDER);
                         doc.fillColor(PRIMARY_COLOR)
                            .font(FONT_BOLD)
-                           .fontSize(8)
-                           .text(`${t.categoryPrefix} ${catName.toUpperCase()} (${selectedLang === 'bn' ? 'চলমান' : selectedLang === 'hi' ? 'जारी' : 'Contd.'})`, margin + 6, currentY + 4, { lineBreak: false });
-                        currentY += 19;
+                           .fontSize(9)
+                           .text(`${t.categoryPrefix} ${catName.toUpperCase()} (${selectedLang === 'bn' ? 'চলমান' : selectedLang === 'hi' ? 'जारी' : 'Contd.'})`, margin + 6, currentY + 4.5, { lineBreak: false });
+                        currentY += 21;
 
                         // Re-draw table header on new page
                         drawTableHeader(currentY);
@@ -317,26 +317,26 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
                     // Name
                     doc.fillColor(TEXT_DARK)
                        .font(FONT_BOLD)
-                       .fontSize(8)
-                       .text(p.name || 'Unnamed Product', colX.name + 8, currentY + 4.5, { width: colWidths.name - 16, lineBreak: false });
+                       .fontSize(9.5)
+                       .text(p.name || 'Unnamed Product', colX.name + 8, currentY + 5.5, { width: colWidths.name - 16, lineBreak: false });
 
                     // Current Price
                     doc.fillColor(PRIMARY_COLOR)
                        .font(FONT_BOLD)
-                       .fontSize(8)
-                       .text(priceFormatted, colX.price, currentY + 4.5, { width: colWidths.price, align: 'center', lineBreak: false });
+                       .fontSize(9.5)
+                       .text(priceFormatted, colX.price, currentY + 5.5, { width: colWidths.price, align: 'center', lineBreak: false });
 
                     // Discount %
                     doc.fillColor(TEXT_DARK)
                        .font(FONT_REGULAR)
-                       .fontSize(8)
-                       .text(discountFormatted, colX.discount, currentY + 4.5, { width: colWidths.discount, align: 'center', lineBreak: false });
+                       .fontSize(9.5)
+                       .text(discountFormatted, colX.discount, currentY + 5.5, { width: colWidths.discount, align: 'center', lineBreak: false });
 
                     // Market Price
                     doc.fillColor(TEXT_MUTED)
                        .font(FONT_REGULAR)
-                       .fontSize(8)
-                       .text(marketPriceFormatted, colX.marketPrice, currentY + 4.5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
+                       .fontSize(9.5)
+                       .text(marketPriceFormatted, colX.marketPrice, currentY + 5.5, { width: colWidths.marketPrice - 8, align: 'center', lineBreak: false });
 
                     currentY += rowHeight;
                 });
@@ -351,14 +351,14 @@ export function generateCatalogPdf(rawProducts, lang = 'bn') {
             for (let i = 0; i < totalPages; i++) {
                 doc.switchToPage(i);
 
-                doc.rect(margin, pageHeight - 26, contentWidth, 0.5).fill('#E2E8F0');
+                doc.rect(margin, pageHeight - 28, contentWidth, 0.5).fill('#E2E8F0');
 
                 doc.fillColor(TEXT_MUTED)
                    .font(FONT_REGULAR)
-                   .fontSize(7.5)
-                   .text(t.footerText, margin, pageHeight - 19, { lineBreak: false });
+                   .fontSize(8.5)
+                   .text(t.footerText, margin, pageHeight - 20, { lineBreak: false });
 
-                doc.text(t.pageLabel(i + 1, totalPages), margin, pageHeight - 19, {
+                doc.text(t.pageLabel(i + 1, totalPages), margin, pageHeight - 20, {
                     align: 'right',
                     width: contentWidth,
                     lineBreak: false
