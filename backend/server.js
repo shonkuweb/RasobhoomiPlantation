@@ -740,11 +740,7 @@ const setProductResponseHeaders = (res, key) => {
 const normalizeCategoryName = (s) => (s || '')
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]/g, '')
-    .replace(/foreigner/g, 'foreign')
-    .replace(/plants/g, 'plant')
-    .replace(/mangoes/g, 'mango')
-    .replace(/trees/g, 'tree');
+    .replace(/[^a-z0-9]/g, '');
 
 const isCategoryMatch = (catA, catB) => {
     if (!catA || !catB) return false;
@@ -752,16 +748,20 @@ const isCategoryMatch = (catA, catB) => {
     const normB = normalizeCategoryName(catB);
     if (!normA || !normB) return false;
     if (normA === normB) return true;
-    if (normA.startsWith(normB) || normB.startsWith(normA)) {
-        return Math.min(normA.length, normB.length) >= 4;
-    }
-    return false;
+    
+    // Normalize plurals and naming variations
+    const cleanA = normA.replace(/foreigner/g, 'foreign').replace(/plants/g, 'plant').replace(/mangoes/g, 'mango').replace(/trees/g, 'tree');
+    const cleanB = normB.replace(/foreigner/g, 'foreign').replace(/plants/g, 'plant').replace(/mangoes/g, 'mango').replace(/trees/g, 'tree');
+    return cleanA === cleanB;
 };
 
 const getHiddenCategoriesFromDb = () => {
     return new Promise((resolve) => {
-        db.all("SELECT id, name, slug FROM categories WHERE is_visible = 0 OR is_visible IS FALSE", [], (err, rows) => {
-            if (err) return resolve([]);
+        db.all("SELECT id, name, slug FROM categories WHERE COALESCE(is_visible, 1) = 0", [], (err, rows) => {
+            if (err) {
+                console.error("Error fetching hidden categories:", err);
+                return resolve([]);
+            }
             resolve(rows || []);
         });
     });
@@ -805,7 +805,7 @@ app.get('/api/products/catalog-pdf', async (req, res) => {
                 OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
                 OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
             )
-            AND (c.is_visible = 0 OR c.is_visible IS FALSE)
+            AND COALESCE(c.is_visible, 1) = 0
         )
         ORDER BY p.id DESC
     `;
@@ -850,7 +850,7 @@ app.get('/api/products/translations', (req, res) => {
                 OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
                 OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
             )
-            AND (c.is_visible = 0 OR c.is_visible IS FALSE)
+            AND COALESCE(c.is_visible, 1) = 0
         )
         ORDER BY p.id DESC
     `;
@@ -974,7 +974,7 @@ app.get('/api/products', (req, res) => {
                   OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(products.category)), '-', ''), ' ', '')
                   OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(products.category)), '-', ''), ' ', '')
               )
-              AND (c.is_visible = 0 OR c.is_visible IS FALSE)
+              AND COALESCE(c.is_visible, 1) = 0
           )`;
 
     if (isPaginated) {

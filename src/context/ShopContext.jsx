@@ -25,53 +25,20 @@ export const ShopProvider = ({ children }) => {
         }
     }, [cart]);
 
-    const normalizeCat = (s) => (s || '')
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]/g, '')
-        .replace(/foreigner/g, 'foreign')
-        .replace(/plants/g, 'plant')
-        .replace(/mangoes/g, 'mango')
-        .replace(/trees/g, 'tree');
-
-    const filterByVisibleCategories = (productList, visibleCats) => {
-        if (!Array.isArray(visibleCats) || visibleCats.length === 0) return productList;
-        return productList.filter(p => {
-            if (!p.category) return true;
-            const pNorm = normalizeCat(p.category);
-            return visibleCats.some(cat => {
-                const catNameNorm = normalizeCat(cat.name);
-                const catSlugNorm = normalizeCat(cat.slug);
-                return pNorm === catNameNorm || pNorm === catSlugNorm ||
-                       (catNameNorm && (pNorm.startsWith(catNameNorm) || catNameNorm.startsWith(pNorm))) ||
-                       (catSlugNorm && (pNorm.startsWith(catSlugNorm) || catSlugNorm.startsWith(pNorm)));
-            });
-        });
-    };
-
     useEffect(() => {
         let cancelled = false;
 
         const loadProducts = async () => {
             try {
-                const [prodRes, catRes] = await Promise.all([
-                    fetch('/api/products?summary=1'),
-                    fetch('/api/categories').catch(() => null)
-                ]);
-
-                if (!prodRes.ok) return;
-                const data = await prodRes.json();
-                let visibleCats = [];
-                if (catRes && catRes.ok) {
-                    try {
-                        visibleCats = await catRes.json();
-                    } catch (e) {}
+                const res = await fetch('/api/products?summary=1');
+                if (!res.ok) {
+                    console.error('Failed to fetch products: status', res.status);
+                    return;
                 }
-
+                const data = await res.json();
                 if (cancelled) return;
-                const rawList = Array.isArray(data) ? data : (data.products || []);
-                const filtered = filterByVisibleCategories(rawList, visibleCats);
-                setProducts(sortProductsWithMangoFirst(filtered));
+                const list = Array.isArray(data) ? data : (data.products || []);
+                setProducts(sortProductsWithMangoFirst(list));
             } catch (error) {
                 console.error('Failed to fetch products', error);
             } finally {
@@ -88,22 +55,11 @@ export const ShopProvider = ({ children }) => {
     const fetchProducts = async () => {
         setIsLoadingInitial(true);
         try {
-            const [prodRes, catRes] = await Promise.all([
-                fetch('/api/products?summary=1'),
-                fetch('/api/categories').catch(() => null)
-            ]);
-
-            if (prodRes.ok) {
-                const data = await prodRes.json();
-                let visibleCats = [];
-                if (catRes && catRes.ok) {
-                    try {
-                        visibleCats = await catRes.json();
-                    } catch (e) {}
-                }
-                const rawList = Array.isArray(data) ? data : (data.products || []);
-                const filtered = filterByVisibleCategories(rawList, visibleCats);
-                setProducts(sortProductsWithMangoFirst(filtered));
+            const res = await fetch('/api/products?summary=1');
+            if (res.ok) {
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data.products || []);
+                setProducts(sortProductsWithMangoFirst(list));
             }
         } catch (error) {
             console.error('Failed to fetch products', error);
