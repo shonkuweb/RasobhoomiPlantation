@@ -124,6 +124,7 @@ function initDb() {
                     ['malta-orange', '/assets/maltaorange.png'],
                     ['orange', '/assets/orange.png'],
                     ['longon', '/assets/longan.png'],
+                    ['guava', '/assets/guava.png'],
                     ['jackfruit', '/assets/jackfruit.png'],
                     ['jamun', '/assets/jamun.png'],
                     ['water-apple', '/assets/watterapple.png'],
@@ -134,7 +135,10 @@ function initDb() {
                     ['amloki', '/assets/amloki.png'],
                     ['litchi', '/assets/litchi.png'],
                     ['grape', '/assets/grapes.png'],
+                    ['anar', '/assets/pomegranant.png'],
+                    ['fruit-tree', '/assets/fruittree.png'],
                     ['others', '/assets/others.png'],
+                    ['drum-plants', '/assets/drumplants.png'],
                 ];
                 categoryImageBySlug.forEach(([slug, image]) => {
                     db.run(
@@ -146,19 +150,12 @@ function initDb() {
                     );
                 });
 
-                // Cleanup removed categories from DB
-                db.run(
-                    `DELETE FROM categories WHERE slug IN ('guava', 'anar', 'fruit-tree', 'drum-plants', 'spice-plants', 'flower-plants', 'currant') OR name IN ('Guava', 'Anar', 'Fruit Tree', 'Fruit Plants', 'Drum Plants', 'Spice Plants', 'Flower Plants', 'Currant')`,
-                    (delErr) => {
-                        if (delErr) console.error('Category cleanup error:', delErr);
-                    }
-                );
-                db.run(
-                    `UPDATE products SET category = 'Others' WHERE category IN ('Guava', 'Anar', 'Pomegranate', 'Fruit Tree', 'Fruit Plants', 'Drum Plants', 'Spice Plants', 'Flower Plants', 'Currant')`,
-                    (upErr) => {
-                        if (upErr) console.error('Product category cleanup error:', upErr);
-                    }
-                );
+                // Ensure all standard categories are present
+                const insertMissing = db.prepare("INSERT OR IGNORE INTO categories (id, name, slug, image, is_visible) VALUES (?, ?, ?, ?, 1)");
+                categories.forEach(cat => {
+                    insertMissing.run(cat.id, cat.name, cat.slug, cat.image);
+                });
+                insertMissing.finalize();
             }
         });
 
