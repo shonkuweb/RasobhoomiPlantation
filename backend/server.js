@@ -733,8 +733,38 @@ const invalidateProductCache = () => {
 };
 
 const setProductResponseHeaders = (res, key) => {
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+    res.set('Cache-Control', 'no-cache, must-revalidate');
     res.set('ETag', `W/"${key}"`);
+};
+
+const normalizeCategoryName = (s) => (s || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/foreigner/g, 'foreign')
+    .replace(/plants/g, 'plant')
+    .replace(/mangoes/g, 'mango')
+    .replace(/trees/g, 'tree');
+
+const isCategoryMatch = (catA, catB) => {
+    if (!catA || !catB) return false;
+    const normA = normalizeCategoryName(catA);
+    const normB = normalizeCategoryName(catB);
+    if (!normA || !normB) return false;
+    if (normA === normB) return true;
+    if (normA.startsWith(normB) || normB.startsWith(normA)) {
+        return Math.min(normA.length, normB.length) >= 4;
+    }
+    return false;
+};
+
+const getHiddenCategoriesFromDb = () => {
+    return new Promise((resolve) => {
+        db.all("SELECT id, name, slug FROM categories WHERE is_visible = 0 OR is_visible IS FALSE", [], (err, rows) => {
+            if (err) return resolve([]);
+            resolve(rows || []);
+        });
+    });
 };
 
 const getPhonePeOrderId = (payload = {}) =>
@@ -761,21 +791,32 @@ const getPhonePeTransactionId = (payload = {}) =>
 // --- API ENDPOINTS ---
 
 // PRODUCTS
-app.get('/api/products/catalog-pdf', (req, res) => {
+app.get('/api/products/catalog-pdf', async (req, res) => {
     const lang = req.query.lang || 'bn';
     const sql = `
         SELECT p.* FROM products p
         WHERE NOT EXISTS (
             SELECT 1 FROM categories c
-            WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
-              AND c.is_visible = 0
+            WHERE (
+                LOWER(TRIM(c.name)) = LOWER(TRIM(p.category))
+                OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category))
+                OR REPLACE(LOWER(TRIM(c.slug)), '-', ' ') = REPLACE(LOWER(TRIM(p.category)), '-', ' ')
+                OR REPLACE(LOWER(TRIM(c.name)), ' ', '-') = REPLACE(LOWER(TRIM(p.category)), ' ', '-')
+                OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+                OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+            )
+            AND (c.is_visible = 0 OR c.is_visible IS FALSE)
         )
         ORDER BY p.id DESC
     `;
     db.all(sql, [], async (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         try {
-            const rawProducts = parseProductRows(rows);
+            let rawProducts = parseProductRows(rows);
+            const hiddenCats = await getHiddenCategoriesFromDb();
+            if (hiddenCats.length > 0) {
+                rawProducts = rawProducts.filter(p => !hiddenCats.some(c => isCategoryMatch(c.name, p.category) || isCategoryMatch(c.slug, p.category)));
+            }
             let products = rawProducts;
             if (lang !== 'en') {
                 try {
@@ -801,15 +842,26 @@ app.get('/api/products/translations', (req, res) => {
         SELECT p.* FROM products p
         WHERE NOT EXISTS (
             SELECT 1 FROM categories c
-            WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
-              AND c.is_visible = 0
+            WHERE (
+                LOWER(TRIM(c.name)) = LOWER(TRIM(p.category))
+                OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category))
+                OR REPLACE(LOWER(TRIM(c.slug)), '-', ' ') = REPLACE(LOWER(TRIM(p.category)), '-', ' ')
+                OR REPLACE(LOWER(TRIM(c.name)), ' ', '-') = REPLACE(LOWER(TRIM(p.category)), ' ', '-')
+                OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+                OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+            )
+            AND (c.is_visible = 0 OR c.is_visible IS FALSE)
         )
         ORDER BY p.id DESC
     `;
     db.all(sql, [], async (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         try {
-            const rawProducts = parseProductRows(rows);
+            let rawProducts = parseProductRows(rows);
+            const hiddenCats = await getHiddenCategoriesFromDb();
+            if (hiddenCats.length > 0) {
+                rawProducts = rawProducts.filter(p => !hiddenCats.some(c => isCategoryMatch(c.name, p.category) || isCategoryMatch(c.slug, p.category)));
+            }
             const translated = await getTranslatedProducts(db, rawProducts, lang);
             res.json({ success: true, lang, products: translated });
         } catch (parseErr) {
@@ -839,15 +891,28 @@ app.get('/api/products/:id', (req, res) => {
     const sql = `
         SELECT p.*, c.is_visible as cat_is_visible
         FROM products p
-        LEFT JOIN categories c ON (LOWER(TRIM(c.name)) = LOWER(TRIM(p.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category)))
+        LEFT JOIN categories c ON (
+            LOWER(TRIM(c.name)) = LOWER(TRIM(p.category))
+            OR LOWER(TRIM(c.slug)) = LOWER(TRIM(p.category))
+            OR REPLACE(LOWER(TRIM(c.slug)), '-', ' ') = REPLACE(LOWER(TRIM(p.category)), '-', ' ')
+            OR REPLACE(LOWER(TRIM(c.name)), ' ', '-') = REPLACE(LOWER(TRIM(p.category)), ' ', '-')
+            OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+            OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(p.category)), '-', ''), ' ', '')
+        )
         WHERE p.id = ?
     `;
 
-    db.get(sql, [req.params.id], (err, row) => {
+    db.get(sql, [req.params.id], async (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Product not found' });
-        if (!includeHidden && row.cat_is_visible === 0) {
-            return res.status(404).json({ error: 'Product not found or category unavailable' });
+        if (!includeHidden) {
+            if (row.cat_is_visible === 0 || row.cat_is_visible === false) {
+                return res.status(404).json({ error: 'Product not found or category unavailable' });
+            }
+            const hiddenCats = await getHiddenCategoriesFromDb();
+            if (hiddenCats.some(c => isCategoryMatch(c.name, row.category) || isCategoryMatch(c.slug, row.category))) {
+                return res.status(404).json({ error: 'Product not found or category unavailable' });
+            }
         }
         try {
             const [product] = parseProductRows([row]);
@@ -901,8 +966,15 @@ app.get('/api/products', (req, res) => {
         ? ""
         : ` WHERE NOT EXISTS (
               SELECT 1 FROM categories c
-              WHERE (LOWER(TRIM(c.name)) = LOWER(TRIM(products.category)) OR LOWER(TRIM(c.slug)) = LOWER(TRIM(products.category)))
-                AND c.is_visible = 0
+              WHERE (
+                  LOWER(TRIM(c.name)) = LOWER(TRIM(products.category))
+                  OR LOWER(TRIM(c.slug)) = LOWER(TRIM(products.category))
+                  OR REPLACE(LOWER(TRIM(c.slug)), '-', ' ') = REPLACE(LOWER(TRIM(products.category)), '-', ' ')
+                  OR REPLACE(LOWER(TRIM(c.name)), ' ', '-') = REPLACE(LOWER(TRIM(products.category)), ' ', '-')
+                  OR REPLACE(REPLACE(LOWER(TRIM(c.slug)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(products.category)), '-', ''), ' ', '')
+                  OR REPLACE(REPLACE(LOWER(TRIM(c.name)), '-', ''), ' ', '') = REPLACE(REPLACE(LOWER(TRIM(products.category)), '-', ''), ' ', '')
+              )
+              AND (c.is_visible = 0 OR c.is_visible IS FALSE)
           )`;
 
     if (isPaginated) {
@@ -914,10 +986,16 @@ app.get('/api/products', (req, res) => {
             const offset = (page - 1) * limit;
             const hasMore = offset + limit < total;
 
-            db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset], (err, rows) => {
+            db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset], async (err, rows) => {
                 if (err) return res.status(500).json({ error: err.message });
                 try {
-                    const products = parseRows(rows);
+                    let products = parseRows(rows);
+                    if (!includeHidden) {
+                        const hiddenCats = await getHiddenCategoriesFromDb();
+                        if (hiddenCats.length > 0) {
+                            products = products.filter(p => !hiddenCats.some(c => isCategoryMatch(c.name, p.category) || isCategoryMatch(c.slug, p.category)));
+                        }
+                    }
                     const payload = { products, hasMore, total, page };
                     setCachedPayload(cacheKey, payload);
                     setProductResponseHeaders(res, cacheKey);
@@ -929,10 +1007,16 @@ app.get('/api/products', (req, res) => {
         });
     } else {
         // Return all products (non-paginated)
-        db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC`, [], (err, rows) => {
+        db.all(`SELECT * FROM products${whereClause} ORDER BY id DESC`, [], async (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             try {
-                const products = parseRows(rows);
+                let products = parseRows(rows);
+                if (!includeHidden) {
+                    const hiddenCats = await getHiddenCategoriesFromDb();
+                    if (hiddenCats.length > 0) {
+                        products = products.filter(p => !hiddenCats.some(c => isCategoryMatch(c.name, p.category) || isCategoryMatch(c.slug, p.category)));
+                    }
+                }
                 setCachedPayload(cacheKey, products);
                 setProductResponseHeaders(res, cacheKey);
                 res.json(products);
@@ -1162,8 +1246,17 @@ app.patch('/api/admin/categories/:id/visibility', requireAuth, (req, res) => {
     const { id } = req.params;
     const { is_visible } = req.body;
     const visibleVal = (is_visible === true || is_visible === 1 || is_visible === '1') ? 1 : 0;
+    const target = String(id).trim();
 
-    db.run("UPDATE categories SET is_visible = ? WHERE id = ?", [visibleVal, id], function (err) {
+    const sql = (process.env.DB_TYPE === 'postgres')
+        ? "UPDATE categories SET is_visible = $1 WHERE id::text = $2 OR slug = $2 OR LOWER(TRIM(name)) = LOWER(TRIM($2))"
+        : "UPDATE categories SET is_visible = ? WHERE CAST(id AS TEXT) = ? OR slug = ? OR LOWER(TRIM(name)) = LOWER(TRIM(?))";
+
+    const params = (process.env.DB_TYPE === 'postgres')
+        ? [visibleVal, target]
+        : [visibleVal, target, target, target];
+
+    db.run(sql, params, function (err) {
         if (err) return res.status(500).json({ error: err.message });
         invalidateProductCache();
         res.json({ success: true, id, is_visible: visibleVal === 1 });
@@ -1176,8 +1269,10 @@ app.post('/api/admin/categories/visibility-batch', requireAuth, (req, res) => {
     const visibleVal = (is_visible === true || is_visible === 1 || is_visible === '1') ? 1 : 0;
 
     if (Array.isArray(ids) && ids.length > 0) {
-        const placeholders = ids.map(() => '?').join(',');
-        db.run(`UPDATE categories SET is_visible = ? WHERE id IN (${placeholders})`, [visibleVal, ...ids], function (err) {
+        const idStrings = ids.map(x => String(x).trim());
+        const placeholders = idStrings.map(() => '?').join(',');
+        const sql = `UPDATE categories SET is_visible = ? WHERE CAST(id AS TEXT) IN (${placeholders}) OR slug IN (${placeholders})`;
+        db.run(sql, [visibleVal, ...idStrings, ...idStrings], function (err) {
             if (err) return res.status(500).json({ error: err.message });
             invalidateProductCache();
             res.json({ success: true, count: this.changes || ids.length, is_visible: visibleVal === 1 });

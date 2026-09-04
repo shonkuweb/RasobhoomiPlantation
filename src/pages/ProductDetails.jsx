@@ -25,14 +25,14 @@ const ProductDetails = () => {
             try {
                 const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
                 if (!res.ok) {
-                    if (!cancelled && !fromContext) setRawProduct(null);
+                    if (!cancelled) setRawProduct(null);
                     return;
                 }
                 const full = await res.json();
                 if (!cancelled) setRawProduct(full);
             } catch (err) {
                 console.error('Failed to load product', err);
-                if (!cancelled && !fromContext) setRawProduct(null);
+                if (!cancelled) setRawProduct(null);
             } finally {
                 if (!cancelled) setLoading(false);
             }
