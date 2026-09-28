@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Target phone number for payment success notifications
-export const DEFAULT_NOTIFICATION_NUMBER = '8972076182';
+export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '8972076182';
 
 let client = null;
 let currentQrDataUrl = null;
@@ -56,6 +56,25 @@ export function formatWhatsAppJid(phone) {
         cleaned = '91' + cleaned.substring(1);
     }
     return cleaned ? `${cleaned}@c.us` : null;
+}
+
+/**
+ * Resolves the admin recipient JID, checking environment variables
+ * and WhatsApp Web self-messaging mode.
+ */
+export function getAdminJid() {
+    const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || DEFAULT_NOTIFICATION_NUMBER;
+    const formatted = formatWhatsAppJid(adminPhone);
+    if (!formatted) return null;
+
+    if (client && client.info && client.info.wid) {
+        const clientUser = client.info.wid.user;
+        const targetUser = formatted.replace('@c.us', '');
+        if (clientUser === targetUser && client.info.wid._serialized) {
+            return client.info.wid._serialized;
+        }
+    }
+    return formatted;
 }
 
 /**
@@ -281,11 +300,12 @@ export function getWhatsAppStatus() {
         console.log('[WHATSAPP] Status checked while disconnected. Auto-triggering init...');
         initWhatsApp();
     }
+    const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || DEFAULT_NOTIFICATION_NUMBER;
     return {
         status: connectionState,
         qrCode: currentQrDataUrl,
         user: userInfo,
-        targetNumber: `+91 ${DEFAULT_NOTIFICATION_NUMBER}`
+        targetNumber: `+91 ${String(adminPhone).replace(/\D/g, '').slice(-10)}`
     };
 }
 
@@ -429,18 +449,28 @@ export async function sendOrderPaymentNotification(order) {
         try {
             const pdfLang = order.lang || 'en';
             const pdfBuffer = await generateInvoicePdf(order, pdfLang);
-            pdfMedia = new MessageMedia('application/pdf', pdfBuffer.toString('base64'), `Invoice_${order.id}.pdf`);
+            if (pdfBuffer && pdfBuffer.length > 0) {
+                pdfMedia = new MessageMedia('application/pdf', pdfBuffer.toString('base64'), `Invoice_${order.id}.pdf`, pdfBuffer.length);
+            }
         } catch (pdfErr) {
-            console.error('[WHATSAPP] Failed to generate PDF invoice:', pdfErr);
+            console.error(`[WHATSAPP] Failed to generate PDF invoice for order #${order.id}:`, pdfErr);
         }
 
-        // 1. Send to Admin / Notification Number (8972076182)
-        const adminJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
+        // 1. Send to Admin / Notification Number
+        const adminJid = getAdminJid();
         if (adminJid) {
             console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
             await client.sendMessage(adminJid, textMessage);
             if (pdfMedia) {
-                await client.sendMessage(adminJid, pdfMedia, { caption: `📄 Admin Copy - Invoice PDF Order #${order.id}` });
+                try {
+                    await client.sendMessage(adminJid, pdfMedia, {
+                        caption: `📄 Admin Copy - Invoice PDF Order #${order.id}`,
+                        sendMediaAsDocument: true
+                    });
+                } catch (adminPdfErr) {
+                    console.warn(`[WHATSAPP] Failed to send PDF to admin with caption for order #${order.id}, retrying without caption:`, adminPdfErr.message);
+                    await client.sendMessage(adminJid, pdfMedia, { sendMediaAsDocument: true });
+                }
             }
         }
 
@@ -452,7 +482,15 @@ export async function sendOrderPaymentNotification(order) {
                 const customerMsg = buildCustomerOrderMessage(order);
                 await client.sendMessage(customerJid, customerMsg);
                 if (pdfMedia) {
-                    await client.sendMessage(customerJid, pdfMedia, { caption: `📄 Tax Invoice - Order #${order.id}` });
+                    try {
+                        await client.sendMessage(customerJid, pdfMedia, {
+                            caption: `📄 Tax Invoice - Order #${order.id}`,
+                            sendMediaAsDocument: true
+                        });
+                    } catch (custPdfErr) {
+                        console.warn(`[WHATSAPP] Failed to send PDF to customer with caption for order #${order.id}, retrying without caption:`, custPdfErr.message);
+                        await client.sendMessage(customerJid, pdfMedia, { sendMediaAsDocument: true });
+                    }
                 }
                 console.log(`[WHATSAPP] Customer order confirmation & invoice PDF delivered to ${customerJid}!`);
             }
@@ -513,7 +551,7 @@ ${itemsText}
 }
 
 /**
- * Send Pending Payment notification (headline & customer details) to Admin WhatsApp number (8972076182)
+ * Send Pending Payment notification (headline & customer details) and Invoice PDF to Admin WhatsApp number
  */
 export async function sendPendingPaymentNotification(order) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
@@ -530,11 +568,38 @@ export async function sendPendingPaymentNotification(order) {
 
     try {
         const textMessage = buildPendingPaymentNotificationMessage(order);
-        const adminJid = formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
+        const adminJid = getAdminJid();
 
         if (adminJid) {
             console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
             await client.sendMessage(adminJid, textMessage);
+
+            // Generate & Send PDF Invoice to Admin
+            try {
+                const pdfLang = order.lang || 'en';
+                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+                if (pdfBuffer && pdfBuffer.length > 0) {
+                    const pdfMedia = new MessageMedia(
+                        'application/pdf',
+                        pdfBuffer.toString('base64'),
+                        `Invoice_${order.id}.pdf`,
+                        pdfBuffer.length
+                    );
+                    try {
+                        await client.sendMessage(adminJid, pdfMedia, {
+                            caption: `📄 Admin Copy - Invoice PDF Order #${order.id}`,
+                            sendMediaAsDocument: true
+                        });
+                    } catch (captionErr) {
+                        console.warn(`[WHATSAPP] Failed to send pending invoice PDF with caption to ${adminJid}, retrying without caption:`, captionErr.message);
+                        await client.sendMessage(adminJid, pdfMedia, { sendMediaAsDocument: true });
+                    }
+                    console.log(`[WHATSAPP] Admin invoice PDF sent for pending order #${order.id} to (${adminJid})!`);
+                }
+            } catch (pdfErr) {
+                console.error(`[WHATSAPP] Failed to generate/send PDF invoice for pending order #${order.id}:`, pdfErr);
+            }
+
             notifiedPendingOrderIds.add(order.id);
             console.log(`[WHATSAPP] Pending payment alert delivered for #${order.id}!`);
             return { success: true };
@@ -710,7 +775,7 @@ export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER
     if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
         throw new Error(`WhatsApp is not connected (Current status: ${connectionState})`);
     }
-    const jid = formatWhatsAppJid(targetNumber);
+    const jid = (targetNumber === DEFAULT_NOTIFICATION_NUMBER) ? (getAdminJid() || formatWhatsAppJid(targetNumber)) : formatWhatsAppJid(targetNumber);
     const testMsg = `🧪 *Rasobhoomi Plantation - WhatsApp Test Message*\n\nWhatsApp integration is active and working properly!\n⏰ Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
     await client.sendMessage(jid, testMsg);
     return { success: true, recipient: jid };

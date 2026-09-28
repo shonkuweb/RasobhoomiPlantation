@@ -28,4 +28,4 @@ ecommerce.db
 .wwebjs_auth
 .wwebjs_cache
 scripts/test_*.js
-
+public/invoices/

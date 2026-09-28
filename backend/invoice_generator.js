@@ -152,7 +152,9 @@ const pdfTranslations = {
  * Translates an item name into Hindi or Bengali if available
  */
 function translateItemName(item, lang = 'en') {
-    if (!item || lang === 'en') return item.name || 'Plant Product';
+    if (!item) return 'Plant Product';
+    const itemName = item.name || item.title || '';
+    if (lang === 'en') return itemName || 'Plant Product';
     
     // Check productTranslations by product id
     if (item.id && productTranslations[item.id] && productTranslations[item.id].name && productTranslations[item.id].name[lang]) {
@@ -160,12 +162,11 @@ function translateItemName(item, lang = 'en') {
     }
     
     // Check categoryTranslations if item name matches a category
-    const originalName = item.name || '';
-    if (categoryTranslations[originalName] && categoryTranslations[originalName][lang]) {
-        return categoryTranslations[originalName][lang];
+    if (itemName && categoryTranslations[itemName] && categoryTranslations[itemName][lang]) {
+        return categoryTranslations[itemName][lang];
     }
     
-    return originalName || (lang === 'hi' ? 'पौधा उत्पाद' : lang === 'bn' ? 'চারা গাছ' : 'Plant Product');
+    return itemName || (lang === 'hi' ? 'पौधा उत्पाद' : lang === 'bn' ? 'চারা গাছ' : 'Plant Product');
 }
 
 /**
@@ -235,7 +236,7 @@ export function generateInvoicePdf(order, lang = 'en') {
             doc.fillColor(PRIMARY_COLOR).fontSize(16).font(FONT_BOLD).text(t.invoiceTitle, 350, 26, { align: 'right', width: 209 });
             doc.fillColor(TEXT_MAIN).fontSize(9).font(FONT_BOLD).text(`${t.invoiceNoPrefix} ${order.id}`, 350, 50, { align: 'right', width: 209 });
             
-            const formattedDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-IN', {
+            const formattedDate = new Date(order.created_at || order.createdAt || Date.now()).toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'
             });
             doc.font(FONT_REGULAR).fontSize(8.5).fillColor(TEXT_MUTED).text(`${t.datePrefix} ${formattedDate}`, 350, 64, { align: 'right', width: 209 });
@@ -284,9 +285,10 @@ export function generateInvoicePdf(order, lang = 'en') {
             const displayStatus = t.statusMap[rawStatus] || rawStatus;
             const txnId = order.transaction_id || order.id;
 
+            const statusColor = (rawStatus === 'PAID') ? '#059669' : (rawStatus === 'PENDING' || rawStatus === 'PENDING_PAYMENT' ? '#d97706' : '#dc2626');
             doc.fillColor(TEXT_MAIN).fontSize(8.5).font(FONT_REGULAR)
                .text(`${t.paymentStatusLabel} `, box2X + 10, boxY + 22, { continued: true })
-               .font(FONT_BOLD).fillColor('#059669').text(displayStatus);
+               .font(FONT_BOLD).fillColor(statusColor).text(displayStatus);
 
             doc.font(FONT_REGULAR).fillColor(TEXT_MAIN)
                .text(`${t.transactionIdLabel} `, box2X + 10, boxY + 36, { continued: true })
