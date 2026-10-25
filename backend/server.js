@@ -1941,15 +1941,16 @@ app.get('/api/orders/:id', (req, res) => {
 });
 
 app.get('/api/orders/:id/invoice', (req, res) => {
-    const lang = req.query.lang || 'en';
     db.get("SELECT * FROM orders WHERE id = ?", [req.params.id], async (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Order not found' });
 
         try {
-            const pdfBuffer = await generateInvoicePdf(row, lang);
+            const invoiceLang = req.query.lang || row.lang || 'en';
+            const pdfBuffer = await generateInvoicePdf(row, invoiceLang);
+            const isDownload = req.query.download === 'true';
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename="Invoice_${row.id}_${lang}.pdf"`);
+            res.setHeader('Content-Disposition', `${isDownload ? 'attachment' : 'inline'}; filename="Invoice_${row.id}_${invoiceLang}.pdf"`);
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');

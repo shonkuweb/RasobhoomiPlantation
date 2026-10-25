@@ -89,6 +89,28 @@ const TrackOrder = () => {
                             </span>
                             <span style={{ fontWeight: 'bold' }}>₹{orderData.total}</span>
                         </div>
+                        <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+                            <a
+                                href={`/api/orders/${encodeURIComponent(orderData.id)}/invoice`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    padding: '0.45rem 0.9rem',
+                                    backgroundColor: '#1A4D2E',
+                                    color: '#ffffff',
+                                    borderRadius: '8px',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    textDecoration: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                📄 Download Invoice (PDF)
+                            </a>
+                        </div>
                     </div>
                     {/* Tracking Section */}
                     {orderData.courier_name === 'amazon' && orderData.tracking_id ? (

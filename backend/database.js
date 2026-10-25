@@ -183,7 +183,7 @@ function initDb() {
                 ];
                 const placeholders = drumPlantIds.map(() => '?').join(',');
                 db.run(
-                    \`UPDATE products SET category = 'Drum Plants' WHERE id IN (\${placeholders})\`,
+                    `UPDATE products SET category = 'Drum Plants' WHERE id IN (${placeholders})`,
                     drumPlantIds,
                     (pErr) => {
                         if (pErr) console.error('Error migrating products to Drum Plants:', pErr);

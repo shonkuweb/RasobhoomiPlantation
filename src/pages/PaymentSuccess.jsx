@@ -66,10 +66,39 @@ const PaymentSuccess = () => {
                 </div>
 
                 {orderId && (
-                    <div className="order-details">
-                        <span className="order-label">Order ID</span>
-                        <span className="order-id-text">#{orderId}</span>
-                    </div>
+                    <>
+                        <div className="order-details">
+                            <span className="order-label">Order ID</span>
+                            <span className="order-id-text">#{orderId}</span>
+                        </div>
+                        <div style={{ marginTop: '1.25rem', marginBottom: '0.75rem', width: '100%' }}>
+                            <a
+                                href={`/api/orders/${encodeURIComponent(orderId)}/invoice`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-primary"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    width: '100%',
+                                    textDecoration: 'none',
+                                    backgroundColor: '#1A4D2E',
+                                    color: '#ffffff',
+                                    padding: '0.9rem 1.5rem',
+                                    borderRadius: '12px',
+                                    fontWeight: '700',
+                                    fontSize: '1rem',
+                                    boxShadow: '0 4px 14px rgba(26, 77, 46, 0.3)',
+                                    transition: 'transform 0.15s ease, background-color 0.2s ease',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span style={{ fontSize: '1.2rem' }}>📄</span> Download Official Invoice (PDF)
+                            </a>
+                        </div>
+                    </>
                 )}
 
                 <div className="action-buttons">
