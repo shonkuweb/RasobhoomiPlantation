@@ -2199,6 +2199,35 @@ function openOrderModal(id) {
         };
     }
 
+    const sendWaInvoiceBtn = document.getElementById('modal-send-wa-invoice-btn');
+    if (sendWaInvoiceBtn) {
+        sendWaInvoiceBtn.onclick = async (e) => {
+            e.preventDefault();
+            sendWaInvoiceBtn.disabled = true;
+            const originalText = sendWaInvoiceBtn.innerHTML;
+            sendWaInvoiceBtn.innerHTML = '⏳ Sending PDF...';
+
+            try {
+                const res = await fetch(`/api/orders/${order.id}/send-whatsapp-invoice`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message || 'Direct PDF Invoice sent via WhatsApp successfully!', 'success');
+                } else {
+                    showToast(data.error || 'Failed to send PDF invoice via WhatsApp', 'error');
+                }
+            } catch (err) {
+                showToast('Error sending WhatsApp invoice: ' + err.message, 'error');
+            } finally {
+                sendWaInvoiceBtn.disabled = false;
+                sendWaInvoiceBtn.innerHTML = originalText;
+            }
+        };
+    }
+
     if (select) {
         Array.from(select.options).forEach(option => {
             option.disabled = false;

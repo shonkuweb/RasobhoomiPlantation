@@ -21,6 +21,7 @@ import {
     sendPendingPaymentNotification,
     sendOrderStatusNotification,
     sendPaymentRecoveryWhatsApp,
+    sendDirectInvoicePdf,
     sendTestMessage,
     logoutWhatsApp
 } from './whatsapp.js';
@@ -1887,10 +1888,10 @@ app.post('/api/orders/:id/mark-paid', requireAuth, (req, res) => {
                     } catch (e) { console.error("Item parse error:", e); }
                 }
 
-                // Trigger WhatsApp notification & PDF invoice to customer and admin
+                // Trigger WhatsApp notification & direct PDF invoice to customer and admin
                 db.get("SELECT * FROM orders WHERE id = ?", [orderId], (fetchErr, updatedOrder) => {
                     if (!fetchErr && updatedOrder) {
-                        sendOrderPaymentNotification(updatedOrder).catch(e => console.error('[WHATSAPP] Order notification error:', e));
+                        sendOrderPaymentNotification(updatedOrder, true).catch(e => console.error('[WHATSAPP] Order notification error:', e));
                     }
                 });
 
@@ -1958,6 +1959,30 @@ app.get('/api/orders/:id/invoice', (req, res) => {
         } catch (pdfErr) {
             console.error('Invoice generation error:', pdfErr);
             res.status(500).json({ error: 'Failed to generate PDF invoice' });
+        }
+    });
+});
+
+// ADMIN: Manually dispatch direct PDF invoice to WhatsApp (Admin copy + Customer copy)
+app.post('/api/orders/:id/send-whatsapp-invoice', requireAuth, (req, res) => {
+    const orderId = req.params.id;
+    const { phone } = req.body || {};
+
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], async (err, order) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        try {
+            console.log(`[WHATSAPP] Admin triggered direct PDF invoice dispatch for Order #${orderId}`);
+            const result = await sendDirectInvoicePdf(order, phone || null);
+            if (result.success) {
+                res.json({ success: true, message: `Direct PDF Invoice sent via WhatsApp successfully! (${result.sentCount} message(s))` });
+            } else {
+                res.status(400).json({ error: result.error || 'Failed to send WhatsApp PDF invoice', result });
+            }
+        } catch (sendErr) {
+            console.error('[WHATSAPP] Error in /api/orders/:id/send-whatsapp-invoice:', sendErr);
+            res.status(500).json({ error: sendErr.message });
         }
     });
 });

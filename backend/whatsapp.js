@@ -20,36 +20,46 @@ export function getInvoiceUrl(orderId) {
 }
 
 /**
- * Safely send a PDF document to a WhatsApp recipient with fallback handling.
+ * Safely send a direct PDF invoice document to a WhatsApp recipient.
  */
-export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId, caption) {
+export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
     if (!targetJid || !pdfBuffer || !client) return false;
     try {
+        const filename = `Invoice_${orderId}.pdf`;
+        const b64Data = Buffer.isBuffer(pdfBuffer) ? pdfBuffer.toString('base64') : String(pdfBuffer);
         const media = new MessageMedia(
             'application/pdf',
-            pdfBuffer.toString('base64'),
-            `Invoice_${orderId}.pdf`,
-            pdfBuffer.length
+            b64Data,
+            filename,
+            pdfBuffer.length || b64Data.length
         );
+
+        console.log(`[WHATSAPP] Dispatching direct PDF document (${filename}, ${pdfBuffer.length} bytes) to ${targetJid}...`);
+
         try {
             await client.sendMessage(targetJid, media, {
-                caption: caption || `📄 Tax Invoice Order #${orderId}`,
-                sendMediaAsDocument: true
+                sendMediaAsDocument: true,
+                waitUntilMsgSent: true
             });
+            console.log(`[WHATSAPP] Direct PDF invoice document sent successfully to ${targetJid} for order #${orderId}`);
             return true;
-        } catch (captionErr) {
-            console.warn(`[WHATSAPP] Failed to send PDF with caption to ${targetJid}: ${captionErr.message}. Retrying without caption...`);
+        } catch (firstErr) {
+            console.warn(`[WHATSAPP] Primary attempt sending PDF to ${targetJid} failed (${firstErr.message}). Retrying with fallback...`);
+            await new Promise(r => setTimeout(r, 1200));
             const retryMedia = new MessageMedia(
                 'application/pdf',
-                pdfBuffer.toString('base64'),
-                `Invoice_${orderId}.pdf`,
-                pdfBuffer.length
+                b64Data,
+                filename,
+                pdfBuffer.length || b64Data.length
             );
-            await client.sendMessage(targetJid, retryMedia, { sendMediaAsDocument: true });
+            await client.sendMessage(targetJid, retryMedia, {
+                sendMediaAsDocument: true
+            });
+            console.log(`[WHATSAPP] Direct PDF invoice document sent on fallback to ${targetJid} for order #${orderId}`);
             return true;
         }
     } catch (finalErr) {
-        console.error(`[WHATSAPP] Failed to send PDF document to ${targetJid}:`, finalErr.message);
+        console.error(`[WHATSAPP] Failed to send direct PDF document to ${targetJid} for order #${orderId}:`, finalErr.message);
         return false;
     }
 }
@@ -91,12 +101,13 @@ function getChromiumExecutablePath() {
 export function formatWhatsAppJid(phone) {
     if (!phone) return null;
     let cleaned = String(phone).replace(/\D/g, ''); // strip non-digits
+    if (cleaned.startsWith('0')) {
+        cleaned = cleaned.replace(/^0+/, '');
+    }
     if (cleaned.length === 10) {
         cleaned = '91' + cleaned;
-    } else if (cleaned.startsWith('0')) {
-        cleaned = '91' + cleaned.substring(1);
     }
-    return cleaned ? `${cleaned}@c.us` : null;
+    return (cleaned && cleaned.length >= 10) ? `${cleaned}@c.us` : null;
 }
 
 /**
@@ -137,7 +148,6 @@ export function buildOrderNotificationMessage(order) {
 
     const txnId = order.transaction_id || order.id;
     const phoneFormatted = order.phone ? `+91 ${order.phone.replace(/\D/g, '').slice(-10)}` : 'N/A';
-    const invoiceLink = getInvoiceUrl(order.id);
 
     return `🌿 *RASOBHOOMI PLANTATION - NEW PAID ORDER* 🌿
 --------------------------------------------------
@@ -154,9 +164,7 @@ ${itemsText}
 🏷️ *Transaction ID:* ${txnId}
 ⏰ *Time:* ${formattedDate}
 --------------------------------------------------
-📄 *Tax Invoice PDF Link:*
-${invoiceLink}
-*(PDF is also attached below)*
+📄 *Tax Invoice:* Official PDF invoice is attached below.
 --------------------------------------------------
 ✨ *Order confirmed & ready for processing.*`;
 }
@@ -386,7 +394,6 @@ export function buildCustomerOrderMessage(order) {
 
     const customerName = order.name ? order.name.trim() : 'Customer';
     const txnId = order.transaction_id || order.id;
-    const invoiceLink = getInvoiceUrl(order.id);
 
     if (lang === 'hi') {
         return `🌿 *रसोभूमि प्लांटेशन से ऑर्डर करने के लिए आपका धन्यवाद!* 🌿
@@ -406,9 +413,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *टैक्स इनवॉइस डाउनलोड करें (Invoice PDF):*
-${invoiceLink}
-*(इनवॉइस PDF नीचे भी संलग्न है)*
+📄 *टैक्स इनवॉइस:* आपका आधिकारिक टैक्स इनवॉइस PDF नीचे संलग्न है।
+--------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो इस व्हाट्सएप संदेश का उत्तर दें या हमसे संपर्क करें (+91 89720 76182)।
 
@@ -433,9 +439,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *ট্যাক্স ইনভয়েস ডাউনলোড করুন (Invoice PDF):*
-${invoiceLink}
-*(ট্যাক্স ইনভয়েস PDF নিচেও সংযুক্ত করা হলো)*
+📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ট্যাক্স ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
+--------------------------------------------------
 
 যেকোনো প্রশ্নের জন্য এই হোয়াটসঅ্যাপ মেসেজের উত্তর দিন অথবা যোগাযোগ করুন (+91 89720 76182)।
 
@@ -459,9 +464,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *Download Tax Invoice (PDF):*
-${invoiceLink}
-*(Your official Tax Invoice PDF is also attached below)*
+📄 *Tax Invoice:* Your official Tax Invoice PDF is attached below.
+--------------------------------------------------
 
 If you have any questions, feel free to reply directly to this message or contact us on WhatsApp (+91 89720 76182).
 
@@ -471,10 +475,10 @@ Thank you for choosing *Rasobhoomi Plantation* for a greener home! 🪴✨`;
 /**
  * Send Payment Success Notification & Invoice PDF for an Order to Admin (8972076182) and Customer
  */
-export async function sendOrderPaymentNotification(order) {
+export async function sendOrderPaymentNotification(order, force = false) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
 
-    if (notifiedOrderIds.has(order.id)) {
+    if (!force && notifiedOrderIds.has(order.id)) {
         console.log(`[WHATSAPP] Notification already sent for order #${order.id}. Skipping.`);
         return { success: true, duplicate: true };
     }
@@ -504,7 +508,9 @@ export async function sendOrderPaymentNotification(order) {
                 console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
                 await client.sendMessage(adminJid, textMessage);
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id, `📄 Admin Copy - Invoice PDF Order #${order.id}`);
+                    await new Promise(r => setTimeout(r, 1500));
+                    console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Admin (${adminJid})...`);
+                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
                 }
             } catch (adminErr) {
                 console.error(`[WHATSAPP] Error sending paid alert to admin (${adminJid}):`, adminErr.message);
@@ -514,11 +520,14 @@ export async function sendOrderPaymentNotification(order) {
         // 2. Send to Customer's WhatsApp Number provided at checkout
         if (customerJid) {
             try {
-                console.log(`[WHATSAPP] Sending customer order confirmation & invoice PDF for #${order.id} to Customer (${customerJid})...`);
+                await new Promise(r => setTimeout(r, 1500));
+                console.log(`[WHATSAPP] Sending customer order confirmation for #${order.id} to Customer (${customerJid})...`);
                 const customerMsg = buildCustomerOrderMessage(order);
                 await client.sendMessage(customerJid, customerMsg);
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id, `📄 Tax Invoice - Order #${order.id}`);
+                    await new Promise(r => setTimeout(r, 1500));
+                    console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
+                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
                 }
                 console.log(`[WHATSAPP] Customer order confirmation & invoice PDF delivered to ${customerJid}!`);
             } catch (custErr) {
@@ -564,7 +573,6 @@ export function buildPendingPaymentNotificationMessage(order) {
 
     const phoneFormatted = order.phone ? `+91 ${order.phone.replace(/\D/g, '').slice(-10)}` : 'N/A';
     const addressFormatted = `${order.address || ''}, ${order.city || ''}${order.zip ? ` - ${order.zip}` : ''}`;
-    const invoiceLink = getInvoiceUrl(order.id);
 
     return `⚠️ *RASOBHOOMI - NEW ORDER / PENDING PAYMENT* ⚠️
 --------------------------------------------------
@@ -579,9 +587,7 @@ ${itemsText}
 💰 *Amount Pending:* ₹${order.total || 0}
 ⏰ *Time:* ${formattedDate}
 --------------------------------------------------
-📄 *Tax Invoice PDF Link:*
-${invoiceLink}
-*(PDF is also attached below)*
+📄 *Tax Invoice:* Official PDF invoice is attached below.
 --------------------------------------------------`;
 }
 
@@ -591,7 +597,6 @@ ${invoiceLink}
 export function buildCustomerPendingOrderMessage(order) {
     const customerName = order.name ? order.name.trim() : 'Valued Customer';
     const lang = order.lang || 'en';
-    const invoiceLink = getInvoiceUrl(order.id);
 
     let itemsText = '• Plants / Products';
     try {
@@ -622,9 +627,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *टैक्स इनवॉइस डाउनलोड करें (Invoice PDF):*
-${invoiceLink}
-*(इनवॉइस PDF नीचे भी संलग्न है)*
+📄 *टैक्स इनवॉइस:* आपका आधिकारिक इनवॉइस PDF नीचे संलग्न है।
+--------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो हमसे व्हाट्सएप (+91 89720 76182) पर संपर्क करें।
 *रसोभूमि प्लांटेशन* को चुनने के लिए धन्यवाद! 🪴✨`;
@@ -645,9 +649,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *ট্যাক্স ইনভয়েস ডাউনলোড করুন (Invoice PDF):*
-${invoiceLink}
-*(ইনভয়েস PDF নিচেও সংযুক্ত করা হলো)*
+📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
+--------------------------------------------------
 
 যেকোনো সহায়তার জন্য যোগাযোগ করুন (+91 89720 76182)।
 *রসভূমি প্ল্যান্টেশন* বেছে নেওয়ার জন্য ধন্যবাদ! 🪴✨`;
@@ -667,9 +670,8 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *Download Tax Invoice (PDF):*
-${invoiceLink}
-*(Your official Invoice PDF is also attached below)*
+📄 *Tax Invoice:* Your official Invoice PDF is attached below.
+--------------------------------------------------
 
 For queries or support, feel free to reply directly or WhatsApp us (+91 89720 76182).
 Thank you for choosing *Rasobhoomi Plantation*! 🪴✨`;
@@ -678,10 +680,10 @@ Thank you for choosing *Rasobhoomi Plantation*! 🪴✨`;
 /**
  * Send Pending Payment notification and Invoice PDF to Admin and Customer WhatsApp numbers
  */
-export async function sendPendingPaymentNotification(order) {
+export async function sendPendingPaymentNotification(order, force = false) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
 
-    if (notifiedPendingOrderIds.has(order.id)) {
+    if (!force && notifiedPendingOrderIds.has(order.id)) {
         console.log(`[WHATSAPP] Pending payment notification already sent for order #${order.id}. Skipping.`);
         return { success: true, duplicate: true };
     }
@@ -710,7 +712,9 @@ export async function sendPendingPaymentNotification(order) {
                 console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
                 await client.sendMessage(adminJid, textMessage);
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id, `📄 Admin Copy - Invoice PDF Order #${order.id}`);
+                    await new Promise(r => setTimeout(r, 1500));
+                    console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Admin (${adminJid})...`);
+                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
                 }
             } catch (adminErr) {
                 console.error(`[WHATSAPP] Error delivering pending alert to admin (${adminJid}):`, adminErr.message);
@@ -720,11 +724,14 @@ export async function sendPendingPaymentNotification(order) {
         // 2. Send to Customer
         if (customerJid) {
             try {
+                await new Promise(r => setTimeout(r, 1500));
                 const customerMsg = buildCustomerPendingOrderMessage(order);
                 console.log(`[WHATSAPP] Sending customer order receipt & invoice PDF for #${order.id} to Customer (${customerJid})...`);
                 await client.sendMessage(customerJid, customerMsg);
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id, `📄 Tax Invoice - Order #${order.id}`);
+                    await new Promise(r => setTimeout(r, 1500));
+                    console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Customer (${customerJid})...`);
+                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
                 }
                 console.log(`[WHATSAPP] Customer order receipt & invoice delivered to ${customerJid}!`);
             } catch (custErr) {
@@ -733,12 +740,48 @@ export async function sendPendingPaymentNotification(order) {
         }
 
         notifiedPendingOrderIds.add(order.id);
-        console.log(`[WHATSAPP] Pending payment alert & invoice processing finished for #${order.id}!`);
+        console.log(`[WHATSAPP] Pending payment alert & direct invoice processing finished for #${order.id}!`);
         return { success: true };
     } catch (err) {
         console.error(`[WHATSAPP] Failed to send pending payment notification for order #${order.id}:`, err);
         return { success: false, error: err.message };
     }
+}
+
+/**
+ * Directly sends the PDF invoice file to a specific recipient phone number or to both admin and customer.
+ */
+export async function sendDirectInvoicePdf(order, targetPhone = null) {
+    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
+    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
+    }
+
+    const pdfLang = order.lang || 'en';
+    const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+        return { success: false, error: 'Failed to generate PDF invoice' };
+    }
+
+    const targets = [];
+    if (targetPhone) {
+        const jid = formatWhatsAppJid(targetPhone);
+        if (jid) targets.push(jid);
+    } else {
+        const adminJid = getAdminJid();
+        const custJid = order.phone ? formatWhatsAppJid(order.phone) : null;
+        if (adminJid) targets.push(adminJid);
+        if (custJid && custJid !== adminJid) targets.push(custJid);
+    }
+
+    let sentCount = 0;
+    for (const jid of targets) {
+        const ok = await sendPdfDocumentSafe(jid, pdfBuffer, order.id);
+        if (ok) sentCount++;
+        await new Promise(r => setTimeout(r, 1500));
+    }
+
+    return { success: sentCount > 0, sentCount };
 }
 
 /**
