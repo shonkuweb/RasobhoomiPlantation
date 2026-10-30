@@ -467,8 +467,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *टैक्स इनवॉइस:* आपका आधिकारिक टैक्स इनवॉइस PDF नीचे संलग्न है।
-🔗 *डाउनलोड लिंक:* ${getInvoiceUrl(order.id)}
+📄 *टैक्स इनवॉइस:* आपका आधिकारिक टैक्स इनवॉइस PDF दस्तावेज़ नीचे सीधे संलग्न है। 🪴
 --------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो इस व्हाट्सएप संदेश का उत्तर दें या हमसे संपर्क करें (+91 89720 76182)।
@@ -494,8 +493,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ট্যাক্স ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
-🔗 *ডাউনলোড লিঙ্ক:* ${getInvoiceUrl(order.id)}
+📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ট্যাক্স ইনভয়েস PDF ডকুমেন্টটি নিচে সরাসরি সংযুক্ত করা হলো। 🪴
 --------------------------------------------------
 
 যেকোনো প্রশ্নের জন্য এই হোয়াটসঅ্যাপ মেসেজের উত্তর দিন অথবা যোগাযোগ করুন (+91 89720 76182)।
@@ -520,8 +518,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *Tax Invoice:* Your official Tax Invoice PDF is attached below.
-🔗 *Download Link:* ${getInvoiceUrl(order.id)}
+📄 *Tax Invoice:* Your official Tax Invoice PDF document is attached directly below. 🪴
 --------------------------------------------------
 
 If you have any questions, feel free to reply directly to this message or contact us on WhatsApp (+91 89720 76182).
@@ -654,8 +651,7 @@ ${itemsText}
 💰 *Amount Pending:* ₹${order.total || 0}
 ⏰ *Time:* ${formattedDate}
 --------------------------------------------------
-📄 *Tax Invoice:* Official PDF invoice is attached below.
-🔗 *View / Download PDF:* ${getInvoiceUrl(order.id)}
+📄 *Tax Invoice:* Official PDF invoice document is attached directly below. 🪴
 --------------------------------------------------`;
 }
 
@@ -695,8 +691,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *टैक्स इनवॉइस:* आपका आधिकारिक इनवॉइस PDF नीचे संलग्न है।
-🔗 *डाउनलोड लिंक:* ${getInvoiceUrl(order.id)}
+📄 *टैक्स इनवॉइस:* आपका आधिकारिक इनवॉइस PDF दस्तावेज़ नीचे संलग्न है। 🪴
 --------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो हमसे व्हाट्सएप (+91 89720 76182) पर संपर्क करें।
@@ -718,8 +713,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
-🔗 *ডাউনলোড লিঙ্ক:* ${getInvoiceUrl(order.id)}
+📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ইনভয়েস PDF ডকুমেন্টটি নিচে সংযুক্ত করা হলো। 🪴
 --------------------------------------------------
 
 যেকোনো সহায়তার জন্য যোগাযোগ করুন (+91 89720 76182)।
@@ -740,8 +734,7 @@ ${itemsText}
 ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
-📄 *Tax Invoice:* Your official Invoice PDF is attached below.
-🔗 *Download Link:* ${getInvoiceUrl(order.id)}
+📄 *Tax Invoice:* Your official Invoice PDF document is attached directly below. 🪴
 --------------------------------------------------
 
 For queries or support, feel free to reply directly or WhatsApp us (+91 89720 76182).
@@ -856,8 +849,7 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
     }
 
     let sentCount = 0;
-    const downloadUrl = getInvoiceUrl(order.id);
-    const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice attached below.\n🔗 Direct View / Download: ${downloadUrl}`;
+    const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice PDF document attached directly below. 📄🪴`;
 
     for (const jid of targets) {
         try {
@@ -1022,7 +1014,26 @@ export async function sendOrderStatusNotification(order, newStatus) {
 
         console.log(`[WHATSAPP] Sending order status update ('${newStatus}') for #${order.id} to Customer (${customerJid})...`);
         await client.sendMessage(customerJid, messageText);
-        console.log(`[WHATSAPP] Order status notification successfully delivered to ${customerJid}!`);
+        console.log(`[WHATSAPP] Order status text successfully delivered to ${customerJid}!`);
+
+        // Send direct PDF invoice attachment directly to customer WhatsApp
+        try {
+            const pdfLang = order.lang || 'en';
+            console.log(`[WHATSAPP] Generating direct PDF invoice (${pdfLang}) on status change for #${order.id}...`);
+            const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+            if (pdfBuffer && pdfBuffer.length > 0) {
+                await new Promise(r => setTimeout(r, 1200));
+                console.log(`[WHATSAPP] Dispatching direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
+                const pdfSent = await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
+                if (pdfSent) {
+                    console.log(`[WHATSAPP] ✅ Direct PDF invoice document successfully delivered to Customer (${customerJid}) for order #${order.id}!`);
+                } else {
+                    console.warn(`[WHATSAPP] ⚠️ Failed to deliver direct PDF invoice document to Customer (${customerJid}) for order #${order.id}`);
+                }
+            }
+        } catch (pdfErr) {
+            console.error(`[WHATSAPP] Failed to dispatch direct PDF invoice on status update for order #${order.id}:`, pdfErr.message);
+        }
 
         return { success: true };
     } catch (err) {

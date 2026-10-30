@@ -48,6 +48,7 @@ const pdfTranslations = {
             unitPrice: 'Unit Price',
             totalAmount: 'Total Amount'
         },
+        totalQuantity: 'Total Quantity:',
         subtotal: 'Subtotal:',
         deliveryCharges: 'Delivery Charges:',
         free: 'FREE',
@@ -92,6 +93,7 @@ const pdfTranslations = {
             unitPrice: 'इकाई मूल्य',
             totalAmount: 'कुल राशि'
         },
+        totalQuantity: 'कुल मात्रा:',
         subtotal: 'उप-कुल:',
         deliveryCharges: 'डिलिवरी शुल्क:',
         free: 'मुफ़्त',
@@ -136,6 +138,7 @@ const pdfTranslations = {
             unitPrice: 'একক মূল্য',
             totalAmount: 'মোট টাকা'
         },
+        totalQuantity: 'মোট পরিমাণ:',
         subtotal: 'উপ-মোট:',
         deliveryCharges: 'ডেলিভারি চার্জ:',
         free: 'ফ্রি',
@@ -337,12 +340,14 @@ export function generateInvoicePdf(order, lang = 'en') {
 
             let y = tableTop + 20;
             let subtotal = 0;
+            let totalQty = 0;
 
             items.forEach((item, index) => {
                 const itemQty = Number(item.qty || item.quantity || 1);
                 const itemPrice = Number(item.price || 0);
                 const itemTotal = itemQty * itemPrice;
                 subtotal += itemTotal;
+                totalQty += itemQty;
 
                 if (index % 2 === 0) {
                     doc.rect(36, y, 523, 18).fill('#FAFAFA');
@@ -360,6 +365,15 @@ export function generateInvoicePdf(order, lang = 'en') {
                 doc.moveTo(36, y + 18).lineTo(559, y + 18).strokeColor(BORDER_COLOR).lineWidth(0.5).stroke();
                 y += 18;
             });
+
+            // Table Subtotal & Total Quantity Row
+            doc.rect(36, y, 523, 19).fill('#F3F4F6');
+            doc.fillColor(PRIMARY_COLOR).fontSize(8.5).font(FONT_BOLD);
+            doc.text(t.subtotal, 70, y + 4, { width: 250 });
+            doc.fillColor(TEXT_MAIN).text(String(totalQty), 330, y + 4, { width: 40, align: 'center' });
+            doc.text(`₹${subtotal.toLocaleString('en-IN')}`, 465, y + 4, { width: 88, align: 'right' });
+            doc.moveTo(36, y + 19).lineTo(559, y + 19).strokeColor(BORDER_COLOR).lineWidth(0.75).stroke();
+            y += 19;
 
             // Summary Section (Right Aligned)
             const summaryTop = Math.max(y + 12, 320);
@@ -390,18 +404,26 @@ export function generateInvoicePdf(order, lang = 'en') {
                 }
             }
 
+            let currentSummaryY = summaryTop;
+
+            // Total Quantity
             doc.fontSize(8.5).font(FONT_REGULAR).fillColor(TEXT_MUTED);
-            
+            doc.text(t.totalQuantity, summaryX, currentSummaryY, { width: 110 });
+            doc.fillColor(TEXT_MAIN).font(FONT_BOLD).text(String(totalQty), summaryX + 110, currentSummaryY, { width: 119, align: 'right' });
+            currentSummaryY += 14;
+
             // Subtotal
-            doc.text(t.subtotal, summaryX, summaryTop, { width: 110 });
-            doc.fillColor(TEXT_MAIN).text(`₹${subtotal.toLocaleString('en-IN')}`, summaryX + 110, summaryTop, { width: 119, align: 'right' });
+            doc.font(FONT_REGULAR).fillColor(TEXT_MUTED);
+            doc.text(t.subtotal, summaryX, currentSummaryY, { width: 110 });
+            doc.fillColor(TEXT_MAIN).text(`₹${subtotal.toLocaleString('en-IN')}`, summaryX + 110, currentSummaryY, { width: 119, align: 'right' });
+            currentSummaryY += 14;
 
             // Delivery
-            doc.fillColor(TEXT_MUTED).text(t.deliveryCharges, summaryX, summaryTop + 14, { width: 110 });
+            doc.fillColor(TEXT_MUTED).text(t.deliveryCharges, summaryX, currentSummaryY, { width: 110 });
             const deliveryText = deliveryCharge === 0 ? t.free : `₹${deliveryCharge.toLocaleString('en-IN')}`;
-            doc.fillColor(TEXT_MAIN).text(deliveryText, summaryX + 110, summaryTop + 14, { width: 119, align: 'right' });
+            doc.fillColor(TEXT_MAIN).text(deliveryText, summaryX + 110, currentSummaryY, { width: 119, align: 'right' });
+            currentSummaryY += 14;
 
-            let currentSummaryY = summaryTop + 28;
             if (discountAmount > 0) {
                 doc.fillColor('#059669').text(t.discountSavings, summaryX, currentSummaryY, { width: 110 });
                 doc.text(`- ₹${discountAmount.toLocaleString('en-IN')}`, summaryX + 110, currentSummaryY, { width: 119, align: 'right' });

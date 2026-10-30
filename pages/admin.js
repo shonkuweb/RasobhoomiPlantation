@@ -128,12 +128,20 @@ async function checkAuth() {
 
 // State
 let products = [];
+let allOrders = [];
 let orders = [];
 let categories = [];
 let currentProductSearch = '';
 let currentOrderSearch = '';
 let orderSettingsRefreshTimer = null;
 let currentOrderSettings = null;
+
+function isOrderPaidOrConfirmed(o) {
+    if (!o) return false;
+    const ps = String(o.payment_status || '').toLowerCase().trim();
+    const st = String(o.status || '').toLowerCase().trim();
+    return ps === 'paid' || ps === 'captured' || ps === 'success' || st === 'completed' || st === 'delivered' || st === 'in-transit' || st === 'in-process';
+}
 
 // Helper function to get auth headers
 function getAuthHeaders() {
@@ -183,11 +191,13 @@ async function fetchData() {
         }
 
         if (Array.isArray(oData)) {
-            // Admin order list should include only successfully paid orders.
-            orders = oData.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
+            allOrders = oData;
+            // Admin default order list includes successfully paid and active confirmed orders
+            orders = oData.filter(isOrderPaidOrConfirmed);
         } else {
             console.error('Orders API Error:', oData);
             window.showToast('Error loading Orders', 'error');
+            allOrders = [];
             orders = [];
         }
 
@@ -244,8 +254,9 @@ async function fetchOrders() {
         const res = await fetch('/api/orders');
         const data = await res.json();
         if (Array.isArray(data)) {
-            // Keep refresh behavior consistent: show only paid orders.
-            orders = data.filter(o => String(o.payment_status || '').toLowerCase() === 'paid');
+            allOrders = data;
+            orders = data.filter(isOrderPaidOrConfirmed);
+            updateDashboardStats();
             if (currentView === 'orders') render();
             const btnOrders = document.getElementById('btn-orders');
             if (btnOrders) btnOrders.innerHTML = `ORDERS <span class="order-counter">${orders.length}</span>`;
@@ -1706,9 +1717,17 @@ function renderPreviews() {
 }
 
 function updateDashboardStats() {
-    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-    const totalOrdersCount = orders.length;
-    const pendingOrdersCount = orders.filter(o => o.status !== 'completed').length;
+    const dataSource = (allOrders && allOrders.length > 0) ? allOrders : orders;
+    // Lifetime sales considers all paid or confirmed orders in store history
+    const totalRevenue = dataSource
+        .filter(isOrderPaidOrConfirmed)
+        .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const totalOrdersCount = dataSource.filter(isOrderPaidOrConfirmed).length;
+    const pendingOrdersCount = dataSource.filter(o => {
+        const ps = String(o.payment_status || '').toLowerCase().trim();
+        const st = String(o.status || '').toLowerCase().trim();
+        return ps === 'pending' || st === 'pending_payment';
+    }).length;
 
     const elRev = document.getElementById('stat-revenue');
     const elOrd = document.getElementById('stat-orders');
@@ -2095,7 +2114,7 @@ async function saveProduct() {
 
 // Order Modal Functions
 function openOrderModal(id) {
-    const order = orders.find(o => o.id === id);
+    const order = (allOrders && allOrders.find(o => o.id === id)) || orders.find(o => o.id === id);
     if (!order) return;
 
     editingId = id; // reuse this variable to track which order is being viewed
@@ -2439,16 +2458,23 @@ function render() {
         });
         itemsToRender = sortProductsWithMangoFirst(itemsToRender);
     } else {
-        itemsToRender = orders.filter(o => {
-            const idMatch = o.id.toString().toLowerCase().includes(currentOrderSearch) ||
-                (o.name || '').toLowerCase().includes(currentOrderSearch);
+        const dataSource = (allOrders && allOrders.length > 0) ? allOrders : orders;
+        itemsToRender = dataSource.filter(o => {
+            const query = (currentOrderSearch || '').toLowerCase().trim();
+            const idMatch = !query ||
+                String(o.id || '').toLowerCase().includes(query) ||
+                String(o.name || '').toLowerCase().includes(query) ||
+                String(o.phone || '').includes(query);
             let statusMatch;
+            const ps = String(o.payment_status || '').toLowerCase().trim();
+            const st = String(o.status || '').toLowerCase().trim();
+
             if (currentOrderFilter === 'all') {
-                statusMatch = true;
+                statusMatch = isOrderPaidOrConfirmed(o);
             } else if (currentOrderFilter === 'pending-payment') {
-                statusMatch = o.status === 'pending_payment' || (o.payment_status || '').toLowerCase() === 'pending';
+                statusMatch = ps === 'pending' || st === 'pending_payment';
             } else {
-                statusMatch = o.status === currentOrderFilter;
+                statusMatch = st === currentOrderFilter;
             }
             return idMatch && statusMatch;
         });
@@ -2460,26 +2486,23 @@ function render() {
 
     itemsToRender.forEach(item => {
         const el = document.createElement('div');
-        el.className = 'admin-list-item';
-
-        let actionButtons = '';
-        let detailsHtml = '';
 
         if (currentView === 'products') {
+            el.className = 'admin-list-item';
             const lang = localStorage.getItem('app_language') || 'en';
             const displayItem = translateProductAdmin(item, lang);
             const isOut = Number(item.qty) <= 0;
             const isLow = Number(item.qty) > 0 && Number(item.qty) <= 5;
             const qtyClass = isOut || isLow ? 'low-qty' : '';
 
-            actionButtons = `
+            const actionButtons = `
             <div class="view-btn-container" style="flex-direction:row; gap:0.5rem;">
                 <button class="view-btn edit-btn" data-id="${item.id}">EDIT</button>
                 <button class="view-btn delete-btn" data-id="${item.id}">DEL</button>
             </div>
             `;
 
-            detailsHtml = `
+            const detailsHtml = `
                 <div class="admin-item-details">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
                         <span class="item-id">ID #${item.id}</span>
@@ -2492,61 +2515,95 @@ function render() {
                     </div>
                 </div>
             `;
+
+            let imageHtml = '';
+            if (item.image) {
+                imageHtml = `<img src="${item.image}" alt="Product">`;
+            } else {
+                imageHtml = `<div class="no-image" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f1f5f9; color:#94a3b8; font-weight:700; font-size:0.75rem;">PRODUCT</div>`;
+            }
+
+            el.innerHTML = `
+                <div class="admin-item-image">
+                    ${imageHtml}
+                </div>
+                ${detailsHtml}
+                ${actionButtons}
+            `;
         } else {
-            // ORDER SPECIFIC UI WITH MOBILE QUICK CALL / WHATSAPP
+            // Dedicated Modern Mobile-First Order Card (no empty image placeholder box!)
+            el.className = 'admin-list-item admin-order-card';
             const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
             const isPendingPayment = paymentStatus === 'pending' || item.status === 'pending_payment';
-            const isFailedPayment = paymentStatus === 'failed';
-            const totalItems = (item.items || []).reduce((sum, i) => sum + Number(i.qty), 0);
+            const totalItems = (item.items || []).reduce((sum, i) => sum + Number(i.qty || 1), 0);
             const cleanPhone = String(item.phone || '').replace(/\D/g, '');
+            const rawPhone = item.phone || '';
+            const statusKey = (item.status || 'new').toLowerCase();
+            const orderDateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
-            actionButtons = `
-            <div class="view-btn-container" style="flex-direction:row; gap:0.4rem; flex-wrap:wrap;">
-                ${cleanPhone ? `
-                    <a href="tel:${cleanPhone}" class="quick-action-btn btn-call" title="Call Customer">📞 Call</a>
-                    <a href="https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(item.name || 'Customer')}%2C%20regarding%20your%20order%20%23${item.id}%20from%20Rasobhoomi" target="_blank" class="quick-action-btn btn-whatsapp" title="WhatsApp Chat">💬 WA</a>
-                ` : ''}
-                ${isPendingPayment ? `<button class="view-btn mark-paid-btn" data-id="${item.id}" style="background:#f59e0b; color:white;">✓ PAID</button>` : ''}
-                <button class="view-btn view-order-btn" data-id="${item.id}">VIEW</button>
-            </div>
-            `;
+            const statusBgMap = {
+                'new': '#dbeafe',
+                'in-process': '#fef3c7',
+                'in-transit': '#fed7aa',
+                'completed': '#dcfce7',
+                'cancelled': '#fee2e2'
+            };
+            const statusColorMap = {
+                'new': '#1e40af',
+                'in-process': '#92400e',
+                'in-transit': '#9a3412',
+                'completed': '#166534',
+                'cancelled': '#991b1b'
+            };
 
-            detailsHtml = `
-                <div class="admin-item-details">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.25rem;">
-                        <span class="item-id">ORDER #${item.id}</span>
-                        <span style="font-size:0.7rem; font-weight:700; color:#64748B;">${item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN') : ''}</span>
+            const detailsHtml = `
+                <div class="admin-item-details order-details-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
+                        <span class="item-id" style="font-size:0.82rem; font-weight:800; color:var(--admin-primary);">ORDER #${item.id}</span>
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                            ${orderDateStr ? `<span style="font-size:0.75rem; font-weight:600; color:#64748B;">📅 ${orderDateStr}</span>` : ''}
+                            <span class="order-status-pill" style="background:${statusBgMap[statusKey] || '#f1f5f9'}; color:${statusColorMap[statusKey] || '#334155'}; padding:3px 10px; border-radius:12px; font-size:0.7rem; font-weight:800; text-transform:uppercase;">
+                                ${statusKey.toUpperCase()}
+                            </span>
+                        </div>
                     </div>
-                    <h3 class="item-name">${item.name || 'Guest Customer'}</h3>
-                    <div class="item-meta">
-                        <span>Items: <strong>${totalItems}</strong></span>
-                        <span style="color:var(--admin-primary); font-weight:800; font-size:1rem;">₹${item.total || 0}</span>
-                        <span class="filter-chip active" style="padding:2px 8px; font-size:0.68rem; text-transform:uppercase;">${(item.status || 'new').toUpperCase()}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.25rem; margin-top:0.25rem;">
+                        <div>
+                            <h3 class="item-name" style="font-size:1.05rem; font-weight:700; color:#0f172a;">${item.name || 'Guest Customer'}</h3>
+                            ${rawPhone ? `<div style="font-size:0.82rem; color:#64748b; font-weight:600; margin-top:2px;">📱 ${rawPhone}</div>` : ''}
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="color:var(--admin-primary); font-weight:800; font-size:1.2rem;">₹${item.total || 0}</div>
+                            <div style="font-size:0.75rem; color:#64748b; font-weight:600;">${totalItems} item${totalItems === 1 ? '' : 's'}</div>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:0.4rem; margin-top:0.2rem; flex-wrap:wrap;">
-                        <span class="status-badge" style="background:${paymentStatus === 'paid' ? '#dcfce7' : paymentStatus === 'failed' ? '#fee2e2' : '#fef3c7'}; color:${paymentStatus === 'paid' ? '#166534' : paymentStatus === 'failed' ? '#b91c1c' : '#92400e'}; border:1px solid ${paymentStatus === 'paid' ? '#86efac' : paymentStatus === 'failed' ? '#fca5a5' : '#fcd34d'}; font-size:0.68rem; font-weight:700;">
-                            Payment: ${paymentStatus.toUpperCase()}
+                    <div style="display:flex; gap:0.4rem; margin-top:0.35rem; flex-wrap:wrap;">
+                        <span class="status-badge" style="background:${paymentStatus === 'paid' ? '#dcfce7' : paymentStatus === 'failed' ? '#fee2e2' : '#fef3c7'}; color:${paymentStatus === 'paid' ? '#166534' : paymentStatus === 'failed' ? '#b91c1c' : '#92400e'}; border:1px solid ${paymentStatus === 'paid' ? '#86efac' : paymentStatus === 'failed' ? '#fca5a5' : '#fcd34d'}; font-size:0.72rem; font-weight:700; border-radius:6px; padding:2px 8px;">
+                            💳 ${paymentStatus.toUpperCase()}
                         </span>
-                        ${isPendingPayment ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:0.68rem; font-weight:700;">⚠ PENDING PAYMENT</span>` : ''}
+                        ${isPendingPayment ? `<span class="status-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:0.72rem; font-weight:700; border-radius:6px; padding:2px 8px;">⚠️ PENDING PAYMENT</span>` : ''}
+                        ${item.courier_name ? `<span style="background:#f1f5f9; color:#334155; font-size:0.72rem; font-weight:700; border-radius:6px; padding:2px 8px;">🚚 ${(item.courier_name).toUpperCase()}</span>` : ''}
                     </div>
                 </div>
             `;
-        }
 
-        let imageHtml = '';
-        if (item.image) {
-            imageHtml = `<img src="${item.image}" alt="Product">`;
-        } else {
-            imageHtml = `<div class="no-image" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f1f5f9; color:#94a3b8; font-weight:700; font-size:0.75rem;">${currentView === 'products' ? 'PRODUCT' : 'ORDER'}</div>`;
-        }
-
-        el.innerHTML = `
-            <div class="admin-item-image">
-                ${imageHtml}
+            const actionButtons = `
+            <div class="view-btn-container order-action-buttons">
+                ${cleanPhone ? `
+                    <a href="tel:${cleanPhone}" class="quick-action-btn btn-call" title="Call Customer">📞 Call</a>
+                    <a href="https://wa.me/91${cleanPhone.slice(-10)}?text=Hello%20${encodeURIComponent(item.name || 'Customer')}%2C%20regarding%20your%20order%20%23${item.id}%20from%20Rasobhoomi" target="_blank" class="quick-action-btn btn-whatsapp" title="WhatsApp Chat">💬 WhatsApp</a>
+                ` : ''}
+                ${isPendingPayment ? `<button class="view-btn mark-paid-btn" data-id="${item.id}" style="background:#f59e0b; color:white;">✓ Mark Paid</button>` : ''}
+                <button class="view-btn view-order-btn" data-id="${item.id}" style="background:var(--admin-primary); color:white;">👁️ View Details</button>
             </div>
-            ${detailsHtml}
-            ${actionButtons}
-        `;
+            `;
+
+            el.innerHTML = `
+                ${detailsHtml}
+                ${actionButtons}
+            `;
+        }
+
         listContainer.appendChild(el);
     });
 
