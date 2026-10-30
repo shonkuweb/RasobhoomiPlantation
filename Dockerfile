@@ -38,6 +38,9 @@ COPY src/utils ./src/utils
 # Copy scripts folder
 COPY scripts ./scripts
 
+# Apply whatsapp-web.js media memoize patch
+RUN node scripts/patch_wwebjs.js || true
+
 # Copy static pages (legacy)
 COPY pages ./pages
 

@@ -1,3 +1,4 @@
+import '../scripts/patch_wwebjs.js';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
 import QRCode from 'qrcode';
