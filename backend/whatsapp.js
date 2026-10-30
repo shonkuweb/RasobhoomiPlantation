@@ -19,6 +19,13 @@ export function getInvoiceUrl(orderId) {
     return `${SITE_URL}/api/orders/${encodeURIComponent(orderId)}/invoice`;
 }
 
+function withTimeout(promise, ms, errorMsg) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+    ]);
+}
+
 /**
  * Safely send a direct PDF invoice document to a WhatsApp recipient.
  */
@@ -37,24 +44,31 @@ export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
         console.log(`[WHATSAPP] Dispatching direct PDF document (${filename}, ${pdfBuffer.length} bytes) to ${targetJid}...`);
 
         try {
-            await client.sendMessage(targetJid, media, {
-                sendMediaAsDocument: true,
-                waitUntilMsgSent: true
-            });
+            await withTimeout(
+                client.sendMessage(targetJid, media, {
+                    sendMediaAsDocument: true
+                }),
+                18000,
+                'PDF primary upload timed out after 18s'
+            );
             console.log(`[WHATSAPP] Direct PDF invoice document sent successfully to ${targetJid} for order #${orderId}`);
             return true;
         } catch (firstErr) {
             console.warn(`[WHATSAPP] Primary attempt sending PDF to ${targetJid} failed (${firstErr.message}). Retrying with fallback...`);
-            await new Promise(r => setTimeout(r, 1200));
+            await new Promise(r => setTimeout(r, 1500));
             const retryMedia = new MessageMedia(
                 'application/pdf',
                 b64Data,
                 filename,
                 pdfBuffer.length || b64Data.length
             );
-            await client.sendMessage(targetJid, retryMedia, {
-                sendMediaAsDocument: true
-            });
+            await withTimeout(
+                client.sendMessage(targetJid, retryMedia, {
+                    sendMediaAsDocument: true
+                }),
+                18000,
+                'PDF retry upload timed out after 18s'
+            );
             console.log(`[WHATSAPP] Direct PDF invoice document sent on fallback to ${targetJid} for order #${orderId}`);
             return true;
         }
@@ -68,10 +82,26 @@ let client = null;
 let currentQrDataUrl = null;
 let connectionState = 'DISCONNECTED'; // DISCONNECTED, INITIALIZING, QR_READY, CONNECTED
 let userInfo = null;
+let lastEngineError = null;
 const notifiedOrderIds = new Set();
 const notifiedPendingOrderIds = new Set();
 let initRetryCount = 0;
 const MAX_INIT_RETRIES = 3;
+
+/**
+ * Wait for client to enter CONNECTED state if it is currently INITIALIZING or AUTHENTICATED
+ */
+export async function waitForReady(timeoutMs = 12000) {
+    if (connectionState === 'CONNECTED' && client) return true;
+    if (connectionState !== 'INITIALIZING' && connectionState !== 'AUTHENTICATED') return false;
+
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        if (connectionState === 'CONNECTED' && client) return true;
+        await new Promise(r => setTimeout(r, 800));
+    }
+    return (connectionState === 'CONNECTED' && client);
+}
 
 /**
  * Detect available Chromium executable on Linux/Docker VPS or fallback to puppeteer default for Mac/Win
@@ -106,6 +136,10 @@ export function formatWhatsAppJid(phone) {
     }
     if (cleaned.length === 10) {
         cleaned = '91' + cleaned;
+    } else if (cleaned.length === 11 && cleaned.startsWith('0')) {
+        cleaned = '91' + cleaned.slice(1);
+    } else if (cleaned.length > 10 && cleaned.startsWith('910')) {
+        cleaned = '91' + cleaned.slice(3);
     }
     return (cleaned && cleaned.length >= 10) ? `${cleaned}@c.us` : null;
 }
@@ -116,6 +150,14 @@ export function formatWhatsAppJid(phone) {
  */
 export function getAdminJid() {
     const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || DEFAULT_NOTIFICATION_NUMBER;
+    if (client && client.info && client.info.wid) {
+        const clientUser = String(client.info.wid.user || '');
+        const cleanAdmin = String(adminPhone).replace(/\D/g, '').slice(-10);
+        if (clientUser && clientUser.endsWith(cleanAdmin)) {
+            // Self-messaging mode: use serialized WID to send message directly to own chat
+            return client.info.wid._serialized;
+        }
+    }
     return formatWhatsAppJid(adminPhone);
 }
 
@@ -149,6 +191,8 @@ export function buildOrderNotificationMessage(order) {
     const txnId = order.transaction_id || order.id;
     const phoneFormatted = order.phone ? `+91 ${order.phone.replace(/\D/g, '').slice(-10)}` : 'N/A';
 
+    const invoiceUrl = getInvoiceUrl(order.id);
+
     return `🌿 *RASOBHOOMI PLANTATION - NEW PAID ORDER* 🌿
 --------------------------------------------------
 🆔 *Order ID:* #${order.id}
@@ -164,7 +208,8 @@ ${itemsText}
 🏷️ *Transaction ID:* ${txnId}
 ⏰ *Time:* ${formattedDate}
 --------------------------------------------------
-📄 *Tax Invoice:* Official PDF invoice is attached below.
+📄 *Tax Invoice:* Official PDF is attached below.
+🔗 *View / Download PDF:* ${invoiceUrl}
 --------------------------------------------------
 ✨ *Order confirmed & ready for processing.*`;
 }
@@ -230,12 +275,14 @@ export function initWhatsApp() {
         }),
         webVersionCache: {
             type: 'remote',
-            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html',
+            strict: false
         },
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         takeoverOnConflict: true,
         bypassCSP: true,
-        authTimeoutMs: 90000,
-        qrMaxRetries: 10,
+        authTimeoutMs: 120000,
+        qrMaxRetries: 15,
         puppeteer: {
             headless: true,
             executablePath: execPath,
@@ -245,7 +292,6 @@ export function initWhatsApp() {
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
-                '--no-zygote',
                 '--disable-gpu',
                 '--disable-extensions'
             ]
@@ -256,6 +302,7 @@ export function initWhatsApp() {
         console.log('[WHATSAPP] New QR code generated');
         if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'QR_READY';
+        lastEngineError = null;
         try {
             currentQrDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 8 });
         } catch (err) {
@@ -272,6 +319,8 @@ export function initWhatsApp() {
         if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'CONNECTED';
         currentQrDataUrl = null;
+        lastEngineError = null;
+        initRetryCount = 0;
         try {
             const info = client.info;
             userInfo = {
@@ -296,6 +345,7 @@ export function initWhatsApp() {
         connectionState = 'DISCONNECTED';
         currentQrDataUrl = null;
         userInfo = null;
+        lastEngineError = 'Authentication failed: ' + (msg || 'Invalid or expired session');
     });
 
     client.on('disconnected', (reason) => {
@@ -303,6 +353,7 @@ export function initWhatsApp() {
         connectionState = 'DISCONNECTED';
         currentQrDataUrl = null;
         userInfo = null;
+        lastEngineError = 'Disconnected: ' + (reason || 'Session closed');
         // Attempt restart after delay
         setTimeout(() => {
             if (client) {
@@ -318,6 +369,7 @@ export function initWhatsApp() {
     client.initialize().catch((err) => {
         console.error('[WHATSAPP] Error during initialize:', err?.message || err);
         connectionState = 'DISCONNECTED';
+        lastEngineError = err?.message || String(err);
         if (err?.message?.includes('already running') || err?.message?.includes('userDataDir')) {
             if (initRetryCount < MAX_INIT_RETRIES) {
                 initRetryCount++;
@@ -349,6 +401,8 @@ export function getWhatsAppStatus() {
         status: connectionState,
         qrCode: currentQrDataUrl,
         user: userInfo,
+        lastError: lastEngineError,
+        isReady: (connectionState === 'CONNECTED' && !!client),
         targetNumber: `+91 ${String(adminPhone).replace(/\D/g, '').slice(-10)}`
     };
 }
@@ -414,6 +468,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *टैक्स इनवॉइस:* आपका आधिकारिक टैक्स इनवॉइस PDF नीचे संलग्न है।
+🔗 *डाउनलोड लिंक:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो इस व्हाट्सएप संदेश का उत्तर दें या हमसे संपर्क करें (+91 89720 76182)।
@@ -440,6 +495,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ট্যাক্স ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
+🔗 *ডাউনলোড লিঙ্ক:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 যেকোনো প্রশ্নের জন্য এই হোয়াটসঅ্যাপ মেসেজের উত্তর দিন অথবা যোগাযোগ করুন (+91 89720 76182)।
@@ -465,6 +521,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *Tax Invoice:* Your official Tax Invoice PDF is attached below.
+🔗 *Download Link:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 If you have any questions, feel free to reply directly to this message or contact us on WhatsApp (+91 89720 76182).
@@ -483,10 +540,13 @@ export async function sendOrderPaymentNotification(order, force = false) {
         return { success: true, duplicate: true };
     }
 
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(12000);
+    if (!ready || !client) {
         console.warn(`[WHATSAPP] Cannot send notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
+
+    let deliveredAny = false;
 
     try {
         // Generate PDF Invoice
@@ -507,8 +567,9 @@ export async function sendOrderPaymentNotification(order, force = false) {
                 const textMessage = buildOrderNotificationMessage(order);
                 console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
                 await client.sendMessage(adminJid, textMessage);
+                deliveredAny = true;
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 1200));
                     console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Admin (${adminJid})...`);
                     await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
                 }
@@ -520,12 +581,13 @@ export async function sendOrderPaymentNotification(order, force = false) {
         // 2. Send to Customer's WhatsApp Number provided at checkout
         if (customerJid) {
             try {
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 1200));
                 console.log(`[WHATSAPP] Sending customer order confirmation for #${order.id} to Customer (${customerJid})...`);
                 const customerMsg = buildCustomerOrderMessage(order);
                 await client.sendMessage(customerJid, customerMsg);
+                deliveredAny = true;
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 1200));
                     console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
                     await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
                 }
@@ -535,9 +597,14 @@ export async function sendOrderPaymentNotification(order, force = false) {
             }
         }
 
-        notifiedOrderIds.add(order.id);
-        console.log(`[WHATSAPP] Order notification & invoice PDF sent for #${order.id}!`);
-        return { success: true };
+        if (deliveredAny) {
+            notifiedOrderIds.add(order.id);
+            console.log(`[WHATSAPP] Order notification & invoice PDF sent for #${order.id}!`);
+            return { success: true };
+        } else {
+            console.warn(`[WHATSAPP] Delivery failed for both admin and customer for order #${order.id}`);
+            return { success: false, error: 'Failed to deliver to both admin and customer' };
+        }
     } catch (err) {
         console.error(`[WHATSAPP] Failed to send notification for order #${order.id}:`, err);
         return { success: false, error: err.message };
@@ -588,6 +655,7 @@ ${itemsText}
 ⏰ *Time:* ${formattedDate}
 --------------------------------------------------
 📄 *Tax Invoice:* Official PDF invoice is attached below.
+🔗 *View / Download PDF:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------`;
 }
 
@@ -628,6 +696,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *टैक्स इनवॉइस:* आपका आधिकारिक इनवॉइस PDF नीचे संलग्न है।
+🔗 *डाउनलोड लिंक:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 यदि आपका कोई प्रश्न है, तो हमसे व्हाट्सएप (+91 89720 76182) पर संपर्क करें।
@@ -650,6 +719,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *ট্যাক্স ইনভয়েস:* আপনার অফিশিয়াল ইনভয়েস PDF নিচে সংযুক্ত করা হলো।
+🔗 *ডাউনলোড লিঙ্ক:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 যেকোনো সহায়তার জন্য যোগাযোগ করুন (+91 89720 76182)।
@@ -671,6 +741,7 @@ ${order.address || ''}, ${order.city || ''} ${order.zip ? `- ${order.zip}` : ''}
 
 --------------------------------------------------
 📄 *Tax Invoice:* Your official Invoice PDF is attached below.
+🔗 *Download Link:* ${getInvoiceUrl(order.id)}
 --------------------------------------------------
 
 For queries or support, feel free to reply directly or WhatsApp us (+91 89720 76182).
@@ -688,10 +759,13 @@ export async function sendPendingPaymentNotification(order, force = false) {
         return { success: true, duplicate: true };
     }
 
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(12000);
+    if (!ready || !client) {
         console.warn(`[WHATSAPP] Cannot send pending payment notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
+
+    let deliveredAny = false;
 
     try {
         const pdfLang = order.lang || 'en';
@@ -711,8 +785,9 @@ export async function sendPendingPaymentNotification(order, force = false) {
                 const textMessage = buildPendingPaymentNotificationMessage(order);
                 console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
                 await client.sendMessage(adminJid, textMessage);
+                deliveredAny = true;
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 1200));
                     console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Admin (${adminJid})...`);
                     await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
                 }
@@ -724,12 +799,13 @@ export async function sendPendingPaymentNotification(order, force = false) {
         // 2. Send to Customer
         if (customerJid) {
             try {
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 1200));
                 const customerMsg = buildCustomerPendingOrderMessage(order);
                 console.log(`[WHATSAPP] Sending customer order receipt & invoice PDF for #${order.id} to Customer (${customerJid})...`);
                 await client.sendMessage(customerJid, customerMsg);
+                deliveredAny = true;
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, 1200));
                     console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Customer (${customerJid})...`);
                     await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
                 }
@@ -739,9 +815,13 @@ export async function sendPendingPaymentNotification(order, force = false) {
             }
         }
 
-        notifiedPendingOrderIds.add(order.id);
-        console.log(`[WHATSAPP] Pending payment alert & direct invoice processing finished for #${order.id}!`);
-        return { success: true };
+        if (deliveredAny) {
+            notifiedPendingOrderIds.add(order.id);
+            console.log(`[WHATSAPP] Pending payment alert & direct invoice processing finished for #${order.id}!`);
+            return { success: true };
+        } else {
+            return { success: false, error: 'Failed to deliver pending alert to both admin and customer' };
+        }
     } catch (err) {
         console.error(`[WHATSAPP] Failed to send pending payment notification for order #${order.id}:`, err);
         return { success: false, error: err.message };
@@ -753,7 +833,8 @@ export async function sendPendingPaymentNotification(order, force = false) {
  */
 export async function sendDirectInvoicePdf(order, targetPhone = null) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(12000);
+    if (!ready || !client) {
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
 
@@ -775,10 +856,20 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
     }
 
     let sentCount = 0;
+    const downloadUrl = getInvoiceUrl(order.id);
+    const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice attached below.\n🔗 Direct View / Download: ${downloadUrl}`;
+
     for (const jid of targets) {
+        try {
+            await client.sendMessage(jid, companionMsg);
+            sentCount++;
+        } catch (msgErr) {
+            console.warn(`[WHATSAPP] Failed to send companion text to ${jid}:`, msgErr.message);
+        }
+        await new Promise(r => setTimeout(r, 1200));
         const ok = await sendPdfDocumentSafe(jid, pdfBuffer, order.id);
         if (ok) sentCount++;
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1200));
     }
 
     return { success: sentCount > 0, sentCount };
@@ -909,7 +1000,8 @@ Thank you for trusting *Rasobhoomi Plantation* for a greener world! 🪴💚`;
 export async function sendOrderStatusNotification(order, newStatus) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
 
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(12000);
+    if (!ready || !client) {
         console.warn(`[WHATSAPP] Cannot send order status notification. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }
@@ -939,16 +1031,24 @@ export async function sendOrderStatusNotification(order, newStatus) {
     }
 }
 
-
 /**
  * Send a custom test message to verify connection
  */
 export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER) {
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(8000);
+    if (!ready || !client) {
         throw new Error(`WhatsApp is not connected (Current status: ${connectionState})`);
     }
-    const jid = (targetNumber === DEFAULT_NOTIFICATION_NUMBER) ? (getAdminJid() || formatWhatsAppJid(targetNumber)) : formatWhatsAppJid(targetNumber);
-    const testMsg = `🧪 *Rasobhoomi Plantation - WhatsApp Test Message*\n\nWhatsApp integration is active and working properly!\n⏰ Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
+
+    const cleanTarget = String(targetNumber).replace(/\D/g, '').slice(-10);
+    const cleanAdmin = String(DEFAULT_NOTIFICATION_NUMBER).replace(/\D/g, '').slice(-10);
+
+    let jid = formatWhatsAppJid(targetNumber);
+    if (cleanTarget === cleanAdmin) {
+        jid = getAdminJid() || jid;
+    }
+
+    const testMsg = `🧪 *Rasobhoomi Plantation - WhatsApp Test Alert*\n\n✅ WhatsApp integration is ACTIVE and working properly!\n⏰ Server Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n🌿 Ready to dispatch order alerts and tax invoices.`;
     await client.sendMessage(jid, testMsg);
     return { success: true, recipient: jid };
 }
@@ -1071,7 +1171,8 @@ export async function sendPaymentRecoveryWhatsApp(order, phase = 1) {
         return { success: true, skipped: true, reason: 'Already paid' };
     }
 
-    if ((connectionState !== 'CONNECTED' && connectionState !== 'AUTHENTICATED') || !client) {
+    const ready = await waitForReady(12000);
+    if (!ready || !client) {
         console.warn(`[WHATSAPP RECOVERY] Cannot send Phase ${phase} message. WhatsApp state is '${connectionState}'`);
         return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
     }

@@ -2291,8 +2291,8 @@ async function processPaymentRecoveryQueue() {
                         const ageHours = (now - createdAt) / (1000 * 60 * 60);
                         const sinceLastHours = (now - lastSentAt) / (1000 * 60 * 60);
 
-                        // Auto-expire historical orders older than 72 hours so old backlogs never send
-                        if (currentPhase === 0 && ageHours > 72) {
+                        // Auto-expire historical orders older than 14 days (336 hours) so old archived orders don't send
+                        if (currentPhase === 0 && ageHours > 336) {
                             db.run(
                                 "UPDATE orders SET recovery_phase = 2 WHERE phone LIKE ? AND LOWER(COALESCE(payment_status, '')) != 'paid'",
                                 [`%${cleanPhone}`]

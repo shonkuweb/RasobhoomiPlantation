@@ -91,6 +91,11 @@ const WhatsAppQR = () => {
                 </div>
 
                 {error && <div style={styles.errorBanner}>{error}</div>}
+                {statusData.lastError && (
+                    <div style={{ ...styles.errorBanner, backgroundColor: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b', marginTop: '0.75rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                        ⚠️ <strong>Engine Message:</strong> {statusData.lastError}
+                    </div>
+                )}
 
                 {/* STATUS BAR */}
                 <div style={styles.statusSection}>
