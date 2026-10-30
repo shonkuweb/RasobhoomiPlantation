@@ -27,10 +27,81 @@ function withTimeout(promise, ms, errorMsg) {
 }
 
 /**
+ * Injects in-browser safety hooks to prevent WhatsApp Web's
+ * "Data passed to getter must include an id property" crash when sending media
+ */
+export async function ensureMediaPatchApplied() {
+    if (!client || !client.pupPage) return;
+    try {
+        await client.pupPage.evaluate(() => {
+            if (window._wwebjs_media_patch_installed) return;
+
+            // 1. Hook processMediaData so media attributes don't overwrite message.id with undefined
+            if (window.WWebJS && window.WWebJS.processMediaData) {
+                const origProcess = window.WWebJS.processMediaData;
+                window.WWebJS.processMediaData = async function () {
+                    const result = await origProcess.apply(this, arguments);
+                    if (result) {
+                        try {
+                            delete result.id;
+                            delete result.__x_id;
+                            if (result.toJSON) {
+                                const origToJSON = result.toJSON;
+                                result.toJSON = function () {
+                                    const json = origToJSON.apply(this, arguments) || {};
+                                    delete json.id;
+                                    delete json.__x_id;
+                                    return json;
+                                };
+                            }
+                        } catch (e) {}
+                    }
+                    return result;
+                };
+            }
+
+            // 2. Hook addAndSendMsgToChat directly as an extra safety layer
+            try {
+                const SendAction = window.require && window.require('WAWebSendMsgChatAction');
+                if (SendAction && SendAction.addAndSendMsgToChat && !SendAction._idPatchInstalled) {
+                    const origAddAndSend = SendAction.addAndSendMsgToChat;
+                    SendAction.addAndSendMsgToChat = function (chat, message) {
+                        if (message) {
+                            delete message.__x_id;
+                            if (!message.id || typeof message.id !== 'object' || !message.id._serialized) {
+                                try {
+                                    const MsgKey = window.require('WAWebMsgKey');
+                                    const { getMaybeMeLidUser, getMaybeMePnUser } = window.require('WAWebUserPrefsMeUser');
+                                    const from = (chat.id && chat.id.isLid && chat.id.isLid()) ? getMaybeMeLidUser() : getMaybeMePnUser();
+                                    const newId = (MsgKey.newId ? MsgKey.newId() : ('3EB0' + Math.random().toString(36).substring(2, 12).toUpperCase()));
+                                    message.id = new MsgKey({
+                                        from: from,
+                                        to: chat.id,
+                                        id: newId,
+                                        selfDir: 'out'
+                                    });
+                                } catch (err) {}
+                            }
+                        }
+                        return origAddAndSend.apply(this, arguments);
+                    };
+                    SendAction._idPatchInstalled = true;
+                }
+            } catch (e) {}
+
+            window._wwebjs_media_patch_installed = true;
+        });
+    } catch (err) {
+        // Puppeteer page may still be loading
+    }
+}
+
+/**
  * Safely send a direct PDF invoice document to a WhatsApp recipient.
  */
 export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
     if (!targetJid || !pdfBuffer || !client) return false;
+    await ensureMediaPatchApplied();
     try {
         const filename = `Invoice_${orderId}.pdf`;
         const b64Data = Buffer.isBuffer(pdfBuffer) ? pdfBuffer.toString('base64') : String(pdfBuffer);
@@ -55,6 +126,7 @@ export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
             return true;
         } catch (firstErr) {
             console.warn(`[WHATSAPP] Primary attempt sending PDF to ${targetJid} failed (${firstErr.message}). Retrying with fallback...`);
+            await ensureMediaPatchApplied();
             await new Promise(r => setTimeout(r, 1500));
             const retryMedia = new MessageMedia(
                 'application/pdf',
@@ -321,6 +393,7 @@ export function initWhatsApp() {
         currentQrDataUrl = null;
         lastEngineError = null;
         initRetryCount = 0;
+        await ensureMediaPatchApplied();
         try {
             const info = client.info;
             userInfo = {
@@ -332,11 +405,12 @@ export function initWhatsApp() {
         }
     });
 
-    client.on('authenticated', () => {
+    client.on('authenticated', async () => {
         console.log('[WHATSAPP] Authenticated successfully! Waiting for ready state...');
         if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
         connectionState = 'AUTHENTICATED';
         currentQrDataUrl = null;
+        await ensureMediaPatchApplied();
     });
 
     client.on('auth_failure', (msg) => {
