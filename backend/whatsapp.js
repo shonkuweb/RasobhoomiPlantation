@@ -68,13 +68,13 @@ export async function ensureMediaPatchApplied() {
                 if (SendAction && SendAction.addAndSendMsgToChat && !SendAction._idPatchInstalled) {
                     const origAddAndSend = SendAction.addAndSendMsgToChat;
                     SendAction.addAndSendMsgToChat = function (chat, message) {
-                        if (message) {
+                        if (chat && chat.id && message) {
                             delete message.__x_id;
                             if (!message.id || typeof message.id !== 'object' || !message.id._serialized) {
                                 try {
                                     const MsgKey = window.require('WAWebMsgKey');
                                     const { getMaybeMeLidUser, getMaybeMePnUser } = window.require('WAWebUserPrefsMeUser');
-                                    const from = (chat.id && chat.id.isLid && chat.id.isLid()) ? getMaybeMeLidUser() : getMaybeMePnUser();
+                                    const from = (chat.id.isLid && chat.id.isLid()) ? getMaybeMeLidUser() : getMaybeMePnUser();
                                     const newId = (MsgKey.newId ? MsgKey.newId() : ('3EB0' + Math.random().toString(36).substring(2, 12).toUpperCase()));
                                     message.id = new MsgKey({
                                         from: from,
@@ -103,6 +103,10 @@ export async function ensureMediaPatchApplied() {
  */
 export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
     if (!targetJid || !pdfBuffer || !client) return false;
+    if (targetJid.endsWith('@lid')) {
+        console.warn(`[WHATSAPP] Cannot send PDF to @lid JID (${targetJid}). Destination must be @c.us`);
+        return false;
+    }
     await ensureMediaPatchApplied();
     try {
         const filename = `Invoice_${orderId}.pdf`;
@@ -219,8 +223,8 @@ export function formatWhatsAppJid(phone) {
 }
 
 /**
- * Robust async resolver that checks WhatsApp server registry (resolving proper WID / LID).
- * Ensures unsaved customer numbers are properly mapped by WhatsApp Web.
+ * Robust async resolver that checks WhatsApp server registry.
+ * ALWAYS returns a standard user phone JID ending in @c.us (never @lid).
  */
 export async function resolveWhatsAppJid(phone) {
     const rawJid = formatWhatsAppJid(phone);
@@ -230,7 +234,11 @@ export async function resolveWhatsAppJid(phone) {
     const cleaned = rawJid.replace('@c.us', '');
     try {
         const contact = await client.getNumberId(cleaned);
-        if (contact && contact._serialized) {
+        // CRITICAL: Modern WhatsApp Web getNumberId frequently returns a @lid JID (privacy/linked device ID).
+        // Sending direct chat messages to a @lid JID fails with 't' / 'r' because WhatsApp Web
+        // only supports initiating chats with phone numbers (@c.us).
+        // If contact._serialized is already @c.us, use it. Otherwise, always return rawJid (@c.us).
+        if (contact && contact._serialized && contact._serialized.endsWith('@c.us')) {
             return contact._serialized;
         }
     } catch (e) {
@@ -240,35 +248,32 @@ export async function resolveWhatsAppJid(phone) {
 }
 
 /**
- * Safely send message to a JID with fallback for unsaved contacts / LID mismatches
+ * Safely send message to a phone JID. Enforces @c.us only.
  */
 export async function safeSendMessage(jid, content, options = {}) {
     if (!client || !jid) return null;
+
+    // Safety: ensure we never send to a LID
+    let targetJid = jid;
+    if (targetJid.endsWith('@lid')) {
+        console.warn(`[WHATSAPP] Blocked send to @lid: ${targetJid}. Only @c.us is allowed.`);
+        return null;
+    }
+
     try {
-        const result = await client.sendMessage(jid, content, options);
-        if (!result) {
-            console.warn(`[WHATSAPP] sendMessage returned empty for ${jid}. Trying getChatById fallback...`);
-            try {
-                const chat = await client.getChatById(jid);
-                if (chat) {
-                    return await chat.sendMessage(content, options);
-                }
-            } catch (chatErr) {
-                console.warn(`[WHATSAPP] getChatById fallback failed for ${jid}:`, chatErr.message);
-            }
+        console.log(`[WHATSAPP] safeSendMessage dispatching to ${targetJid}...`);
+        const result = await client.sendMessage(targetJid, content, options);
+        if (result) return result;
+
+        console.warn(`[WHATSAPP] sendMessage returned empty for ${targetJid}. Trying getChatById fallback...`);
+        const chat = await client.getChatById(targetJid);
+        if (chat) {
+            return await chat.sendMessage(content, options);
         }
-        return result;
+        return null;
     } catch (err) {
-        console.error(`[WHATSAPP] Error in safeSendMessage to ${jid}:`, err.message);
-        try {
-            const clean = jid.replace(/\D/g, '');
-            const resolved = await client.getNumberId(clean);
-            if (resolved && resolved._serialized && resolved._serialized !== jid) {
-                console.log(`[WHATSAPP] Retrying sendMessage with resolved JID: ${resolved._serialized}`);
-                return await client.sendMessage(resolved._serialized, content, options);
-            }
-        } catch (retryErr) {}
-        throw err;
+        console.error(`[WHATSAPP] Error in safeSendMessage to ${targetJid}:`, err?.message || err);
+        throw (err instanceof Error ? err : new Error(String(err)));
     }
 }
 
@@ -282,15 +287,18 @@ export async function getAdminJids() {
 
     if (envAdmin) {
         const jid = await resolveWhatsAppJid(envAdmin);
-        if (jid) targets.add(jid);
+        if (jid && !jid.endsWith('@lid')) targets.add(jid);
     } else {
         // Use default admin notification number
         const defaultJid = await resolveWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
-        if (defaultJid) targets.add(defaultJid);
+        if (defaultJid && !defaultJid.endsWith('@lid')) targets.add(defaultJid);
 
         // Also if client is connected on another number (e.g. self-chat), notify it too!
         if (client && client.info && client.info.wid && client.info.wid._serialized) {
-            targets.add(client.info.wid._serialized);
+            const myWid = client.info.wid._serialized;
+            if (myWid && myWid.endsWith('@c.us')) {
+                targets.add(myWid);
+            }
         }
     }
     return Array.from(targets);

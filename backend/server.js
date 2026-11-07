@@ -2184,7 +2184,9 @@ app.post('/api/whatsapp/test', async (req, res) => {
         const result = await sendTestMessage(targetNumber);
         res.json(result);
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        console.error('[WHATSAPP TEST ERROR]:', err);
+        const errMsg = (err && err.message) ? err.message : String(err || 'Failed to send test message');
+        res.status(500).json({ success: false, error: errMsg });
     }
 });
 
