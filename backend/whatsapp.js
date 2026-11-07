@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Target phone number for payment success notifications
-export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '9907541613';
+export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '8972076182';
 
 
 export const SITE_URL = (process.env.APP_FE_URL || process.env.APP_BE_URL || 'https://rasobhoomiplantation.com').replace(/\/+$/, '');

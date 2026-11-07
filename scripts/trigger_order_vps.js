@@ -39,7 +39,7 @@ async function main() {
 
     const orderPayload = {
         name: 'SOUMYOJIT DAS',
-        phone: '9907541613',
+        phone: '8972076182',
         address: 'Jora sirishtola habra',
         city: 'habra',
         zip: '743263',
