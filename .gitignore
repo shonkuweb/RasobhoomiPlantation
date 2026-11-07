@@ -27,5 +27,6 @@ backend/ecommerce.db
 ecommerce.db
 .wwebjs_auth
 .wwebjs_cache
+.wwebjs_outbox
 scripts/test_*.js
 public/invoices/

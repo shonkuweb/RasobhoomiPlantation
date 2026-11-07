@@ -1,5 +1,37 @@
 # Deployment Guide for Hostinger VPS
 
+## Updating the WhatsApp fixes without replacing the database
+
+Use the existing deployment directory and Compose project name, so the existing
+`db-data` and `wwebjs-auth` volumes keep their identities. These changes add only
+the `wwebjs-outbox` volume, which stores pending WhatsApp notifications and delivery
+receipts separately from the orders database. No database migration is required.
+
+After pulling the reviewed changes on the server, rebuild **only the app**:
+
+```bash
+docker compose up -d --build --no-deps app
+docker compose logs --tail=100 app
+```
+
+This does not recreate the database service. Do not use `docker compose down -v`,
+remove `db-data`, or start a fresh Compose project for this update.
+
+Open `/wa` to check the connection and pending notifications. New notifications
+retry automatically after reconnects and app restarts. Already-missed notifications
+from before this queue was installed are not automatically replayed; use the
+existing order actions for a deliberate resend. The existing recovery reminder
+timings and five-customer daily limit are unchanged.
+
+For PM2, use `backend/ecosystem.config.cjs` with a single instance. Do not run PM2
+and the Docker app against the same WhatsApp session at the same time. Outside
+Docker, keep `.wwebjs_outbox` on persistent storage (or set `WHATSAPP_OUTBOX_DIR`).
+
+Local checks: `npm run test:whatsapp` and `npm run build`. Automated tests use mock
+WhatsApp sessions and temporary outbox files; they do not send messages or connect
+to a production database. A real delivery check requires the deployed app and an
+authorized test recipient.
+
 This guide will walk you through deploying your E-commerce application to your Hostinger VPS using Docker.
 
 ## Prerequisites

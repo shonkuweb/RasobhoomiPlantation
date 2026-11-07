@@ -30,12 +30,20 @@ try {
         // Fix 2: Wait briefly for Msg.get so sendMessage does not resolve to undefined
         if (!content.includes('waitForSentMsg')) {
             const target2 = `return window\n            .require('WAWebCollections')\n            .Msg.get(newMsgKey._serialized);`;
-            const replacement2 = `let _sentMsg = window.require('WAWebCollections').Msg.get(newMsgKey._serialized);\n        if (!_sentMsg) {\n            for (let i = 0; i < 5; i++) {\n                await new Promise(r => setTimeout(r, 100));\n                _sentMsg = window.require('WAWebCollections').Msg.get(newMsgKey._serialized);\n                if (_sentMsg) break;\n            }\n        }\n        return _sentMsg || (window.require('WAWebCollections').Msg.modelClass ? new (window.require('WAWebCollections').Msg.modelClass)(message) : null); // waitForSentMsg`;
+            const replacement2 = `let _sentMsg = window.require('WAWebCollections').Msg.get(newMsgKey._serialized);\n        if (!_sentMsg) {\n            for (let i = 0; i < 5; i++) {\n                await new Promise(r => setTimeout(r, 100));\n                _sentMsg = window.require('WAWebCollections').Msg.get(newMsgKey._serialized);\n                if (_sentMsg) break;\n            }\n        }\n        return _sentMsg || null; // waitForSentMsg`;
             if (content.includes(target2)) {
                 content = content.replace(target2, replacement2);
                 modified = true;
                 console.log('[PATCH] ✅ Successfully patched Injected/Utils.js with Msg.get retry!');
             }
+        }
+
+        // Remove the old synthetic-message fallback on existing installations too.
+        // Constructing a model is not evidence that WhatsApp accepted a message.
+        const syntheticFallback = "return _sentMsg || (window.require('WAWebCollections').Msg.modelClass ? new (window.require('WAWebCollections').Msg.modelClass)(message) : null); // waitForSentMsg";
+        if (content.includes(syntheticFallback)) {
+            content = content.replace(syntheticFallback, 'return _sentMsg || null; // waitForSentMsg');
+            modified = true;
         }
 
         // Fix 3: Wrap getChat findOrCreateLatestChat to prevent "No LID for user" crash

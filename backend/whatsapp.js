@@ -1,4 +1,7 @@
 import '../scripts/patch_wwebjs.js';
+import dotenv from 'dotenv';
+import { randomBytes, createHash } from 'node:crypto';
+import { WhatsAppOutbox } from './whatsapp_outbox.js';
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth, MessageMedia } = pkg;
 import QRCode from 'qrcode';
@@ -10,6 +13,7 @@ import { translateProduct } from './product_translator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Target phone number for payment success notifications
 export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '9907541613';
@@ -22,10 +26,13 @@ export function getInvoiceUrl(orderId) {
 }
 
 function withTimeout(promise, ms, errorMsg) {
+    let timer;
     return Promise.race([
         promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
-    ]);
+        new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(errorMsg)), ms);
+        })
+    ]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -33,154 +40,55 @@ function withTimeout(promise, ms, errorMsg) {
  * "Data passed to getter must include an id property" crash when sending media
  */
 export async function ensureMediaPatchApplied() {
-    if (!client || !client.pupPage) return;
+    if (!client?.pupPage) return;
     try {
-        await client.pupPage.evaluate(() => {
-            if (window._wwebjs_media_patch_installed) return;
-
-            // 1. Hook processMediaData so media attributes don't overwrite message.id with undefined
-            if (window.WWebJS && window.WWebJS.processMediaData) {
-                const origProcess = window.WWebJS.processMediaData;
-                window.WWebJS.processMediaData = async function () {
-                    const result = await origProcess.apply(this, arguments);
-                    if (result) {
-                        try {
-                            delete result.id;
-                            delete result.__x_id;
-                            if (result.toJSON) {
-                                const origToJSON = result.toJSON;
-                                result.toJSON = function () {
-                                    const json = origToJSON.apply(this, arguments) || {};
-                                    delete json.id;
-                                    delete json.__x_id;
-                                    return json;
-                                };
-                            }
-                        } catch (e) {}
-                    }
-                    return result;
-                };
-            }
-
-            // 2. Hook addAndSendMsgToChat directly as an extra safety layer
-            try {
-                const SendAction = window.require && window.require('WAWebSendMsgChatAction');
-                if (SendAction && SendAction.addAndSendMsgToChat && !SendAction._idPatchInstalled) {
-                    const origAddAndSend = SendAction.addAndSendMsgToChat;
-                    SendAction.addAndSendMsgToChat = function (chat, message) {
-                        if (chat && chat.id && message) {
-                            delete message.__x_id;
-                            if (!message.id || typeof message.id !== 'object' || !message.id._serialized) {
-                                try {
-                                    const MsgKey = window.require('WAWebMsgKey');
-                                    const { getMaybeMeLidUser, getMaybeMePnUser } = window.require('WAWebUserPrefsMeUser');
-                                    const from = (chat.id.isLid && chat.id.isLid()) ? getMaybeMeLidUser() : getMaybeMePnUser();
-                                    const newId = (MsgKey.newId ? MsgKey.newId() : ('3EB0' + Math.random().toString(36).substring(2, 12).toUpperCase()));
-                                    message.id = new MsgKey({
-                                        from: from,
-                                        to: chat.id,
-                                        id: newId,
-                                        selfDir: 'out'
-                                    });
-                                } catch (err) {}
-                            }
-                        }
-                        return origAddAndSend.apply(this, arguments);
+        await withTimeout(client.pupPage.evaluate(() => {
+            if (!window.WWebJS?.processMediaData) return;
+            if (window._wwebjs_media_patch_installed === window.WWebJS) return;
+            const original = window.WWebJS.processMediaData;
+            window.WWebJS.processMediaData = async function (...args) {
+                const media = await original.apply(this, args);
+                // Keep the actual model's ID: its own getters may require it.
+                // Only omit IDs from the plain attributes merged into a message.
+                if (media?.toJSON) {
+                    const serialize = media.toJSON;
+                    media.toJSON = function (...serializeArgs) {
+                        const attributes = { ...serialize.apply(this, serializeArgs) };
+                        delete attributes.id;
+                        delete attributes.__x_id;
+                        return attributes;
                     };
-                    SendAction._idPatchInstalled = true;
                 }
-            } catch (e) {}
-
-            // 3. Hook window.WWebJS.getChat to handle "No LID for user" / evaluation failure gracefully
-            try {
-                if (window.WWebJS && window.WWebJS.getChat && !window._wwebjs_getchat_patch_installed) {
-                    const origGetChat = window.WWebJS.getChat;
-                    window.WWebJS.getChat = async function (chatId, options = {}) {
-                        try {
-                            const res = await origGetChat.apply(this, arguments);
-                            if (res) return res;
-                        } catch (origErr) {}
-
-                        try {
-                            let chatWid = window.require('WAWebWidFactory').createWid(chatId);
-                            let chat = null;
-                            try {
-                                const ChatCol = window.require('WAWebCollections').Chat;
-                                chat = ChatCol.get(chatWid) || (await ChatCol.find(chatWid));
-                            } catch (e0) {}
-
-                            if (!chat) {
-                                try {
-                                    const FindAction = window.require('WAWebFindChatAction');
-                                    const res1 = await FindAction.findOrCreateLatestChat(chatWid);
-                                    chat = res1?.chat || res1;
-                                } catch (e1) {
-                                    try {
-                                        const QueryJob = window.require('WAWebQueryExistsJob');
-                                        const existRes = await QueryJob.queryWidExists(chatWid);
-                                        if (existRes && existRes.wid) {
-                                            const FindAction = window.require('WAWebFindChatAction');
-                                            const res2 = await FindAction.findOrCreateLatestChat(existRes.wid);
-                                            chat = res2?.chat || res2;
-                                        }
-                                    } catch (e2) {}
-                                }
-                            }
-
-                            if (!chat) return null;
-                            if (options && options.getAsModel) {
-                                try {
-                                    return await window.WWebJS.getChatModel(chat);
-                                } catch (mErr) {
-                                    return chat;
-                                }
-                            }
-                            return chat;
-                        } catch (fatal) {
-                            return null;
-                        }
-                    };
-                    window._wwebjs_getchat_patch_installed = true;
-                }
-            } catch (e) {}
-
-            window._wwebjs_media_patch_installed = true;
-        });
-    } catch (err) {
-        // Puppeteer page may still be loading
+                return media;
+            };
+            window._wwebjs_media_patch_installed = window.WWebJS;
+        }), 10000, 'WhatsApp media patch timed out');
+    } catch (error) {
+        console.warn('[WHATSAPP] Media patch deferred:', error.message);
     }
 }
 
 /**
  * Safely send a direct PDF invoice document to a WhatsApp recipient.
  */
-export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
-    if (!targetJid || !pdfBuffer || !client) return false;
-    await ensureMediaPatchApplied();
+async function sendInvoiceDocument(targetJid, pdfBuffer, orderId, messageId) {
+    if (!targetJid || !pdfBuffer?.length || !client) throw new Error('Missing invoice, recipient, or WhatsApp client');
+    const filename = `Invoice_${orderId}.pdf`;
+    const data = Buffer.isBuffer(pdfBuffer) ? pdfBuffer.toString('base64') : String(pdfBuffer);
+    const media = new MessageMedia('application/pdf', data, filename, pdfBuffer.length);
+    const result = await safeSendMessage(targetJid, '', {
+        media, messageId, sendMediaAsDocument: true, caption: `📄 Order #${orderId} Tax Invoice`
+    });
+    console.log(`[WHATSAPP] PDF send confirmed for order #${orderId} (ID: ${result.messageId})`);
+    return result;
+}
+
+export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId, messageId) {
     try {
-        const filename = `Invoice_${orderId}.pdf`;
-        const b64Data = Buffer.isBuffer(pdfBuffer) ? pdfBuffer.toString('base64') : String(pdfBuffer);
-        const media = new MessageMedia(
-            'application/pdf',
-            b64Data,
-            filename,
-            pdfBuffer.length || b64Data.length
-        );
-
-        console.log(`[WHATSAPP] Dispatching direct PDF document (${filename}, ${pdfBuffer.length} bytes) to ${targetJid}...`);
-
-        const res = await safeSendMessage(targetJid, '', {
-            media,
-            caption: `📄 Order #${orderId} Tax Invoice`
-        });
-
-        if (res && (res.success || res.messageId)) {
-            console.log(`[WHATSAPP] Direct PDF invoice document sent successfully to ${targetJid} for order #${orderId}`);
-            return true;
-        }
-        return false;
-    } catch (finalErr) {
-        console.error(`[WHATSAPP] Failed to send direct PDF document to ${targetJid} for order #${orderId}:`, finalErr.message);
+        await sendInvoiceDocument(targetJid, pdfBuffer, orderId, messageId);
+        return true;
+    } catch (error) {
+        console.error(`[WHATSAPP] PDF send failed for order #${orderId}:`, error.message);
         return false;
     }
 }
@@ -190,10 +98,120 @@ let currentQrDataUrl = null;
 let connectionState = 'DISCONNECTED'; // DISCONNECTED, INITIALIZING, QR_READY, CONNECTED
 let userInfo = null;
 let lastEngineError = null;
-const notifiedOrderIds = new Set();
-const notifiedPendingOrderIds = new Set();
+let outbox = null;
 let initRetryCount = 0;
-const MAX_INIT_RETRIES = 3;
+let reconnectTimer = null;
+let lifecycleTask = null;
+let stopping = false;
+
+function getOutbox() {
+    if (!outbox) {
+        outbox = new WhatsAppOutbox({
+            filename: path.join(process.env.WHATSAPP_OUTBOX_DIR || path.join(__dirname, '../.wwebjs_outbox'), 'notifications.json'),
+            isReady: () => connectionState === 'CONNECTED' && !!client,
+            deliver: deliverQueuedNotification,
+            refreshAcknowledgements: async ids => withTimeout(client.pupPage.evaluate(async messageIds => {
+                const messages = window.require('WAWebCollections').Msg;
+                const loaded = await messages.getMessagesById(messageIds);
+                return messageIds.map(id => {
+                    const message = messages.get(id) || loaded?.messages?.find(item => item.id?._serialized === id);
+                    return { id, ack: message?.ack };
+                });
+            }, ids), 10000, 'WhatsApp receipt lookup timed out')
+        });
+        outbox.start();
+    }
+    return outbox;
+}
+
+function notificationTargets(job) {
+    const targets = [];
+    if (job.order.phone) targets.push({ role: 'customer', phone: job.order.phone });
+    if (job.kind !== 'status') {
+        const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER;
+        targets.push({ role: 'admin', phone: adminPhone || DEFAULT_NOTIFICATION_NUMBER });
+        const selfJid = client?.info?.wid?._serialized;
+        if (!adminPhone && selfJid && selfJid !== formatWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER)) {
+            targets.push({ role: 'admin', jid: selfJid });
+        }
+    }
+    return targets.map(target => ({ ...target,
+        textId: randomBytes(16).toString('hex').toUpperCase(),
+        pdfId: randomBytes(16).toString('hex').toUpperCase()
+    }));
+}
+
+async function deliverQueuedNotification(job, checkpoint) {
+    if (!job.targets) {
+        job.targets = notificationTargets(job);
+        checkpoint();
+    }
+    if (!job.targets.length) throw new Error('Notification has no recipients');
+    // Attempt all texts before uploading PDFs. Failure for one recipient does not
+    // prevent another recipient from receiving their notification.
+    for (const target of job.targets) {
+        if (job.cancelled) return;
+        if (target.textSent) continue;
+        try {
+            target.jid ||= await resolveWhatsAppJid(target.phone);
+            if (!target.jid) throw new Error('Invalid WhatsApp recipient');
+            checkpoint();
+            const message = job.kind === 'status' ? buildOrderStatusMessage(job.order, job.newStatus)
+                : job.kind === 'paid'
+                    ? (target.role === 'customer' ? buildCustomerOrderMessage(job.order) : buildOrderNotificationMessage(job.order))
+                    : (target.role === 'customer' ? buildCustomerPendingOrderMessage(job.order) : buildPendingPaymentNotificationMessage(job.order));
+            const sent = await safeSendMessage(target.jid, message, { messageId: target.textId });
+            target.textMessageId = sent.messageId;
+            target.textAck = Math.max(target.textAck || 0, sent.ack || 0);
+            target.textSent = true;
+            target.lastError = null;
+            checkpoint();
+        } catch (error) {
+            if (error.outboxStorageError) throw error;
+            target.lastError = error.message;
+        }
+    }
+    let pdfBuffer;
+    for (const target of job.targets) {
+        if (job.cancelled) return;
+        if (!target.textSent || target.pdfSent) continue;
+        try {
+            pdfBuffer ||= await withTimeout(generateInvoicePdf(job.order, job.order.lang || 'en'), 30000, 'Invoice PDF generation timed out');
+            if (!pdfBuffer?.length) throw new Error('Invoice PDF generation returned no document');
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            if (job.cancelled) return;
+            const sent = await sendInvoiceDocument(target.jid, pdfBuffer, job.order.id, target.pdfId);
+            target.pdfMessageId = sent.messageId;
+            target.pdfAck = Math.max(target.pdfAck || 0, sent.ack || 0);
+            target.pdfSent = true;
+            target.lastError = null;
+            checkpoint();
+        } catch (error) {
+            if (error.outboxStorageError) throw error;
+            target.lastError = error.message;
+        }
+    }
+    const incomplete = job.targets.filter(target => !target.textSent || !target.pdfSent);
+    if (incomplete.length) throw new Error(incomplete.map(target => `${target.role}: ${target.lastError}`).join('; '));
+}
+
+function queueOrderNotification(kind, order, { force = false, newStatus } = {}) {
+    if (!order?.id) return { success: false, error: 'Invalid order data' };
+    if (kind === 'status' && !order.phone) return { success: false, error: 'Customer phone number missing' };
+    const queue = getOutbox();
+    if (kind === 'paid') queue.cancel(`pending:${order.id}`);
+    // A delayed failed-payment callback must not resurrect an obsolete receipt.
+    if (kind === 'pending' && queue.jobs.has(`paid:${order.id}`)) return { success: true, skipped: true };
+    const key = kind === 'status'
+        ? `status:${order.id}:${randomBytes(8).toString('hex')}`
+        : `${kind}:${order.id}`;
+    if (kind === 'status') {
+        for (const job of queue.jobs.values()) {
+            if (job.kind === 'status' && job.order?.id === order.id && job.id !== key) queue.cancel(job.id);
+        }
+    }
+    return queue.enqueue(key, { kind, order: JSON.parse(JSON.stringify(order)), newStatus }, { force });
+}
 
 /**
  * Wait for client to enter CONNECTED state if it is currently INITIALIZING or AUTHENTICATED
@@ -262,19 +280,20 @@ export async function resolveWhatsAppJid(phone) {
 
     const cleaned = rawJid.replace('@c.us', '');
     try {
-        const contact = await client.getNumberId(cleaned);
+        const contact = await withTimeout(client.getNumberId(cleaned), 10000, 'WhatsApp recipient lookup timed out');
+        if (!contact) throw new Error('Recipient is not registered on WhatsApp');
         if (contact && contact._serialized) {
             return contact._serialized;
         }
     } catch (e) {
-        console.warn(`[WHATSAPP] getNumberId check failed for ${cleaned}:`, e.message);
+        throw new Error(`Could not resolve WhatsApp recipient ${cleaned}: ${e.message}`);
     }
     return rawJid;
 }
 
 /**
  * Direct in-page WhatsApp message dispatcher.
- * Bypasses all known whatsapp-web.js bugs:
+ * Handles chat lookup and message-model races without fabricating send success:
  * 1. "No LID for user" / uncaught minified evaluation errors ('t', 'r').
  * 2. Msg.get race conditions where sendMessage returns undefined.
  * 3. Chat serialization crashes on fresh contacts.
@@ -308,6 +327,7 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
     const cleanTarget = String(targetId).trim();
 
     const evalResult = await client.pupPage.evaluate(async (target, textMsg, media, opts) => {
+        let dispatched = false;
         try {
             const WidFactory = window.require('WAWebWidFactory');
             const Collections = window.require('WAWebCollections');
@@ -357,8 +377,9 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
                 try {
                     const res = await FindChatAction.findOrCreateLatestChat(serverWid);
                     chat = res?.chat || res;
-                } catch (errServerWid) {
-                    // 3d. FindOrCreateLatestChat with rawWid
+                } catch (errServerWid) {}
+                if (!chat?.id) {
+                    // Also try the phone WID if the LID lookup returned no chat.
                     try {
                         const res2 = await FindChatAction.findOrCreateLatestChat(rawWid);
                         chat = res2?.chat || res2;
@@ -366,27 +387,38 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
                 }
             }
 
-            // 3e. Direct instantiation fallback if findOrCreate failed
-            if (!chat) {
-                try {
-                    const ChatClass = Collections.Chat.modelClass;
-                    if (ChatClass) {
-                        chat = new ChatClass({ id: serverWid });
-                        Collections.Chat.add(chat);
-                    }
-                } catch (instErr) {}
-            }
-
-            if (!chat) {
+            if (!chat?.id) {
                 return {
                     success: false,
                     error: `Could not initialize chat for recipient ${target} (Server WID: ${serverWid?._serialized || serverWid})`
                 };
             }
 
-            // Step 4: Process media if sending document/image
+            // Step 4: Construct message key & message object
+            const lidUser = MeUser.getMaybeMeLidUser ? MeUser.getMaybeMeLidUser() : null;
+            const meUser = MeUser.getMaybeMePnUser ? MeUser.getMaybeMePnUser() : null;
+            const newId = opts.messageId || await MsgKey.newId();
+            const from = (chat.id && chat.id.isLid && chat.id.isLid()) ? (lidUser || meUser) : (meUser || lidUser);
+
+            const newMsgKey = new MsgKey({
+                from: from,
+                to: chat.id,
+                id: newId,
+                participant: undefined,
+                selfDir: 'out',
+            });
+
+            // A retry uses the persisted message key. Never resend a message already acknowledged.
+            const existing = Collections.Msg.get(newMsgKey._serialized);
+            if (existing && existing.ack >= 1) {
+                return { success: true, messageId: newMsgKey._serialized, to: chat.id._serialized, ack: existing.ack };
+            }
+            // Step 5: Process media if sending document/image
             let mediaOptions = {};
-            if (media && window.WWebJS && window.WWebJS.processMediaData) {
+            if (media && !window.WWebJS?.processMediaData) {
+                throw new Error('WhatsApp media processor is not ready');
+            }
+            if (media) {
                 try {
                     mediaOptions = await window.WWebJS.processMediaData(media, {
                         forceDocument: true,
@@ -403,20 +435,6 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
                     };
                 }
             }
-
-            // Step 5: Construct message key & message object
-            const lidUser = MeUser.getMaybeMeLidUser ? MeUser.getMaybeMeLidUser() : null;
-            const meUser = MeUser.getMaybeMePnUser ? MeUser.getMaybeMePnUser() : null;
-            const newId = await MsgKey.newId();
-            const from = (chat.id && chat.id.isLid && chat.id.isLid()) ? (lidUser || meUser) : (meUser || lidUser);
-
-            const newMsgKey = new MsgKey({
-                from: from,
-                to: chat.id,
-                id: newId,
-                participant: undefined,
-                selfDir: 'out',
-            });
 
             let ephemeralFields = {};
             try {
@@ -438,32 +456,39 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
                 type: media ? 'document' : 'chat',
                 ...ephemeralFields,
                 ...mediaOptions,
+                ...(mediaOptions.toJSON ? mediaOptions.toJSON() : {}),
             };
             delete message.__x_id;
             message.id = newMsgKey;
 
-            // Step 6: Dispatch directly via WAWebSendMsgChatAction
+            dispatched = true;
             const [msgPromise, sendMsgResultPromise] = SendMsgAction.addAndSendMsgToChat(chat, message);
-            await msgPromise;
+            if (!sendMsgResultPromise?.then) throw new Error('WhatsApp returned no send confirmation');
+            // Await both together so a rejected server send cannot become an unhandled rejection.
+            await Promise.all([msgPromise, sendMsgResultPromise]);
 
             return {
                 success: true,
                 messageId: newMsgKey._serialized,
-                to: chat.id._serialized
+                to: chat.id._serialized,
+                ack: Collections.Msg.get(newMsgKey._serialized)?.ack || 0
             };
         } catch (unhandledErr) {
             return {
                 success: false,
                 error: (unhandledErr && unhandledErr.message) ? unhandledErr.message : String(unhandledErr),
+                dispatched,
                 name: unhandledErr?.name || 'Error',
                 stack: unhandledErr?.stack || null
             };
         }
-    }, cleanTarget, text, mediaPayload, options);
+    }, cleanTarget, text, mediaPayload, { caption: options.caption, messageId: options.messageId });
 
     if (!evalResult || !evalResult.success) {
         const detail = evalResult?.error || evalResult?.name || 'Unknown browser evaluation error';
-        throw new Error(detail);
+        const error = new Error(detail);
+        error.dispatched = Boolean(evalResult?.dispatched);
+        throw error;
     }
 
     return evalResult;
@@ -471,32 +496,22 @@ export async function customSendWhatsAppMessage(targetId, content, options = {})
 
 /**
  * Safely send message to a recipient.
- * Uses custom resilient dispatcher as Priority 1, and client.sendMessage as fallback.
+ * Uses one dispatcher; a failed or uncertain send is never retried by a second sender.
  */
 export async function safeSendMessage(jid, content, options = {}) {
-    if (!client || !jid) return null;
+    if (!client || connectionState !== 'CONNECTED') throw new Error('WhatsApp is not connected');
+    if (!jid) throw new Error('WhatsApp recipient is missing');
     await ensureMediaPatchApplied();
-
-    let targetJid = jid;
-    console.log(`[WHATSAPP] safeSendMessage dispatching to ${targetJid}...`);
-
-    // Priority 1: Use our resilient custom in-page sender
-    try {
-        const customRes = await customSendWhatsAppMessage(targetJid, content, options);
-        console.log(`[WHATSAPP] ✅ Message delivered successfully via custom dispatcher to ${customRes.to} (ID: ${customRes.messageId})`);
-        return customRes;
-    } catch (customErr) {
-        console.warn(`[WHATSAPP] Custom dispatcher failed for ${targetJid} (${customErr.message}). Attempting client.sendMessage fallback...`);
-    }
-
-    // Priority 2: Standard client.sendMessage fallback (with patched Utils.js)
-    try {
-        const result = await client.sendMessage(targetJid, content, options);
-        return result || { success: true, jid: targetJid };
-    } catch (err) {
-        console.error(`[WHATSAPP] Secondary client.sendMessage also failed to ${targetJid}:`, err?.message || err);
-        throw (err instanceof Error ? err : new Error(String(err)));
-    }
+    // A timeout is an unknown delivery outcome, never proof of success. The outbox
+    // retains the same message ID for the next attempt instead of firing a second sender.
+    const result = await withTimeout(
+        customSendWhatsAppMessage(jid, content, options),
+        60000,
+        'WhatsApp send timed out; delivery was not confirmed'
+    );
+    if (!result?.success || !result.messageId) throw new Error('WhatsApp returned no confirmed message');
+    console.log(`[WHATSAPP] Send confirmed for ${jid} (ID: ${result.messageId})`);
+    return result;
 }
 
 /**
@@ -604,7 +619,7 @@ function cleanChromiumLocks(dirPath) {
             const fullPath = path.join(dirPath, entry.name);
             if (entry.isDirectory()) {
                 cleanChromiumLocks(fullPath);
-            } else if (['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile', 'LOCK', 'DevToolsActivePort'].includes(entry.name)) {
+            } else if (['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort'].includes(entry.name)) {
                 try {
                     fs.unlinkSync(fullPath);
                     console.log(`[WHATSAPP] Cleaned stale lock file: ${entry.name}`);
@@ -616,192 +631,189 @@ function cleanChromiumLocks(dirPath) {
 
 let initTimeoutTimer = null;
 
-/**
- * Initialize WhatsApp Client
- */
-export function initWhatsApp() {
-    if (client) {
-        console.log('[WHATSAPP] Client already exists. Skipping init.');
-        return;
-    }
+function clearLifecycleTimers() {
+    clearTimeout(initTimeoutTimer);
+    clearTimeout(reconnectTimer);
+    initTimeoutTimer = null;
+    reconnectTimer = null;
+}
 
+function scheduleReconnect(instance, reason) {
+    if (stopping || client !== instance) return;
+    clearTimeout(initTimeoutTimer);
+    connectionState = 'DISCONNECTED';
+    currentQrDataUrl = null;
+    userInfo = null;
+    lastEngineError = String(reason?.message || reason || 'WhatsApp disconnected');
+    if (reconnectTimer) return;
+    const delay = Math.min(60000, 5000 * 2 ** Math.min(initRetryCount++, 4));
+    console.warn(`[WHATSAPP] ${lastEngineError}. Reconnecting in ${delay / 1000}s.`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (client !== instance) return;
+        restartWhatsApp().catch(error => console.error('[WHATSAPP] Reconnect failed:', error));
+    }, delay);
+    reconnectTimer.unref?.();
+}
+
+function armReadyTimeout(instance) {
+    clearTimeout(initTimeoutTimer);
+    initTimeoutTimer = setTimeout(() => {
+        if (client === instance && ['INITIALIZING', 'AUTHENTICATED'].includes(connectionState)) {
+            scheduleReconnect(instance, `WhatsApp did not become ready (${connectionState})`);
+        }
+    }, 120000);
+    initTimeoutTimer.unref?.();
+}
+
+/** Start exactly one browser for the saved WhatsApp session. */
+export function initWhatsApp() {
+    if (client || lifecycleTask || stopping) return;
     connectionState = 'INITIALIZING';
     currentQrDataUrl = null;
     userInfo = null;
-
-    const authPath = path.join(__dirname, '../.wwebjs_auth');
-    if (!fs.existsSync(authPath)) {
+    try {
+        getOutbox(); // Restore notifications, without reading or changing the orders DB.
+        const authPath = path.join(__dirname, '../.wwebjs_auth');
         fs.mkdirSync(authPath, { recursive: true });
-    }
-
-    // Clean ONLY stale lock files (never delete saved session credentials!)
-    cleanChromiumLocks(authPath);
-
-    const execPath = getChromiumExecutablePath();
-    console.log(`[WHATSAPP] Initializing client... Chromium path: ${execPath || 'Puppeteer default'}`);
-
-    if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
-    initTimeoutTimer = setTimeout(() => {
-        if (connectionState === 'INITIALIZING' && !currentQrDataUrl) {
-            console.warn('[WHATSAPP] Initialization stuck in INITIALIZING for >35s. Triggering automatic reconnect...');
-            reconnectWhatsApp();
-        }
-    }, 35000);
-
-    client = new Client({
-        authStrategy: new LocalAuth({
-            dataPath: authPath
-        }),
-        webVersionCache: {
-            type: 'remote',
-            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html',
-            strict: false
-        },
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        takeoverOnConflict: true,
-        bypassCSP: true,
-        authTimeoutMs: 120000,
-        qrMaxRetries: 15,
-        puppeteer: {
-            headless: true,
-            executablePath: execPath,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--disable-gpu',
-                '--disable-extensions'
-            ]
-        }
-    });
-
-    client.on('qr', async (qr) => {
-        console.log('[WHATSAPP] New QR code generated');
-        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
-        connectionState = 'QR_READY';
-        lastEngineError = null;
-        try {
-            currentQrDataUrl = await QRCode.toDataURL(qr, { margin: 2, scale: 8 });
-        } catch (err) {
-            console.error('[WHATSAPP] Error generating QR Data URL:', err);
-        }
-    });
-
-    client.on('loading_screen', (percent, message) => {
-        console.log(`[WHATSAPP] Loading screen: ${percent}% - ${message}`);
-    });
-
-    client.on('ready', async () => {
-        console.log('[WHATSAPP] Client is ready & authenticated!');
-        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
-        connectionState = 'CONNECTED';
-        currentQrDataUrl = null;
-        lastEngineError = null;
-        initRetryCount = 0;
-        await ensureMediaPatchApplied();
-        try {
-            const info = client.info;
+        cleanChromiumLocks(authPath);
+        const instance = new Client({
+            authStrategy: new LocalAuth({ dataPath: authPath }),
+            webVersionCache: {
+                type: 'remote',
+                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html',
+                strict: false
+            },
+            takeoverOnConflict: true,
+            bypassCSP: true,
+            authTimeoutMs: 120000,
+            qrMaxRetries: 15,
+            puppeteer: {
+                headless: true,
+                executablePath: getChromiumExecutablePath(),
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas', '--no-first-run', '--disable-gpu', '--disable-extensions']
+            }
+        });
+        client = instance;
+        armReadyTimeout(instance);
+        instance.on('qr', async qr => {
+            if (client !== instance || stopping) return;
+            clearTimeout(initTimeoutTimer);
+            connectionState = 'QR_READY';
+            lastEngineError = null;
+            try {
+                const data = await QRCode.toDataURL(qr, { margin: 2, scale: 8 });
+                if (client === instance && connectionState === 'QR_READY') currentQrDataUrl = data;
+            } catch (error) { console.error('[WHATSAPP] QR generation failed:', error); }
+        });
+        instance.on('loading_screen', percent => {
+            if (client === instance) console.log(`[WHATSAPP] Loading: ${percent}%`);
+        });
+        instance.on('authenticated', () => {
+            if (client !== instance || stopping) return;
+            connectionState = 'AUTHENTICATED';
+            currentQrDataUrl = null;
+            // Authentication precedes injection of WWebJS; keep watching until ready.
+            armReadyTimeout(instance);
+        });
+        instance.on('ready', async () => {
+            if (client !== instance || stopping) return;
+            clearLifecycleTimers();
+            connectionState = 'CONNECTED';
+            currentQrDataUrl = null;
+            lastEngineError = null;
+            initRetryCount = 0;
             userInfo = {
-                name: info?.pushname || 'Rasobhoomi WhatsApp',
-                number: info?.wid?.user ? `+${info.wid.user}` : 'Connected'
+                name: instance.info?.pushname || 'Rasobhoomi WhatsApp',
+                number: instance.info?.wid?.user ? `+${instance.info.wid.user}` : 'Connected'
             };
-        } catch (e) {
-            userInfo = { name: 'Rasobhoomi WhatsApp', number: 'Connected' };
-        }
-    });
-
-    client.on('authenticated', async () => {
-        console.log('[WHATSAPP] Authenticated successfully! Waiting for ready state...');
-        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
-        connectionState = 'AUTHENTICATED';
-        currentQrDataUrl = null;
-        await ensureMediaPatchApplied();
-    });
-
-    client.on('auth_failure', (msg) => {
-        console.error('[WHATSAPP] Authentication failure:', msg);
-        if (initTimeoutTimer) clearTimeout(initTimeoutTimer);
-        connectionState = 'DISCONNECTED';
-        currentQrDataUrl = null;
-        userInfo = null;
-        lastEngineError = 'Authentication failed: ' + (msg || 'Invalid or expired session');
-    });
-
-    client.on('disconnected', (reason) => {
-        console.warn('[WHATSAPP] Client disconnected:', reason);
-        connectionState = 'DISCONNECTED';
-        currentQrDataUrl = null;
-        userInfo = null;
-        lastEngineError = 'Disconnected: ' + (reason || 'Session closed');
-        // Attempt restart after delay
-        setTimeout(() => {
-            if (client) {
-                try {
-                    client.destroy();
-                } catch (e) {}
-                client = null;
-                initWhatsApp();
-            }
-        }, 5000);
-    });
-
-    client.initialize().catch((err) => {
-        console.error('[WHATSAPP] Error during initialize:', err?.message || err);
-        connectionState = 'DISCONNECTED';
-        lastEngineError = err?.message || String(err);
-        if (err?.message?.includes('already running') || err?.message?.includes('userDataDir')) {
-            if (initRetryCount < MAX_INIT_RETRIES) {
-                initRetryCount++;
-                console.log(`[WHATSAPP] Cleaning session locks and retrying initialization (${initRetryCount}/${MAX_INIT_RETRIES})...`);
-                cleanChromiumLocks(authPath);
-                setTimeout(() => {
-                    client = null;
-                    initWhatsApp();
-                }, 3000);
-            } else {
-                console.warn('[WHATSAPP] Max retries reached for browser session lock. Disabling WhatsApp auto-client so Express server runs smoothly.');
-                client = null;
-            }
-        }
-    });
+            await ensureMediaPatchApplied();
+            if (client === instance && connectionState === 'CONNECTED') getOutbox().kick(true);
+        });
+        instance.on('auth_failure', reason => scheduleReconnect(instance, `Authentication failed: ${reason}`));
+        instance.on('disconnected', reason => scheduleReconnect(instance, reason));
+        instance.on('message_ack', (message, ack) => {
+            if (client !== instance || stopping) return;
+            try { outbox?.recordAcknowledgement(message.id?._serialized, ack); }
+            catch (error) { console.error('[WHATSAPP] Could not save delivery receipt:', error); }
+        });
+        instance.initialize().then(() => {
+            // A browser may finish launching after a user requests reconnect/logout.
+            if (client !== instance) return instance.destroy();
+        }).catch(error => scheduleReconnect(instance, error));
+    } catch (error) {
+        scheduleReconnect(client, error);
+    }
 }
 
-/**
- * Get Current Status and QR Code
- */
 export function getWhatsAppStatus() {
-    // If client was destroyed or disconnected, attempt soft auto-init
-    if (!client && connectionState === 'DISCONNECTED' && initRetryCount === 0) {
-        console.log('[WHATSAPP] Status checked while disconnected. Auto-triggering init...');
-        initWhatsApp();
-    }
     const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || DEFAULT_NOTIFICATION_NUMBER;
     return {
         status: connectionState,
         qrCode: currentQrDataUrl,
         user: userInfo,
         lastError: lastEngineError,
-        isReady: (connectionState === 'CONNECTED' && !!client),
-        targetNumber: `+91 ${String(adminPhone).replace(/\D/g, '').slice(-10)}`
+        isReady: connectionState === 'CONNECTED' && !!client,
+        targetNumber: `+91 ${String(adminPhone).replace(/\D/g, '').slice(-10)}`,
+        ...(outbox?.status() || { pendingNotifications: 0, awaitingDelivery: 0, lastDeliveryError: null })
     };
 }
 
-/**
- * Reconnect / Re-initialize WhatsApp Client
- */
-export function reconnectWhatsApp() {
-    console.log('[WHATSAPP] Explicit reconnect requested...');
-    initRetryCount = 0;
-    if (client) {
+async function restartWhatsApp(logout = false) {
+    if (lifecycleTask) {
+        await lifecycleTask;
+        return getWhatsAppStatus();
+    }
+    lifecycleTask = (async () => {
+        clearLifecycleTimers();
+        stopping = true;
+        const previous = client;
+        client = null; // Ignore late events from the previous browser.
+        connectionState = 'DISCONNECTED';
+        currentQrDataUrl = null;
+        userInfo = null;
         try {
-            client.destroy();
-        } catch (e) {}
-        client = null;
+            if (logout && previous) {
+                try { await previous.logout(); } catch (error) {
+                    console.warn('[WHATSAPP] Logout:', error.message);
+                }
+            }
+            // Failed launches have no browser to destroy. whatsapp-web.js's
+            // destroy() dereferences pupBrowser, so calling it then blocks recovery.
+            if (previous?.pupBrowser) await previous.destroy();
+            if (logout) {
+                // Explicit logout clears only WhatsApp session files. Notification
+                // receipts live in a separate volume; database volumes are untouched.
+                const authPath = path.join(__dirname, '../.wwebjs_auth');
+                if (fs.existsSync(authPath)) {
+                    for (const item of fs.readdirSync(authPath)) {
+                        fs.rmSync(path.join(authPath, item), { recursive: true, force: true });
+                    }
+                }
+            }
+        } catch (error) {
+            client = previous;
+            throw error;
+        } finally {
+            stopping = false;
+        }
+    })();
+    try {
+        await lifecycleTask;
+    } catch (error) {
+        scheduleReconnect(client, error);
+        throw error;
+    } finally {
+        lifecycleTask = null;
     }
     initWhatsApp();
     return getWhatsAppStatus();
+}
+
+export async function reconnectWhatsApp() {
+    initRetryCount = 0;
+    return restartWhatsApp();
 }
 
 /**
@@ -911,84 +923,7 @@ Thank you for choosing *Rasobhoomi Plantation* for a greener home! 🪴✨`;
  * Send Payment Success Notification & Invoice PDF for an Order to Admin and Customer
  */
 export async function sendOrderPaymentNotification(order, force = false) {
-    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
-
-    if (!force && notifiedOrderIds.has(order.id)) {
-        console.log(`[WHATSAPP] Notification already sent for order #${order.id}. Skipping.`);
-        return { success: true, duplicate: true };
-    }
-
-    const ready = await waitForReady(12000);
-    if (!ready || !client) {
-        console.warn(`[WHATSAPP] Cannot send notification. WhatsApp state is '${connectionState}'`);
-        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
-    }
-
-    let deliveredAny = false;
-
-    try {
-        const customerJid = order.phone ? await resolveWhatsAppJid(order.phone) : null;
-        const adminJids = await getAdminJids();
-
-        // 1. Send Text Confirmation to Customer immediately (Highest Priority, non-blocking)
-        if (customerJid) {
-            try {
-                const customerMsg = buildCustomerOrderMessage(order);
-                console.log(`[WHATSAPP] Sending customer order confirmation for #${order.id} to Customer (${customerJid})...`);
-                const sent = await safeSendMessage(customerJid, customerMsg);
-                if (sent) deliveredAny = true;
-                console.log(`[WHATSAPP] Customer order confirmation text dispatched to ${customerJid}!`);
-            } catch (custErr) {
-                console.error(`[WHATSAPP] Error sending paid confirmation text to customer (${customerJid}):`, custErr.message);
-            }
-        }
-
-        // 2. Send Text Notification to Admin Numbers
-        for (const adminJid of adminJids) {
-            try {
-                const textMessage = buildOrderNotificationMessage(order);
-                console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
-                const sent = await safeSendMessage(adminJid, textMessage);
-                if (sent) deliveredAny = true;
-            } catch (adminErr) {
-                console.error(`[WHATSAPP] Error sending paid alert to admin (${adminJid}):`, adminErr.message);
-            }
-        }
-
-        // 3. Dispatch PDF Invoices Asynchronously in Background (ensures upload issues never block text delivery)
-        (async () => {
-            try {
-                const pdfLang = order.lang || 'en';
-                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    if (customerJid) {
-                        await new Promise(r => setTimeout(r, 1200));
-                        console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
-                        await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
-                    }
-                    for (const adminJid of adminJids) {
-                        await new Promise(r => setTimeout(r, 1200));
-                        console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Admin (${adminJid})...`);
-                        await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
-                    }
-                }
-            } catch (pdfErr) {
-                console.error(`[WHATSAPP] Failed background PDF invoice dispatch for #${order.id}:`, pdfErr.message);
-            }
-        })();
-
-        if (deliveredAny) {
-            notifiedOrderIds.add(order.id);
-            console.log(`[WHATSAPP] Order notification sent successfully for #${order.id}!`);
-            return { success: true };
-        } else {
-            console.warn(`[WHATSAPP] Delivery failed for both admin and customer for order #${order.id}`);
-            return { success: false, error: 'Failed to deliver to both admin and customer' };
-        }
-    } catch (err) {
-        console.error(`[WHATSAPP] Failed to send notification for order #${order.id}:`, err);
-        return { success: false, error: err.message };
-    }
+    return queueOrderNotification('paid', order, { force });
 }
 
 /**
@@ -1128,83 +1063,7 @@ Thank you for choosing *Rasobhoomi Plantation*! 🪴✨`;
  * Send Pending Payment notification and Invoice PDF to Admin and Customer WhatsApp numbers
  */
 export async function sendPendingPaymentNotification(order, force = false) {
-    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
-
-    if (!force && notifiedPendingOrderIds.has(order.id)) {
-        console.log(`[WHATSAPP] Pending payment notification already sent for order #${order.id}. Skipping.`);
-        return { success: true, duplicate: true };
-    }
-
-    const ready = await waitForReady(12000);
-    if (!ready || !client) {
-        console.warn(`[WHATSAPP] Cannot send pending payment notification. WhatsApp state is '${connectionState}'`);
-        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
-    }
-
-    let deliveredAny = false;
-
-    try {
-        const customerJid = order.phone ? await resolveWhatsAppJid(order.phone) : null;
-        const adminJids = await getAdminJids();
-
-        // 1. Send Text Receipt to Customer immediately (non-blocking)
-        if (customerJid) {
-            try {
-                const customerMsg = buildCustomerPendingOrderMessage(order);
-                console.log(`[WHATSAPP] Sending customer order receipt for #${order.id} to Customer (${customerJid})...`);
-                const sent = await safeSendMessage(customerJid, customerMsg);
-                if (sent) deliveredAny = true;
-                console.log(`[WHATSAPP] Customer pending order receipt text dispatched to ${customerJid}!`);
-            } catch (custErr) {
-                console.error(`[WHATSAPP] Error delivering pending alert to customer (${customerJid}):`, custErr.message);
-            }
-        }
-
-        // 2. Send Pending Alert to Admin Numbers
-        for (const adminJid of adminJids) {
-            try {
-                const textMessage = buildPendingPaymentNotificationMessage(order);
-                console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
-                const sent = await safeSendMessage(adminJid, textMessage);
-                if (sent) deliveredAny = true;
-            } catch (adminErr) {
-                console.error(`[WHATSAPP] Error delivering pending alert to admin (${adminJid}):`, adminErr.message);
-            }
-        }
-
-        // 3. Dispatch PDF Invoices Asynchronously in Background
-        (async () => {
-            try {
-                const pdfLang = order.lang || 'en';
-                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    if (customerJid) {
-                        await new Promise(r => setTimeout(r, 1200));
-                        console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Customer (${customerJid})...`);
-                        await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
-                    }
-                    for (const adminJid of adminJids) {
-                        await new Promise(r => setTimeout(r, 1200));
-                        console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Admin (${adminJid})...`);
-                        await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
-                    }
-                }
-            } catch (pdfErr) {
-                console.error(`[WHATSAPP] Failed background PDF invoice dispatch for pending #${order.id}:`, pdfErr.message);
-            }
-        })();
-
-        if (deliveredAny) {
-            notifiedPendingOrderIds.add(order.id);
-            console.log(`[WHATSAPP] Pending payment alert processing finished for #${order.id}!`);
-            return { success: true };
-        } else {
-            return { success: false, error: 'Failed to deliver pending alert to both admin and customer' };
-        }
-    } catch (err) {
-        console.error(`[WHATSAPP] Failed to send pending payment notification for order #${order.id}:`, err);
-        return { success: false, error: err.message };
-    }
+    return queueOrderNotification('pending', order, { force });
 }
 
 /**
@@ -1218,7 +1077,7 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
     }
 
     const pdfLang = order.lang || 'en';
-    const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+    const pdfBuffer = await withTimeout(generateInvoicePdf(order, pdfLang), 30000, 'Invoice PDF generation timed out');
     if (!pdfBuffer || pdfBuffer.length === 0) {
         return { success: false, error: 'Failed to generate PDF invoice' };
     }
@@ -1237,6 +1096,7 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
     }
 
     let sentCount = 0;
+    let pdfSentCount = 0;
     const invoiceUrl = getInvoiceUrl(order.id);
     const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice PDF document attached directly below. 📄🪴\n🔗 *Download Online:* ${invoiceUrl}`;
 
@@ -1249,11 +1109,12 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
         }
         await new Promise(r => setTimeout(r, 1200));
         const ok = await sendPdfDocumentSafe(jid, pdfBuffer, order.id);
-        if (ok) sentCount++;
+        if (ok) { sentCount++; pdfSentCount++; }
         await new Promise(r => setTimeout(r, 1200));
     }
 
-    return { success: sentCount > 0, sentCount };
+    const success = targets.length > 0 && pdfSentCount === targets.length;
+    return { success, sentCount, pdfSentCount, error: success ? undefined : 'PDF delivery was not confirmed for every recipient' };
 }
 
 /**
@@ -1379,53 +1240,7 @@ Thank you for trusting *Rasobhoomi Plantation* for a greener world! 🪴💚`;
  * Send WhatsApp Notification to Customer for Order Status Change
  */
 export async function sendOrderStatusNotification(order, newStatus) {
-    if (!order || !order.id) return { success: false, error: 'Invalid order data' };
-
-    const ready = await waitForReady(12000);
-    if (!ready || !client) {
-        console.warn(`[WHATSAPP] Cannot send order status notification. WhatsApp state is '${connectionState}'`);
-        return { success: false, error: `WhatsApp not connected (Status: ${connectionState})` };
-    }
-
-    if (!order.phone) {
-        console.warn(`[WHATSAPP] Order #${order.id} has no phone number. Skipping status notification.`);
-        return { success: false, error: 'Customer phone number missing' };
-    }
-
-    try {
-        const customerJid = await resolveWhatsAppJid(order.phone);
-        if (!customerJid) {
-            console.warn(`[WHATSAPP] Invalid customer phone format for order #${order.id}: ${order.phone}`);
-            return { success: false, error: 'Invalid customer phone format' };
-        }
-
-        const messageText = buildOrderStatusMessage(order, newStatus);
-
-        console.log(`[WHATSAPP] Sending order status update ('${newStatus}') for #${order.id} to Customer (${customerJid})...`);
-        await safeSendMessage(customerJid, messageText);
-        console.log(`[WHATSAPP] Order status text successfully delivered to ${customerJid}!`);
-
-        // Send direct PDF invoice attachment asynchronously in background
-        (async () => {
-            try {
-                const pdfLang = order.lang || 'en';
-                console.log(`[WHATSAPP] Generating direct PDF invoice (${pdfLang}) on status change for #${order.id}...`);
-                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    console.log(`[WHATSAPP] Dispatching direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
-                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
-                }
-            } catch (pdfErr) {
-                console.error(`[WHATSAPP] Failed background PDF invoice on status update for order #${order.id}:`, pdfErr.message);
-            }
-        })();
-
-        return { success: true };
-    } catch (err) {
-        console.error(`[WHATSAPP] Failed to send status notification for order #${order.id}:`, err);
-        return { success: false, error: err.message };
-    }
+    return queueOrderNotification('status', order, { newStatus });
 }
 
 /**
@@ -1451,40 +1266,7 @@ export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER
  * Logout and clear session
  */
 export async function logoutWhatsApp() {
-    console.log('[WHATSAPP] Logging out and destroying session...');
-    connectionState = 'DISCONNECTED';
-    currentQrDataUrl = null;
-    userInfo = null;
-
-    if (client) {
-        try {
-            await client.logout();
-        } catch (e) {}
-        try {
-            await client.destroy();
-        } catch (e) {}
-        client = null;
-    }
-
-    // Clean auth directory contents without removing the mounted volume directory itself
-    const authPath = path.join(__dirname, '../.wwebjs_auth');
-    if (fs.existsSync(authPath)) {
-        try {
-            const items = fs.readdirSync(authPath);
-            for (const item of items) {
-                fs.rmSync(path.join(authPath, item), { recursive: true, force: true });
-            }
-            console.log('[WHATSAPP] Successfully cleared auth session data.');
-        } catch (e) {
-            console.error('[WHATSAPP] Error clearing auth directory contents:', e);
-        }
-    }
-
-    // Restart client to issue fresh QR
-    setTimeout(() => {
-        initWhatsApp();
-    }, 1500);
-
+    await restartWhatsApp(true);
     return { success: true };
 }
 
@@ -1584,8 +1366,9 @@ export async function sendPaymentRecoveryWhatsApp(order, phase = 1) {
         const msgText = buildRecoveryNotificationMessage(order, phase);
         console.log(`[WHATSAPP RECOVERY] Sending Phase ${phase} recovery message for order #${order.id} to ${customerJid}...`);
 
-        await safeSendMessage(customerJid, msgText);
-        console.log(`[WHATSAPP RECOVERY] Phase ${phase} recovery message successfully delivered to ${customerJid}!`);
+        const messageId = createHash('sha256').update(`recovery:${order.id}:${phase}`).digest('hex').slice(0, 32).toUpperCase();
+        await safeSendMessage(customerJid, msgText, { messageId });
+        console.log(`[WHATSAPP RECOVERY] Phase ${phase} recovery send confirmed for ${customerJid}.`);
         return { success: true };
     } catch (err) {
         console.error(`[WHATSAPP RECOVERY] Error sending Phase ${phase} message for order #${order.id}:`, err);

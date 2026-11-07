@@ -1,6 +1,8 @@
 # Stage 1: Build the Frontend
 FROM node:20-alpine AS builder
 
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
 WORKDIR /app
 
 # Copy package files
@@ -17,6 +19,8 @@ RUN npm run build
 
 # Stage 2: Production Runtime
 FROM node:20-alpine
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 WORKDIR /app
 

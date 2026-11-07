@@ -98,6 +98,20 @@ const WhatsAppQR = () => {
                     </div>
                 )}
 
+                {statusData.pendingNotifications > 0 && (
+                    <div style={styles.infoBox}>
+                        <strong>{statusData.pendingNotifications} notification(s) awaiting delivery.</strong>
+                        <div style={styles.infoDesc}>Unsent messages and invoices will retry automatically when WhatsApp is ready.</div>
+                        {statusData.lastDeliveryError && <div style={styles.infoDesc}>Latest delivery error: {statusData.lastDeliveryError}</div>}
+                    </div>
+                )}
+                {statusData.awaitingDelivery > 0 && (
+                    <div style={styles.infoBox}>
+                        <strong>{statusData.awaitingDelivery} notification(s) sent, awaiting recipient delivery confirmation.</strong>
+                        <div style={styles.infoDesc}>A recipient may be offline. Accepted messages will not be sent again while waiting for a delivery receipt.</div>
+                    </div>
+                )}
+
                 {/* STATUS BAR */}
                 <div style={styles.statusSection}>
                     <span style={styles.statusLabel}>Connection Status:</span>

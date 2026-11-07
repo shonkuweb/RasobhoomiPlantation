@@ -1,9 +1,11 @@
 module.exports = {
     apps: [{
         name: 'ecommerce-app',
+        cwd: __dirname,
         script: 'server.js',
-        instances: 'max',
-        exec_mode: 'cluster',
+        // LocalAuth and the persistent outbox must have one owning process.
+        instances: 1,
+        exec_mode: 'fork',
         env: {
             NODE_ENV: 'development',
             DB_TYPE: 'sqlite'

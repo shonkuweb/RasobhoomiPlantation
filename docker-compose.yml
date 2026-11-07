@@ -33,6 +33,7 @@ services:
       - db
     volumes:
       - wwebjs-auth:/app/.wwebjs_auth
+      - wwebjs-outbox:/app/.wwebjs_outbox
     networks:
       - app-network
 
@@ -56,3 +57,4 @@ networks:
 volumes:
   db-data:
   wwebjs-auth:
+  wwebjs-outbox:

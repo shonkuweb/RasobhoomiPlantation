@@ -1895,7 +1895,7 @@ app.post('/api/orders/:id/mark-paid', requireAuth, (req, res) => {
                     }
                 });
 
-                res.json({ success: true, message: 'Order marked as paid & invoice sent via WhatsApp' });
+                res.json({ success: true, message: 'Order marked as paid; WhatsApp notification scheduled' });
             }
         );
     });
@@ -2160,9 +2160,9 @@ app.get('/api/whatsapp/status', (req, res) => {
     }
 });
 
-app.post('/api/whatsapp/connect', (req, res) => {
+app.post('/api/whatsapp/connect', async (req, res) => {
     try {
-        const statusData = reconnectWhatsApp();
+        const statusData = await reconnectWhatsApp();
         res.json(statusData);
     } catch (err) {
         res.status(500).json({ error: err.message });

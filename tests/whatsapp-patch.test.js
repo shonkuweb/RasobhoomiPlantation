@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+test('library patch is idempotent and upgrades the old fabricated-message fallback', t => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-library-patch-test-'));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const script = path.join(dir, 'scripts/patch_wwebjs.js');
+    const utils = path.join(dir, 'node_modules/whatsapp-web.js/src/util/Injected/Utils.js');
+    fs.mkdirSync(path.dirname(script), { recursive: true });
+    fs.mkdirSync(path.dirname(utils), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}');
+    fs.copyFileSync(new URL('../scripts/patch_wwebjs.js', import.meta.url), script);
+    fs.copyFileSync(new URL('../node_modules/whatsapp-web.js/src/util/Injected/Utils.js', import.meta.url), utils);
+    const run = () => execFileSync(process.execPath, [script], { stdio: 'pipe' });
+    run();
+    const once = fs.readFileSync(utils, 'utf8');
+    assert.ok(once.includes('delete message.__x_id'));
+    assert.ok(once.includes('return _sentMsg || null; // waitForSentMsg'));
+    assert.ok(once.includes('safeGetChatPatched'));
+    execFileSync(process.execPath, ['--check', utils]);
+    run();
+    assert.equal(fs.readFileSync(utils, 'utf8'), once);
+    const fabricated = "return _sentMsg || (window.require('WAWebCollections').Msg.modelClass ? new (window.require('WAWebCollections').Msg.modelClass)(message) : null); // waitForSentMsg";
+    fs.writeFileSync(utils, once.replace('return _sentMsg || null; // waitForSentMsg', fabricated));
+    run();
+    assert.equal(fs.readFileSync(utils, 'utf8'), once);
+});
