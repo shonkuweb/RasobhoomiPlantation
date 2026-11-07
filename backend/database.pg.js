@@ -50,7 +50,10 @@ const db = {
     // SQLite: db.run(sql, [params], callback)
     // callback(err) - distinct from result
     run: function (sql, params, callback) {
-        if (!pool) return callback(new Error('Database not connected'));
+        if (!pool) {
+            if (typeof callback === 'function') callback(new Error('Database not connected'));
+            return;
+        }
 
         // Convert ? to $1, $2, etc.
         let i = 1;
@@ -60,36 +63,54 @@ const db = {
             .then(res => {
                 // Ensure res exists before accessing rowCount
                 const changes = (res && res.rowCount) ? res.rowCount : 0;
-                callback.call({ changes: changes }, null);
+                if (typeof callback === 'function') {
+                    callback.call({ changes: changes }, null);
+                }
             })
             .catch(err => {
                 console.error("DB Error in run:", err);
-                callback(err);
+                if (typeof callback === 'function') {
+                    callback(err);
+                }
             });
     },
 
     // SQLite: db.all(sql, [params], callback)
     all: function (sql, params, callback) {
-        if (!pool) return callback(new Error('Database not connected'));
+        if (!pool) {
+            if (typeof callback === 'function') callback(new Error('Database not connected'));
+            return;
+        }
 
         let i = 1;
         const pgSql = sql.replace(/\?/g, () => `$${i++}`);
 
         pool.query(pgSql, params)
-            .then(res => callback(null, res.rows))
-            .catch(err => callback(err));
+            .then(res => {
+                if (typeof callback === 'function') callback(null, res.rows);
+            })
+            .catch(err => {
+                if (typeof callback === 'function') callback(err);
+            });
     },
 
     // SQLite: db.get(sql, [params], callback)
     get: function (sql, params, callback) {
-        if (!pool) return callback(new Error('Database not connected'));
+        if (!pool) {
+            if (typeof callback === 'function') callback(new Error('Database not connected'));
+            return;
+        }
 
         let i = 1;
         const pgSql = sql.replace(/\?/g, () => `$${i++}`);
 
         pool.query(pgSql, params)
-            .then(res => callback(null, res.rows[0]))
-            .catch(err => callback(err));
+            .then(res => {
+                if (typeof callback === 'function') callback(null, res.rows[0]);
+            })
+            .catch(err => {
+                if (typeof callback === 'function') callback(err);
+            });
     }
 };
 

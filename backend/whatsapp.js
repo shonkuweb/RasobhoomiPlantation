@@ -263,14 +263,10 @@ export async function safeSendMessage(jid, content, options = {}) {
     try {
         console.log(`[WHATSAPP] safeSendMessage dispatching to ${targetJid}...`);
         const result = await client.sendMessage(targetJid, content, options);
-        if (result) return result;
-
-        console.warn(`[WHATSAPP] sendMessage returned empty for ${targetJid}. Trying getChatById fallback...`);
-        const chat = await client.getChatById(targetJid);
-        if (chat) {
-            return await chat.sendMessage(content, options);
-        }
-        return null;
+        // In modern WhatsApp Web, client.sendMessage can resolve to undefined
+        // because Msg.get hasn't synchronously cached the message model yet,
+        // but as long as it didn't throw an error, it was successfully sent.
+        return result || { success: true, jid: targetJid };
     } catch (err) {
         console.error(`[WHATSAPP] Error in safeSendMessage to ${targetJid}:`, err?.message || err);
         throw (err instanceof Error ? err : new Error(String(err)));
@@ -1224,10 +1220,7 @@ export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER
     }
 
     const testMsg = `🧪 *Rasobhoomi Plantation - WhatsApp Test Alert*\n\n✅ WhatsApp integration is ACTIVE and working properly!\n⏰ Server Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n🌿 Ready to dispatch order alerts and tax invoices.`;
-    const res = await safeSendMessage(jid, testMsg);
-    if (!res) {
-        throw new Error('WhatsApp service could not find or deliver to this chat. Check that number has WhatsApp installed.');
-    }
+    await safeSendMessage(jid, testMsg);
     return { success: true, recipient: jid };
 }
 
