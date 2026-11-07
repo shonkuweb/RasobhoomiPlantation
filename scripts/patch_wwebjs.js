@@ -38,6 +38,43 @@ try {
             }
         }
 
+        // Fix 3: Wrap getChat findOrCreateLatestChat to prevent "No LID for user" crash
+        if (!content.includes('safeGetChatPatched')) {
+            const target3 = `        } else {
+            chat =
+                window.require('WAWebCollections').Chat.get(chatWid) ||
+                (
+                    await window
+                        .require('WAWebFindChatAction')
+                        .findOrCreateLatestChat(chatWid)
+                )?.chat;
+        }`;
+            const replacement3 = `        } else {
+            try {
+                chat = window.require('WAWebCollections').Chat.get(chatWid) || (await window.require('WAWebCollections').Chat.find(chatWid));
+            } catch (e0) {}
+            if (!chat) {
+                try {
+                    const _res = await window.require('WAWebFindChatAction').findOrCreateLatestChat(chatWid);
+                    chat = _res?.chat || _res;
+                } catch (e1) {
+                    try {
+                        const _exist = await window.require('WAWebQueryExistsJob').queryWidExists(chatWid);
+                        if (_exist && _exist.wid) {
+                            const _res2 = await window.require('WAWebFindChatAction').findOrCreateLatestChat(_exist.wid);
+                            chat = _res2?.chat || _res2;
+                        }
+                    } catch (e2) {}
+                }
+            } // safeGetChatPatched
+        }`;
+            if (content.includes(target3)) {
+                content = content.replace(target3, replacement3);
+                modified = true;
+                console.log('[PATCH] ✅ Successfully patched Injected/Utils.js getChat LID safety!');
+            }
+        }
+
         if (modified) {
             fs.writeFileSync(utilsPath, content, 'utf8');
         } else {

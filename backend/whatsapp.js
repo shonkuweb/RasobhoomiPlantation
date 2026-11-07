@@ -91,6 +91,59 @@ export async function ensureMediaPatchApplied() {
                 }
             } catch (e) {}
 
+            // 3. Hook window.WWebJS.getChat to handle "No LID for user" / evaluation failure gracefully
+            try {
+                if (window.WWebJS && window.WWebJS.getChat && !window._wwebjs_getchat_patch_installed) {
+                    const origGetChat = window.WWebJS.getChat;
+                    window.WWebJS.getChat = async function (chatId, options = {}) {
+                        try {
+                            const res = await origGetChat.apply(this, arguments);
+                            if (res) return res;
+                        } catch (origErr) {}
+
+                        try {
+                            let chatWid = window.require('WAWebWidFactory').createWid(chatId);
+                            let chat = null;
+                            try {
+                                const ChatCol = window.require('WAWebCollections').Chat;
+                                chat = ChatCol.get(chatWid) || (await ChatCol.find(chatWid));
+                            } catch (e0) {}
+
+                            if (!chat) {
+                                try {
+                                    const FindAction = window.require('WAWebFindChatAction');
+                                    const res1 = await FindAction.findOrCreateLatestChat(chatWid);
+                                    chat = res1?.chat || res1;
+                                } catch (e1) {
+                                    try {
+                                        const QueryJob = window.require('WAWebQueryExistsJob');
+                                        const existRes = await QueryJob.queryWidExists(chatWid);
+                                        if (existRes && existRes.wid) {
+                                            const FindAction = window.require('WAWebFindChatAction');
+                                            const res2 = await FindAction.findOrCreateLatestChat(existRes.wid);
+                                            chat = res2?.chat || res2;
+                                        }
+                                    } catch (e2) {}
+                                }
+                            }
+
+                            if (!chat) return null;
+                            if (options && options.getAsModel) {
+                                try {
+                                    return await window.WWebJS.getChatModel(chat);
+                                } catch (mErr) {
+                                    return chat;
+                                }
+                            }
+                            return chat;
+                        } catch (fatal) {
+                            return null;
+                        }
+                    };
+                    window._wwebjs_getchat_patch_installed = true;
+                }
+            } catch (e) {}
+
             window._wwebjs_media_patch_installed = true;
         });
     } catch (err) {
@@ -103,10 +156,6 @@ export async function ensureMediaPatchApplied() {
  */
 export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
     if (!targetJid || !pdfBuffer || !client) return false;
-    if (targetJid.endsWith('@lid')) {
-        console.warn(`[WHATSAPP] Cannot send PDF to @lid JID (${targetJid}). Destination must be @c.us`);
-        return false;
-    }
     await ensureMediaPatchApplied();
     try {
         const filename = `Invoice_${orderId}.pdf`;
@@ -120,36 +169,16 @@ export async function sendPdfDocumentSafe(targetJid, pdfBuffer, orderId) {
 
         console.log(`[WHATSAPP] Dispatching direct PDF document (${filename}, ${pdfBuffer.length} bytes) to ${targetJid}...`);
 
-        try {
-            await withTimeout(
-                client.sendMessage(targetJid, media, {
-                    sendMediaAsDocument: true
-                }),
-                18000,
-                'PDF primary upload timed out after 18s'
-            );
+        const res = await safeSendMessage(targetJid, '', {
+            media,
+            caption: `📄 Order #${orderId} Tax Invoice`
+        });
+
+        if (res && (res.success || res.messageId)) {
             console.log(`[WHATSAPP] Direct PDF invoice document sent successfully to ${targetJid} for order #${orderId}`);
             return true;
-        } catch (firstErr) {
-            console.warn(`[WHATSAPP] Primary attempt sending PDF to ${targetJid} failed (${firstErr.message}). Retrying with fallback...`);
-            await ensureMediaPatchApplied();
-            await new Promise(r => setTimeout(r, 1500));
-            const retryMedia = new MessageMedia(
-                'application/pdf',
-                b64Data,
-                filename,
-                pdfBuffer.length || b64Data.length
-            );
-            await withTimeout(
-                client.sendMessage(targetJid, retryMedia, {
-                    sendMediaAsDocument: true
-                }),
-                18000,
-                'PDF retry upload timed out after 18s'
-            );
-            console.log(`[WHATSAPP] Direct PDF invoice document sent on fallback to ${targetJid} for order #${orderId}`);
-            return true;
         }
+        return false;
     } catch (finalErr) {
         console.error(`[WHATSAPP] Failed to send direct PDF document to ${targetJid} for order #${orderId}:`, finalErr.message);
         return false;
@@ -224,7 +253,7 @@ export function formatWhatsAppJid(phone) {
 
 /**
  * Robust async resolver that checks WhatsApp server registry.
- * ALWAYS returns a standard user phone JID ending in @c.us (never @lid).
+ * Returns either @c.us or @lid (for accounts migrated to WhatsApp LID privacy mode).
  */
 export async function resolveWhatsAppJid(phone) {
     const rawJid = formatWhatsAppJid(phone);
@@ -234,11 +263,7 @@ export async function resolveWhatsAppJid(phone) {
     const cleaned = rawJid.replace('@c.us', '');
     try {
         const contact = await client.getNumberId(cleaned);
-        // CRITICAL: Modern WhatsApp Web getNumberId frequently returns a @lid JID (privacy/linked device ID).
-        // Sending direct chat messages to a @lid JID fails with 't' / 'r' because WhatsApp Web
-        // only supports initiating chats with phone numbers (@c.us).
-        // If contact._serialized is already @c.us, use it. Otherwise, always return rawJid (@c.us).
-        if (contact && contact._serialized && contact._serialized.endsWith('@c.us')) {
+        if (contact && contact._serialized) {
             return contact._serialized;
         }
     } catch (e) {
@@ -248,27 +273,228 @@ export async function resolveWhatsAppJid(phone) {
 }
 
 /**
- * Safely send message to a phone JID. Enforces @c.us only.
+ * Direct in-page WhatsApp message dispatcher.
+ * Bypasses all known whatsapp-web.js bugs:
+ * 1. "No LID for user" / uncaught minified evaluation errors ('t', 'r').
+ * 2. Msg.get race conditions where sendMessage returns undefined.
+ * 3. Chat serialization crashes on fresh contacts.
+ * 4. Transparently handles both @c.us phone numbers and @lid privacy accounts.
+ */
+export async function customSendWhatsAppMessage(targetId, content, options = {}) {
+    if (!client || !client.pupPage) {
+        throw new Error(`WhatsApp browser session is not ready (Status: ${connectionState})`);
+    }
+
+    // Determine text and media payload
+    let text = typeof content === 'string' ? content : '';
+    let mediaPayload = null;
+
+    if (content && typeof content === 'object' && content.data && content.mimetype) {
+        mediaPayload = {
+            mimetype: content.mimetype,
+            data: content.data,
+            filename: content.filename || 'attachment.pdf',
+            filesize: content.filesize || content.data.length
+        };
+    } else if (options.media && options.media.data && options.media.mimetype) {
+        mediaPayload = {
+            mimetype: options.media.mimetype,
+            data: options.media.data,
+            filename: options.media.filename || 'attachment.pdf',
+            filesize: options.media.filesize || options.media.data.length
+        };
+    }
+
+    const cleanTarget = String(targetId).trim();
+
+    const evalResult = await client.pupPage.evaluate(async (target, textMsg, media, opts) => {
+        try {
+            const WidFactory = window.require('WAWebWidFactory');
+            const Collections = window.require('WAWebCollections');
+            const QueryExists = window.require('WAWebQueryExistsJob');
+            const FindChatAction = window.require('WAWebFindChatAction');
+            const SendMsgAction = window.require('WAWebSendMsgChatAction');
+            const MeUser = window.require('WAWebUserPrefsMeUser');
+            const MsgKey = window.require('WAWebMsgKey');
+            const Ephemeral = window.require('WAWebGetEphemeralFieldsMsgActionsUtils');
+
+            // Step 1: Ensure JID formatting
+            let jidString = target;
+            if (!jidString.includes('@')) {
+                jidString = jidString.replace(/\D/g, '') + '@c.us';
+            }
+
+            const rawWid = WidFactory.createWid(jidString);
+            if (!rawWid) {
+                return { success: false, error: 'Could not create Wid for recipient: ' + jidString };
+            }
+
+            // Step 2: Query existence and resolve the true server WID (e.g. resolve @c.us -> @lid if migrated)
+            let serverWid = rawWid;
+            try {
+                const existRes = await QueryExists.queryWidExists(rawWid);
+                if (existRes && existRes.wid) {
+                    serverWid = existRes.wid;
+                }
+            } catch (queryErr) {}
+
+            // Step 3: Resolve or create the Chat model
+            let chat = null;
+            // 3a. In-memory check
+            try {
+                chat = Collections.Chat.get(serverWid) || Collections.Chat.get(rawWid);
+            } catch (e) {}
+
+            // 3b. IndexedDB check
+            if (!chat) {
+                try {
+                    chat = (await Collections.Chat.find(serverWid)) || (await Collections.Chat.find(rawWid));
+                } catch (e) {}
+            }
+
+            // 3c. FindOrCreateLatestChat with serverWid (preferred for LID-migrated accounts)
+            if (!chat) {
+                try {
+                    const res = await FindChatAction.findOrCreateLatestChat(serverWid);
+                    chat = res?.chat || res;
+                } catch (errServerWid) {
+                    // 3d. FindOrCreateLatestChat with rawWid
+                    try {
+                        const res2 = await FindChatAction.findOrCreateLatestChat(rawWid);
+                        chat = res2?.chat || res2;
+                    } catch (errRawWid) {}
+                }
+            }
+
+            // 3e. Direct instantiation fallback if findOrCreate failed
+            if (!chat) {
+                try {
+                    const ChatClass = Collections.Chat.modelClass;
+                    if (ChatClass) {
+                        chat = new ChatClass({ id: serverWid });
+                        Collections.Chat.add(chat);
+                    }
+                } catch (instErr) {}
+            }
+
+            if (!chat) {
+                return {
+                    success: false,
+                    error: `Could not initialize chat for recipient ${target} (Server WID: ${serverWid?._serialized || serverWid})`
+                };
+            }
+
+            // Step 4: Process media if sending document/image
+            let mediaOptions = {};
+            if (media && window.WWebJS && window.WWebJS.processMediaData) {
+                try {
+                    mediaOptions = await window.WWebJS.processMediaData(media, {
+                        forceDocument: true,
+                        forceMediaHd: false
+                    });
+                    delete mediaOptions.__x_id;
+                    if (opts.caption) {
+                        mediaOptions.caption = opts.caption;
+                    }
+                } catch (mediaErr) {
+                    return {
+                        success: false,
+                        error: 'Failed to process media attachment: ' + (mediaErr?.message || mediaErr)
+                    };
+                }
+            }
+
+            // Step 5: Construct message key & message object
+            const lidUser = MeUser.getMaybeMeLidUser ? MeUser.getMaybeMeLidUser() : null;
+            const meUser = MeUser.getMaybeMePnUser ? MeUser.getMaybeMePnUser() : null;
+            const newId = await MsgKey.newId();
+            const from = (chat.id && chat.id.isLid && chat.id.isLid()) ? (lidUser || meUser) : (meUser || lidUser);
+
+            const newMsgKey = new MsgKey({
+                from: from,
+                to: chat.id,
+                id: newId,
+                participant: undefined,
+                selfDir: 'out',
+            });
+
+            let ephemeralFields = {};
+            try {
+                if (Ephemeral && Ephemeral.getEphemeralFields) {
+                    ephemeralFields = Ephemeral.getEphemeralFields(chat);
+                }
+            } catch (e) {}
+
+            const message = {
+                id: newMsgKey,
+                ack: 0,
+                body: textMsg || '',
+                from: from,
+                to: chat.id,
+                local: true,
+                self: 'out',
+                t: parseInt(new Date().getTime() / 1000),
+                isNewMsg: true,
+                type: media ? 'document' : 'chat',
+                ...ephemeralFields,
+                ...mediaOptions,
+            };
+            delete message.__x_id;
+            message.id = newMsgKey;
+
+            // Step 6: Dispatch directly via WAWebSendMsgChatAction
+            const [msgPromise, sendMsgResultPromise] = SendMsgAction.addAndSendMsgToChat(chat, message);
+            await msgPromise;
+
+            return {
+                success: true,
+                messageId: newMsgKey._serialized,
+                to: chat.id._serialized
+            };
+        } catch (unhandledErr) {
+            return {
+                success: false,
+                error: (unhandledErr && unhandledErr.message) ? unhandledErr.message : String(unhandledErr),
+                name: unhandledErr?.name || 'Error',
+                stack: unhandledErr?.stack || null
+            };
+        }
+    }, cleanTarget, text, mediaPayload, options);
+
+    if (!evalResult || !evalResult.success) {
+        const detail = evalResult?.error || evalResult?.name || 'Unknown browser evaluation error';
+        throw new Error(detail);
+    }
+
+    return evalResult;
+}
+
+/**
+ * Safely send message to a recipient.
+ * Uses custom resilient dispatcher as Priority 1, and client.sendMessage as fallback.
  */
 export async function safeSendMessage(jid, content, options = {}) {
     if (!client || !jid) return null;
+    await ensureMediaPatchApplied();
 
-    // Safety: ensure we never send to a LID
     let targetJid = jid;
-    if (targetJid.endsWith('@lid')) {
-        console.warn(`[WHATSAPP] Blocked send to @lid: ${targetJid}. Only @c.us is allowed.`);
-        return null;
+    console.log(`[WHATSAPP] safeSendMessage dispatching to ${targetJid}...`);
+
+    // Priority 1: Use our resilient custom in-page sender
+    try {
+        const customRes = await customSendWhatsAppMessage(targetJid, content, options);
+        console.log(`[WHATSAPP] ✅ Message delivered successfully via custom dispatcher to ${customRes.to} (ID: ${customRes.messageId})`);
+        return customRes;
+    } catch (customErr) {
+        console.warn(`[WHATSAPP] Custom dispatcher failed for ${targetJid} (${customErr.message}). Attempting client.sendMessage fallback...`);
     }
 
+    // Priority 2: Standard client.sendMessage fallback (with patched Utils.js)
     try {
-        console.log(`[WHATSAPP] safeSendMessage dispatching to ${targetJid}...`);
         const result = await client.sendMessage(targetJid, content, options);
-        // In modern WhatsApp Web, client.sendMessage can resolve to undefined
-        // because Msg.get hasn't synchronously cached the message model yet,
-        // but as long as it didn't throw an error, it was successfully sent.
         return result || { success: true, jid: targetJid };
     } catch (err) {
-        console.error(`[WHATSAPP] Error in safeSendMessage to ${targetJid}:`, err?.message || err);
+        console.error(`[WHATSAPP] Secondary client.sendMessage also failed to ${targetJid}:`, err?.message || err);
         throw (err instanceof Error ? err : new Error(String(err)));
     }
 }
@@ -283,18 +509,15 @@ export async function getAdminJids() {
 
     if (envAdmin) {
         const jid = await resolveWhatsAppJid(envAdmin);
-        if (jid && !jid.endsWith('@lid')) targets.add(jid);
+        if (jid) targets.add(jid);
     } else {
         // Use default admin notification number
         const defaultJid = await resolveWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
-        if (defaultJid && !defaultJid.endsWith('@lid')) targets.add(defaultJid);
+        if (defaultJid) targets.add(defaultJid);
 
         // Also if client is connected on another number (e.g. self-chat), notify it too!
         if (client && client.info && client.info.wid && client.info.wid._serialized) {
-            const myWid = client.info.wid._serialized;
-            if (myWid && myWid.endsWith('@c.us')) {
-                targets.add(myWid);
-            }
+            targets.add(client.info.wid._serialized);
         }
     }
     return Array.from(targets);
@@ -1243,13 +1466,17 @@ export async function logoutWhatsApp() {
         client = null;
     }
 
-    // Clean auth directory
+    // Clean auth directory contents without removing the mounted volume directory itself
     const authPath = path.join(__dirname, '../.wwebjs_auth');
     if (fs.existsSync(authPath)) {
         try {
-            fs.rmSync(authPath, { recursive: true, force: true });
+            const items = fs.readdirSync(authPath);
+            for (const item of items) {
+                fs.rmSync(path.join(authPath, item), { recursive: true, force: true });
+            }
+            console.log('[WHATSAPP] Successfully cleared auth session data.');
         } catch (e) {
-            console.error('[WHATSAPP] Error removing auth directory:', e);
+            console.error('[WHATSAPP] Error clearing auth directory contents:', e);
         }
     }
 
