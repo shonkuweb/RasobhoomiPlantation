@@ -12,7 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Target phone number for payment success notifications
-export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '8972076182';
+export const DEFAULT_NOTIFICATION_NUMBER = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || '9907541613';
+
 
 export const SITE_URL = (process.env.APP_FE_URL || process.env.APP_BE_URL || 'https://rasobhoomiplantation.com').replace(/\/+$/, '');
 
@@ -218,8 +219,86 @@ export function formatWhatsAppJid(phone) {
 }
 
 /**
+ * Robust async resolver that checks WhatsApp server registry (resolving proper WID / LID).
+ * Ensures unsaved customer numbers are properly mapped by WhatsApp Web.
+ */
+export async function resolveWhatsAppJid(phone) {
+    const rawJid = formatWhatsAppJid(phone);
+    if (!rawJid) return null;
+    if (!client) return rawJid;
+
+    const cleaned = rawJid.replace('@c.us', '');
+    try {
+        const contact = await client.getNumberId(cleaned);
+        if (contact && contact._serialized) {
+            return contact._serialized;
+        }
+    } catch (e) {
+        console.warn(`[WHATSAPP] getNumberId check failed for ${cleaned}:`, e.message);
+    }
+    return rawJid;
+}
+
+/**
+ * Safely send message to a JID with fallback for unsaved contacts / LID mismatches
+ */
+export async function safeSendMessage(jid, content, options = {}) {
+    if (!client || !jid) return null;
+    try {
+        const result = await client.sendMessage(jid, content, options);
+        if (!result) {
+            console.warn(`[WHATSAPP] sendMessage returned empty for ${jid}. Trying getChatById fallback...`);
+            try {
+                const chat = await client.getChatById(jid);
+                if (chat) {
+                    return await chat.sendMessage(content, options);
+                }
+            } catch (chatErr) {
+                console.warn(`[WHATSAPP] getChatById fallback failed for ${jid}:`, chatErr.message);
+            }
+        }
+        return result;
+    } catch (err) {
+        console.error(`[WHATSAPP] Error in safeSendMessage to ${jid}:`, err.message);
+        try {
+            const clean = jid.replace(/\D/g, '');
+            const resolved = await client.getNumberId(clean);
+            if (resolved && resolved._serialized && resolved._serialized !== jid) {
+                console.log(`[WHATSAPP] Retrying sendMessage with resolved JID: ${resolved._serialized}`);
+                return await client.sendMessage(resolved._serialized, content, options);
+            }
+        } catch (retryErr) {}
+        throw err;
+    }
+}
+
+/**
+ * Resolves all admin recipient JIDs, checking environment variables,
+ * default admin number, and connected WhatsApp account self-chat.
+ */
+export async function getAdminJids() {
+    const targets = new Set();
+    const envAdmin = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER;
+
+    if (envAdmin) {
+        const jid = await resolveWhatsAppJid(envAdmin);
+        if (jid) targets.add(jid);
+    } else {
+        // Use default admin notification number
+        const defaultJid = await resolveWhatsAppJid(DEFAULT_NOTIFICATION_NUMBER);
+        if (defaultJid) targets.add(defaultJid);
+
+        // Also if client is connected on another number (e.g. self-chat), notify it too!
+        if (client && client.info && client.info.wid && client.info.wid._serialized) {
+            targets.add(client.info.wid._serialized);
+        }
+    }
+    return Array.from(targets);
+}
+
+/**
  * Resolves the admin recipient JID, checking environment variables
- * and WhatsApp Web self-messaging mode.
+ * and WhatsApp Web self-messaging mode (backward compatibility).
  */
 export function getAdminJid() {
     const adminPhone = process.env.ADMIN_WHATSAPP || process.env.ADMIN_PHONE || process.env.NOTIFICATION_NUMBER || DEFAULT_NOTIFICATION_NUMBER;
@@ -602,7 +681,7 @@ Thank you for choosing *Rasobhoomi Plantation* for a greener home! 🪴✨`;
 }
 
 /**
- * Send Payment Success Notification & Invoice PDF for an Order to Admin (8972076182) and Customer
+ * Send Payment Success Notification & Invoice PDF for an Order to Admin and Customer
  */
 export async function sendOrderPaymentNotification(order, force = false) {
     if (!order || !order.id) return { success: false, error: 'Invalid order data' };
@@ -621,57 +700,59 @@ export async function sendOrderPaymentNotification(order, force = false) {
     let deliveredAny = false;
 
     try {
-        // Generate PDF Invoice
-        let pdfBuffer = null;
-        try {
-            const pdfLang = order.lang || 'en';
-            pdfBuffer = await generateInvoicePdf(order, pdfLang);
-        } catch (pdfErr) {
-            console.error(`[WHATSAPP] Failed to generate PDF invoice for order #${order.id}:`, pdfErr);
+        const customerJid = order.phone ? await resolveWhatsAppJid(order.phone) : null;
+        const adminJids = await getAdminJids();
+
+        // 1. Send Text Confirmation to Customer immediately (Highest Priority, non-blocking)
+        if (customerJid) {
+            try {
+                const customerMsg = buildCustomerOrderMessage(order);
+                console.log(`[WHATSAPP] Sending customer order confirmation for #${order.id} to Customer (${customerJid})...`);
+                const sent = await safeSendMessage(customerJid, customerMsg);
+                if (sent) deliveredAny = true;
+                console.log(`[WHATSAPP] Customer order confirmation text dispatched to ${customerJid}!`);
+            } catch (custErr) {
+                console.error(`[WHATSAPP] Error sending paid confirmation text to customer (${customerJid}):`, custErr.message);
+            }
         }
 
-        const adminJid = getAdminJid();
-        const customerJid = order.phone ? formatWhatsAppJid(order.phone) : null;
-
-        // 1. Send to Admin / Notification Number
-        if (adminJid) {
+        // 2. Send Text Notification to Admin Numbers
+        for (const adminJid of adminJids) {
             try {
                 const textMessage = buildOrderNotificationMessage(order);
                 console.log(`[WHATSAPP] Sending order notification for #${order.id} to Admin (${adminJid})...`);
-                await client.sendMessage(adminJid, textMessage);
-                deliveredAny = true;
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Admin (${adminJid})...`);
-                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
-                }
+                const sent = await safeSendMessage(adminJid, textMessage);
+                if (sent) deliveredAny = true;
             } catch (adminErr) {
                 console.error(`[WHATSAPP] Error sending paid alert to admin (${adminJid}):`, adminErr.message);
             }
         }
 
-        // 2. Send to Customer's WhatsApp Number provided at checkout
-        if (customerJid) {
+        // 3. Dispatch PDF Invoices Asynchronously in Background (ensures upload issues never block text delivery)
+        (async () => {
             try {
-                await new Promise(r => setTimeout(r, 1200));
-                console.log(`[WHATSAPP] Sending customer order confirmation for #${order.id} to Customer (${customerJid})...`);
-                const customerMsg = buildCustomerOrderMessage(order);
-                await client.sendMessage(customerJid, customerMsg);
-                deliveredAny = true;
+                const pdfLang = order.lang || 'en';
+                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
                 if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
-                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
+                    if (customerJid) {
+                        await new Promise(r => setTimeout(r, 1200));
+                        console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
+                        await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
+                    }
+                    for (const adminJid of adminJids) {
+                        await new Promise(r => setTimeout(r, 1200));
+                        console.log(`[WHATSAPP] Sending direct PDF invoice document for #${order.id} to Admin (${adminJid})...`);
+                        await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
+                    }
                 }
-                console.log(`[WHATSAPP] Customer order confirmation & invoice PDF delivered to ${customerJid}!`);
-            } catch (custErr) {
-                console.error(`[WHATSAPP] Error sending paid invoice to customer (${customerJid}):`, custErr.message);
+            } catch (pdfErr) {
+                console.error(`[WHATSAPP] Failed background PDF invoice dispatch for #${order.id}:`, pdfErr.message);
             }
-        }
+        })();
 
         if (deliveredAny) {
             notifiedOrderIds.add(order.id);
-            console.log(`[WHATSAPP] Order notification & invoice PDF sent for #${order.id}!`);
+            console.log(`[WHATSAPP] Order notification sent successfully for #${order.id}!`);
             return { success: true };
         } else {
             console.warn(`[WHATSAPP] Delivery failed for both admin and customer for order #${order.id}`);
@@ -836,56 +917,59 @@ export async function sendPendingPaymentNotification(order, force = false) {
     let deliveredAny = false;
 
     try {
-        const pdfLang = order.lang || 'en';
-        let pdfBuffer = null;
-        try {
-            pdfBuffer = await generateInvoicePdf(order, pdfLang);
-        } catch (pdfErr) {
-            console.error(`[WHATSAPP] Failed to generate PDF invoice for pending order #${order.id}:`, pdfErr);
-        }
+        const customerJid = order.phone ? await resolveWhatsAppJid(order.phone) : null;
+        const adminJids = await getAdminJids();
 
-        const adminJid = getAdminJid();
-        const customerJid = order.phone ? formatWhatsAppJid(order.phone) : null;
-
-        // 1. Send to Admin
-        if (adminJid) {
-            try {
-                const textMessage = buildPendingPaymentNotificationMessage(order);
-                console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
-                await client.sendMessage(adminJid, textMessage);
-                deliveredAny = true;
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Admin (${adminJid})...`);
-                    await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
-                }
-            } catch (adminErr) {
-                console.error(`[WHATSAPP] Error delivering pending alert to admin (${adminJid}):`, adminErr.message);
-            }
-        }
-
-        // 2. Send to Customer
+        // 1. Send Text Receipt to Customer immediately (non-blocking)
         if (customerJid) {
             try {
-                await new Promise(r => setTimeout(r, 1200));
                 const customerMsg = buildCustomerPendingOrderMessage(order);
-                console.log(`[WHATSAPP] Sending customer order receipt & invoice PDF for #${order.id} to Customer (${customerJid})...`);
-                await client.sendMessage(customerJid, customerMsg);
-                deliveredAny = true;
-                if (pdfBuffer && pdfBuffer.length > 0) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Customer (${customerJid})...`);
-                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
-                }
-                console.log(`[WHATSAPP] Customer order receipt & invoice delivered to ${customerJid}!`);
+                console.log(`[WHATSAPP] Sending customer order receipt for #${order.id} to Customer (${customerJid})...`);
+                const sent = await safeSendMessage(customerJid, customerMsg);
+                if (sent) deliveredAny = true;
+                console.log(`[WHATSAPP] Customer pending order receipt text dispatched to ${customerJid}!`);
             } catch (custErr) {
                 console.error(`[WHATSAPP] Error delivering pending alert to customer (${customerJid}):`, custErr.message);
             }
         }
 
+        // 2. Send Pending Alert to Admin Numbers
+        for (const adminJid of adminJids) {
+            try {
+                const textMessage = buildPendingPaymentNotificationMessage(order);
+                console.log(`[WHATSAPP] Sending pending payment alert for #${order.id} to Admin (${adminJid})...`);
+                const sent = await safeSendMessage(adminJid, textMessage);
+                if (sent) deliveredAny = true;
+            } catch (adminErr) {
+                console.error(`[WHATSAPP] Error delivering pending alert to admin (${adminJid}):`, adminErr.message);
+            }
+        }
+
+        // 3. Dispatch PDF Invoices Asynchronously in Background
+        (async () => {
+            try {
+                const pdfLang = order.lang || 'en';
+                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+                if (pdfBuffer && pdfBuffer.length > 0) {
+                    if (customerJid) {
+                        await new Promise(r => setTimeout(r, 1200));
+                        console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Customer (${customerJid})...`);
+                        await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
+                    }
+                    for (const adminJid of adminJids) {
+                        await new Promise(r => setTimeout(r, 1200));
+                        console.log(`[WHATSAPP] Sending direct PDF invoice document for pending #${order.id} to Admin (${adminJid})...`);
+                        await sendPdfDocumentSafe(adminJid, pdfBuffer, order.id);
+                    }
+                }
+            } catch (pdfErr) {
+                console.error(`[WHATSAPP] Failed background PDF invoice dispatch for pending #${order.id}:`, pdfErr.message);
+            }
+        })();
+
         if (deliveredAny) {
             notifiedPendingOrderIds.add(order.id);
-            console.log(`[WHATSAPP] Pending payment alert & direct invoice processing finished for #${order.id}!`);
+            console.log(`[WHATSAPP] Pending payment alert processing finished for #${order.id}!`);
             return { success: true };
         } else {
             return { success: false, error: 'Failed to deliver pending alert to both admin and customer' };
@@ -914,21 +998,24 @@ export async function sendDirectInvoicePdf(order, targetPhone = null) {
 
     const targets = [];
     if (targetPhone) {
-        const jid = formatWhatsAppJid(targetPhone);
+        const jid = await resolveWhatsAppJid(targetPhone);
         if (jid) targets.push(jid);
     } else {
-        const adminJid = getAdminJid();
-        const custJid = order.phone ? formatWhatsAppJid(order.phone) : null;
-        if (adminJid) targets.push(adminJid);
-        if (custJid && custJid !== adminJid) targets.push(custJid);
+        const adminJids = await getAdminJids();
+        targets.push(...adminJids);
+        if (order.phone) {
+            const custJid = await resolveWhatsAppJid(order.phone);
+            if (custJid && !targets.includes(custJid)) targets.push(custJid);
+        }
     }
 
     let sentCount = 0;
-    const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice PDF document attached directly below. 📄🪴`;
+    const invoiceUrl = getInvoiceUrl(order.id);
+    const companionMsg = `🌿 *Rasobhoomi Plantation - Tax Invoice for Order #${order.id}*\n\nPlease find your official Tax Invoice PDF document attached directly below. 📄🪴\n🔗 *Download Online:* ${invoiceUrl}`;
 
     for (const jid of targets) {
         try {
-            await client.sendMessage(jid, companionMsg);
+            await safeSendMessage(jid, companionMsg);
             sentCount++;
         } catch (msgErr) {
             console.warn(`[WHATSAPP] Failed to send companion text to ${jid}:`, msgErr.message);
@@ -1079,7 +1166,7 @@ export async function sendOrderStatusNotification(order, newStatus) {
     }
 
     try {
-        const customerJid = formatWhatsAppJid(order.phone);
+        const customerJid = await resolveWhatsAppJid(order.phone);
         if (!customerJid) {
             console.warn(`[WHATSAPP] Invalid customer phone format for order #${order.id}: ${order.phone}`);
             return { success: false, error: 'Invalid customer phone format' };
@@ -1088,27 +1175,24 @@ export async function sendOrderStatusNotification(order, newStatus) {
         const messageText = buildOrderStatusMessage(order, newStatus);
 
         console.log(`[WHATSAPP] Sending order status update ('${newStatus}') for #${order.id} to Customer (${customerJid})...`);
-        await client.sendMessage(customerJid, messageText);
+        await safeSendMessage(customerJid, messageText);
         console.log(`[WHATSAPP] Order status text successfully delivered to ${customerJid}!`);
 
-        // Send direct PDF invoice attachment directly to customer WhatsApp
-        try {
-            const pdfLang = order.lang || 'en';
-            console.log(`[WHATSAPP] Generating direct PDF invoice (${pdfLang}) on status change for #${order.id}...`);
-            const pdfBuffer = await generateInvoicePdf(order, pdfLang);
-            if (pdfBuffer && pdfBuffer.length > 0) {
-                await new Promise(r => setTimeout(r, 1200));
-                console.log(`[WHATSAPP] Dispatching direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
-                const pdfSent = await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
-                if (pdfSent) {
-                    console.log(`[WHATSAPP] ✅ Direct PDF invoice document successfully delivered to Customer (${customerJid}) for order #${order.id}!`);
-                } else {
-                    console.warn(`[WHATSAPP] ⚠️ Failed to deliver direct PDF invoice document to Customer (${customerJid}) for order #${order.id}`);
+        // Send direct PDF invoice attachment asynchronously in background
+        (async () => {
+            try {
+                const pdfLang = order.lang || 'en';
+                console.log(`[WHATSAPP] Generating direct PDF invoice (${pdfLang}) on status change for #${order.id}...`);
+                const pdfBuffer = await generateInvoicePdf(order, pdfLang);
+                if (pdfBuffer && pdfBuffer.length > 0) {
+                    await new Promise(r => setTimeout(r, 1200));
+                    console.log(`[WHATSAPP] Dispatching direct PDF invoice document for #${order.id} to Customer (${customerJid})...`);
+                    await sendPdfDocumentSafe(customerJid, pdfBuffer, order.id);
                 }
+            } catch (pdfErr) {
+                console.error(`[WHATSAPP] Failed background PDF invoice on status update for order #${order.id}:`, pdfErr.message);
             }
-        } catch (pdfErr) {
-            console.error(`[WHATSAPP] Failed to dispatch direct PDF invoice on status update for order #${order.id}:`, pdfErr.message);
-        }
+        })();
 
         return { success: true };
     } catch (err) {
@@ -1126,16 +1210,16 @@ export async function sendTestMessage(targetNumber = DEFAULT_NOTIFICATION_NUMBER
         throw new Error(`WhatsApp is not connected (Current status: ${connectionState})`);
     }
 
-    const cleanTarget = String(targetNumber).replace(/\D/g, '').slice(-10);
-    const cleanAdmin = String(DEFAULT_NOTIFICATION_NUMBER).replace(/\D/g, '').slice(-10);
-
-    let jid = formatWhatsAppJid(targetNumber);
-    if (cleanTarget === cleanAdmin) {
-        jid = getAdminJid() || jid;
+    const jid = await resolveWhatsAppJid(targetNumber);
+    if (!jid) {
+        throw new Error(`Invalid recipient phone number: ${targetNumber}`);
     }
 
     const testMsg = `🧪 *Rasobhoomi Plantation - WhatsApp Test Alert*\n\n✅ WhatsApp integration is ACTIVE and working properly!\n⏰ Server Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n🌿 Ready to dispatch order alerts and tax invoices.`;
-    await client.sendMessage(jid, testMsg);
+    const res = await safeSendMessage(jid, testMsg);
+    if (!res) {
+        throw new Error('WhatsApp service could not find or deliver to this chat. Check that number has WhatsApp installed.');
+    }
     return { success: true, recipient: jid };
 }
 
@@ -1264,7 +1348,7 @@ export async function sendPaymentRecoveryWhatsApp(order, phase = 1) {
     }
 
     try {
-        const customerJid = formatWhatsAppJid(order.phone);
+        const customerJid = await resolveWhatsAppJid(order.phone);
         if (!customerJid) {
             return { success: false, error: 'Invalid WhatsApp JID format' };
         }
@@ -1272,7 +1356,7 @@ export async function sendPaymentRecoveryWhatsApp(order, phase = 1) {
         const msgText = buildRecoveryNotificationMessage(order, phase);
         console.log(`[WHATSAPP RECOVERY] Sending Phase ${phase} recovery message for order #${order.id} to ${customerJid}...`);
 
-        await client.sendMessage(customerJid, msgText);
+        await safeSendMessage(customerJid, msgText);
         console.log(`[WHATSAPP RECOVERY] Phase ${phase} recovery message successfully delivered to ${customerJid}!`);
         return { success: true };
     } catch (err) {

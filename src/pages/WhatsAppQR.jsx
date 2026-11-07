@@ -6,7 +6,7 @@ const WhatsAppQR = () => {
         status: 'INITIALIZING',
         qrCode: null,
         user: null,
-        targetNumber: '+91 8972076182'
+        targetNumber: '+91 9907541613'
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -51,9 +51,10 @@ const WhatsAppQR = () => {
         setTestLoading(true);
         setTestResult('');
         try {
-            const res = await axios.post('/api/whatsapp/test', { number: '8972076182' });
+            const targetPhone = statusData.targetNumber ? statusData.targetNumber.replace(/\D/g, '').slice(-10) : '9907541613';
+            const res = await axios.post('/api/whatsapp/test', { number: targetPhone });
             if (res.data.success) {
-                setTestResult('✅ Test message sent successfully to +91 8972076182!');
+                setTestResult(`✅ Test message sent successfully to ${statusData.targetNumber || '+91 9907541613'}!`);
             } else {
                 setTestResult(`❌ Failed to send test message: ${res.data.error || 'Unknown error'}`);
             }
@@ -129,7 +130,7 @@ const WhatsAppQR = () => {
 
                 {/* TARGET NOTIFICATION NUMBER INFO */}
                 <div style={styles.infoBox}>
-                    <strong>Target Notification Number:</strong> {statusData.targetNumber || '+91 8972076182'}
+                    <strong>Target Notification Number:</strong> {statusData.targetNumber || '+91 9907541613'}
                     <div style={styles.infoDesc}>
                         When a customer completes payment, full order details are instantly formatted and dispatched to this number.
                     </div>
@@ -144,7 +145,7 @@ const WhatsAppQR = () => {
                             Logged in as: <strong>{statusData.user?.name || 'Rasobhoomi WhatsApp'}</strong> ({statusData.user?.number || 'Active'})
                         </p>
                         <p style={styles.connectedSubtext}>
-                            Order notification alerts will be sent directly from this WhatsApp account to <strong>+91 8972076182</strong> upon every successful payment.
+                            Order notification alerts will be sent directly from this WhatsApp account to <strong>{statusData.targetNumber || '+91 9907541613'}</strong> upon every successful payment.
                         </p>
 
                         <div style={styles.actionButtons}>

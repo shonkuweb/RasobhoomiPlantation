@@ -26,6 +26,9 @@ services:
       # App
       - APP_BE_URL=${APP_BE_URL}
       - APP_FE_URL=${APP_FE_URL:-${APP_BE_URL}}
+      # WhatsApp Notifications
+      - ADMIN_WHATSAPP=${ADMIN_WHATSAPP:-9907541613}
+      - NOTIFICATION_NUMBER=${NOTIFICATION_NUMBER:-9907541613}
     depends_on:
       - db
     volumes:

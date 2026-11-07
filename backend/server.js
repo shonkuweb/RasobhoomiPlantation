@@ -2180,7 +2180,7 @@ app.post('/api/whatsapp/logout', async (req, res) => {
 
 app.post('/api/whatsapp/test', async (req, res) => {
     try {
-        const targetNumber = req.body?.number || '8972076182';
+        const targetNumber = req.body?.number || process.env.ADMIN_WHATSAPP || process.env.NOTIFICATION_NUMBER || '9907541613';
         const result = await sendTestMessage(targetNumber);
         res.json(result);
     } catch (err) {
