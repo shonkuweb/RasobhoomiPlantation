@@ -11,6 +11,7 @@ export const uiTranslations = {
         // Navigation Links
         nav_home: "Home",
         nav_categories: "Categories",
+        nav_visit_nursery: "Visit Our Nursery",
         nav_tutorials: "Video Tutorials",
         view_more_tutorials: "View More Tutorials & Video Guides",
         tutorials_title: "Planting & Gardening Video Guides",
@@ -131,6 +132,7 @@ export const uiTranslations = {
         // Navigation Links
         nav_home: "होम",
         nav_categories: "श्रेणियां",
+        nav_visit_nursery: "हमारी नर्सरी पर आएं",
         nav_tutorials: "वीडियो ट्यूटोरियल",
         view_more_tutorials: "और ट्यूटोरियल एवं वीडियो गाइड देखें",
         tutorials_title: "पौधे लगाने और बागवानी के वीडियो गाइड",
@@ -251,6 +253,7 @@ export const uiTranslations = {
         // Navigation Links
         nav_home: "হোম",
         nav_categories: "ক্যাটাগরি",
+        nav_visit_nursery: "আমাদের নার্সারি ভিজিট করুন",
         nav_tutorials: "ভিডিও টিউটোরিয়াল",
         view_more_tutorials: "আরও টিউটোরিয়াল এবং ভিডিও গাইড দেখুন",
         tutorials_title: "চাষ ও বাগান সম্পর্কিত ভিডিও গাইড",

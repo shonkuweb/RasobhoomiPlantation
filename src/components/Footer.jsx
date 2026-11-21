@@ -22,6 +22,7 @@ const Footer = () => {
                     <ul className="footer-links-list">
                         <li><Link to="/" className="footer-link-item">{t('nav_home')}</Link></li>
                         <li><Link to="/categories" className="footer-link-item">{t('nav_categories')}</Link></li>
+                        <li><a href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" className="footer-link-item">{t('nav_visit_nursery')}</a></li>
                         <li><Link to="/tutorials" className="footer-link-item">{t('nav_tutorials')}</Link></li>
                         <li><Link to="/about" className="footer-link-item">{t('nav_about')}</Link></li>
                         <li><Link to="/contact" className="footer-link-item">{t('nav_contact')}</Link></li>
@@ -67,9 +68,17 @@ const Footer = () => {
                         </a>
                     </div>
                     <div className="footer-contact-info" style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#000' }}>
-                        <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '1.2rem' }}>📍</span>
-                            <strong style={{ color: '#000' }}>Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</strong>
+                        <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <span style={{ fontSize: '1.2rem', lineHeight: '1.2' }}>📍</span>
+                            <a
+                                href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#000', textDecoration: 'none', lineHeight: '1.4' }}
+                                title="View on Google Maps"
+                            >
+                                <strong style={{ color: '#000' }}>AH1, Baikara, Thakurnagar, West Bengal 743245</strong>
+                            </a>
                         </p>
                         <p style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.2rem' }}>📧</span>

@@ -286,7 +286,7 @@ if (!document.querySelector('footer') && !window.location.pathname.includes('adm
             <a href="shipping.html" class="footer-link">Shipping Policy</a>
             <a href="privacy.html" class="footer-link">Privacy Policy</a>
             <a href="https://wa.me/918972076182?text=Hi%20Rasobhoomi,%20I%20have%20a%20query%20regarding%20products" target="_blank" class="footer-link">Contact Us</a>
-            <a href="#" class="footer-link">Location by Maps</a>
+            <a href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" class="footer-link">Location by Maps</a>
             </div>
             <div class="copyright">Rasobhoomi. All rights reserved.</div>
            `;

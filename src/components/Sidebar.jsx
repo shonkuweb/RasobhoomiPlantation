@@ -20,6 +20,15 @@ const Sidebar = ({ isOpen, onClose }) => {
             <div className="sidebar-menu">
                 <Link to="/" className="menu-item" onClick={onClose}>{t('nav_home')}</Link>
                 <Link to="/categories" className="menu-item" onClick={onClose}>{t('nav_categories')}</Link>
+                <a
+                    href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="menu-item"
+                    onClick={onClose}
+                >
+                    {t('nav_visit_nursery')}
+                </a>
                 <Link to="/about" className="menu-item" onClick={onClose}>{t('nav_about')}</Link>
                 <Link to="/contact" className="menu-item" onClick={onClose}>{t('nav_contact')}</Link>
                 <Link to="/tutorials" className="menu-item" onClick={onClose}>{t('nav_tutorials')}</Link>

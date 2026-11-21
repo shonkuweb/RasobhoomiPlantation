@@ -110,7 +110,15 @@ const Contact = () => {
                             </div>
                             <div>
                                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>Location</h3>
-                                <p style={{ color: '#666' }}>Baikara, NORTH 24 PARAGANAS,<br />WEST BENGAL - 743245</p>
+                                <a
+                                    href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: '#666', textDecoration: 'none' }}
+                                    title="View on Google Maps"
+                                >
+                                    <p style={{ color: '#666' }}>AH1, Baikara, Thakurnagar,<br />West Bengal 743245</p>
+                                </a>
                             </div>
                         </div>
                     </div>

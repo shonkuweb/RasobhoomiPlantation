@@ -52,7 +52,7 @@ const Terms = () => {
                 <h3>Contact Us</h3>
                 <p><strong>Email:</strong> rasobhoomiplantation@gmail.com</p>
                 <p><strong>Phone:</strong> +91 8972076182</p>
-                <p><strong>Address:</strong> Baikara, NORTH 24 PARAGANAS, WEST BENGAL - 743245</p>
+                <p><strong>Address:</strong> <a href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>AH1, Baikara, Thakurnagar, West Bengal 743245</a></p>
             </section>
         </div>
     );
