@@ -29,11 +29,15 @@ function initDb() {
             qty INTEGER DEFAULT 0,
             image TEXT,
             images TEXT, -- JSON string
+            videos TEXT, -- JSON string
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating products table:", err);
             // Migration for existing sqlite databases
             db.run(`ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT 0`, (mErr) => {
+                // Column might already exist, safe to ignore error
+            });
+            db.run(`ALTER TABLE products ADD COLUMN videos TEXT`, (mErr) => {
                 // Column might already exist, safe to ignore error
             });
         });
@@ -243,6 +247,16 @@ function initDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating tutorials table:", err);
+        });
+
+        // Promotion Customers Table (Offline Customers)
+        db.run(`CREATE TABLE IF NOT EXISTS promotion_customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error("Error creating promotion_customers table:", err);
         });
 
         console.log('Database tables initialized.');

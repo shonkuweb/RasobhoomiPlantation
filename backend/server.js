@@ -42,7 +42,7 @@ if (process.env.DB_TYPE === 'postgres') {
 }
 console.log(`[INFO] Server starting with DB_TYPE: ${process.env.DB_TYPE || 'sqlite'}`);
 
-import { processProductImagesForR2 } from './r2_helper.js';
+import { processProductImagesForR2, processProductVideosForR2 } from './r2_helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -696,10 +696,22 @@ const buildProductCacheKey = (page, limit, isPaginated, summary, includeHidden =
         : `all${summaryKey}${hiddenKey}:v:${productCacheVersion}`;
 };
 
+const safeJsonArray = (raw) => {
+    if (!raw || raw === 'null') return [];
+    if (Array.isArray(raw)) return raw;
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
 const parseProductRows = (rows) => rows.map(p => ({
     ...p,
     originalCategory: p.originalCategory || p.category,
-    images: (p.images && p.images !== 'null') ? JSON.parse(p.images) : []
+    images: safeJsonArray(p.images),
+    videos: safeJsonArray(p.videos),
 }));
 
 /** Lighter payload for storefront lists (no gallery array, short description). */
@@ -1029,45 +1041,59 @@ app.get('/api/products', (req, res) => {
 });
 
 
-app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
-    try {
-        const { id, name, description, price, compare_price, category, qty, image, images } = req.body;
-        const finalId = id ? String(id).trim() : crypto.randomUUID();
-        const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
-        const finalCategory = category && typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Others';
-        
-        // Process images via R2 if they are base64
-        const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
-        const imagesStr = JSON.stringify(newImagesArray || []);
+async function saveProductWithMedia(finalId, body) {
+    const { name, description, price, compare_price, category, qty, image, images, videos } = body;
+    const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
+    const finalCategory = category && typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Others';
 
+    // Process images and videos via R2 if they are base64
+    const [{ newImage, newImagesArray }, newVideosArray] = await Promise.all([
+        processProductImagesForR2(finalId, image, images),
+        processProductVideosForR2(finalId, videos),
+    ]);
+    const imagesStr = JSON.stringify(newImagesArray || []);
+    const videosStr = JSON.stringify(newVideosArray || []);
+
+    return new Promise((resolve, reject) => {
         db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
-            if (err) {
-                console.error("DB SELECT Error in POST /api/products:", err);
-                return res.status(500).json({ error: err.message });
-            }
+            if (err) return reject(err);
 
             if (row) {
-                const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-                db.run(sql, [name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, finalId], function (uErr) {
-                    if (uErr) {
-                        console.error("DB UPDATE Error in POST /api/products:", uErr);
-                        return res.status(500).json({ error: uErr.message });
-                    }
+                const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ?, videos = ? WHERE id = ?`;
+                db.run(sql, [name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, videosStr, finalId], function (uErr) {
+                    if (uErr) return reject(uErr);
                     invalidateProductCache();
-                    res.json({ message: 'Product updated', id: finalId });
+                    resolve({
+                        message: 'Product updated',
+                        id: finalId,
+                        image: newImage,
+                        images: newImagesArray,
+                        videos: newVideosArray,
+                    });
                 });
             } else {
-                const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                db.run(sql, [finalId, name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr], function (iErr) {
-                    if (iErr) {
-                        console.error("DB INSERT Error in POST /api/products:", iErr);
-                        return res.status(500).json({ error: iErr.message });
-                    }
+                const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images, videos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                db.run(sql, [finalId, name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, videosStr], function (iErr) {
+                    if (iErr) return reject(iErr);
                     invalidateProductCache();
-                    res.json({ message: 'Product created', id: finalId });
+                    resolve({
+                        message: 'Product created',
+                        id: finalId,
+                        image: newImage,
+                        images: newImagesArray,
+                        videos: newVideosArray,
+                    });
                 });
             }
         });
+    });
+}
+
+app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
+    try {
+        const finalId = req.body.id ? String(req.body.id).trim() : crypto.randomUUID();
+        const result = await saveProductWithMedia(finalId, req.body);
+        res.json(result);
     } catch (err) {
         console.error("Server Exception in POST /api/products:", err);
         res.status(500).json({ error: err.message || 'Internal Server Error' });
@@ -1076,43 +1102,9 @@ app.post('/api/products', requireAuth, validateProduct, async (req, res) => {
 
 app.put('/api/products/:id', requireAuth, validateProduct, async (req, res) => {
     try {
-        const { name, description, price, compare_price, category, qty, image, images } = req.body;
         const finalId = String(req.params.id).trim();
-        const finalComparePrice = compare_price ? parseFloat(compare_price) : 0;
-        const finalCategory = category && typeof category === 'string' && category.trim() !== '' ? category.trim() : 'Others';
-
-        // Process images via R2 if they are base64
-        const { newImage, newImagesArray } = await processProductImagesForR2(finalId, image, images);
-        const imagesStr = JSON.stringify(newImagesArray || []);
-
-        db.get("SELECT id FROM products WHERE id = ?", [finalId], (err, row) => {
-            if (err) {
-                console.error("DB SELECT Error in PUT /api/products/:id:", err);
-                return res.status(500).json({ error: err.message });
-            }
-
-            if (!row) {
-                const sql = `INSERT INTO products (id, name, description, price, compare_price, category, qty, image, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                db.run(sql, [finalId, name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr], function (iErr) {
-                    if (iErr) {
-                        console.error("DB INSERT Error in PUT /api/products/:id:", iErr);
-                        return res.status(500).json({ error: iErr.message });
-                    }
-                    invalidateProductCache();
-                    res.json({ message: 'Product created', id: finalId });
-                });
-            } else {
-                const sql = `UPDATE products SET name = ?, description = ?, price = ?, compare_price = ?, category = ?, qty = ?, image = ?, images = ? WHERE id = ?`;
-                db.run(sql, [name, description, price, finalComparePrice, finalCategory, qty, newImage, imagesStr, finalId], function (uErr) {
-                    if (uErr) {
-                        console.error("DB UPDATE Error in PUT /api/products/:id:", uErr);
-                        return res.status(500).json({ error: uErr.message });
-                    }
-                    invalidateProductCache();
-                    res.json({ message: 'Product updated', id: finalId });
-                });
-            }
-        });
+        const result = await saveProductWithMedia(finalId, req.body);
+        res.json(result);
     } catch (err) {
         console.error("Server Exception in PUT /api/products/:id:", err);
         res.status(500).json({ error: err.message || 'Internal Server Error' });
@@ -2149,6 +2141,158 @@ app.delete('/api/orders/:id', requireAuth, (req, res) => {
     });
 });
 
+
+// --- PROMOTIONS: CUSTOMER DIRECTORY (WEBSITE BUYERS + OFFLINE CUSTOMERS) ---
+const normalizeCustomerPhone = (rawPhone) => {
+    const digits = String(rawPhone || '').replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.length > 10 ? digits.slice(-10) : digits;
+};
+
+app.get('/api/admin/promotions/customers', requireAuth, (req, res) => {
+    const ordersSql = `
+        SELECT id, name, phone, status, payment_status, created_at
+        FROM orders
+        WHERE (is_deleted = FALSE OR is_deleted IS NULL)
+          AND (
+            LOWER(COALESCE(payment_status, '')) IN ('paid', 'captured', 'success')
+            OR LOWER(COALESCE(status, '')) IN ('new', 'in-process', 'in-transit', 'completed', 'delivered')
+          )
+        ORDER BY created_at DESC
+    `;
+
+    db.all(ordersSql, [], (orderErr, orderRows) => {
+        if (orderErr) return res.status(500).json({ error: orderErr.message });
+
+        db.all("SELECT id, name, phone, created_at FROM promotion_customers ORDER BY created_at DESC", [], (offErr, offlineRows) => {
+            if (offErr) return res.status(500).json({ error: offErr.message });
+
+            const customerMap = new Map();
+
+            (orderRows || []).forEach((order) => {
+                const key = normalizeCustomerPhone(order.phone);
+                const cleanName = String(order.name || '').trim();
+                const cleanPhone = String(order.phone || '').trim();
+                if (!key && !cleanPhone) return;
+                const mapKey = key || cleanPhone.toLowerCase();
+
+                const existing = customerMap.get(mapKey);
+                if (existing) {
+                    existing.orderCount += 1;
+                    if (!existing.name && cleanName) existing.name = cleanName;
+                } else {
+                    customerMap.set(mapKey, {
+                        key: mapKey,
+                        name: cleanName || 'Website Customer',
+                        phone: cleanPhone,
+                        source: 'website',
+                        orderCount: 1,
+                        lastOrderAt: order.created_at || null,
+                        offlineId: null,
+                        createdAt: order.created_at || null,
+                    });
+                }
+            });
+
+            (offlineRows || []).forEach((cust) => {
+                const key = normalizeCustomerPhone(cust.phone);
+                const cleanName = String(cust.name || '').trim();
+                const cleanPhone = String(cust.phone || '').trim();
+                if (!key && !cleanPhone) return;
+                const mapKey = key || cleanPhone.toLowerCase();
+
+                const existing = customerMap.get(mapKey);
+                if (existing) {
+                    existing.source = 'both';
+                    existing.offlineId = cust.id;
+                    if (!existing.name && cleanName) existing.name = cleanName;
+                } else {
+                    customerMap.set(mapKey, {
+                        key: mapKey,
+                        name: cleanName || 'Offline Customer',
+                        phone: cleanPhone,
+                        source: 'offline',
+                        orderCount: 0,
+                        lastOrderAt: null,
+                        offlineId: cust.id,
+                        createdAt: cust.created_at || null,
+                    });
+                }
+            });
+
+            const customers = Array.from(customerMap.values()).sort((a, b) => {
+                const tA = new Date(a.lastOrderAt || a.createdAt || 0).getTime();
+                const tB = new Date(b.lastOrderAt || b.createdAt || 0).getTime();
+                return tB - tA;
+            });
+
+            const websiteCount = customers.filter(c => c.source === 'website' || c.source === 'both').length;
+            const offlineCount = customers.filter(c => c.source === 'offline' || c.source === 'both').length;
+
+            res.json({
+                success: true,
+                customers,
+                counts: {
+                    total: customers.length,
+                    website: websiteCount,
+                    offline: offlineCount,
+                }
+            });
+        });
+    });
+});
+
+app.post('/api/admin/promotions/customers', requireAuth, (req, res) => {
+    const cleanName = String(req.body?.name || '').trim();
+    const rawPhone = String(req.body?.phone || '').trim();
+    const digits = rawPhone.replace(/\D/g, '');
+
+    if (!cleanName) {
+        return res.status(400).json({ error: 'Customer name is required' });
+    }
+    if (!digits || digits.length < 10 || digits.length > 15) {
+        return res.status(400).json({ error: 'Valid phone number (10-15 digits) is required' });
+    }
+
+    const normalizedNew = normalizeCustomerPhone(rawPhone);
+
+    db.all("SELECT id, phone FROM promotion_customers", [], (err, existingRows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const duplicate = (existingRows || []).find(r => normalizeCustomerPhone(r.phone) === normalizedNew);
+        if (duplicate) {
+            return res.status(409).json({ error: 'A customer with this phone number is already in the offline list' });
+        }
+
+        const id = 'CUST-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+        db.run(
+            "INSERT INTO promotion_customers (id, name, phone) VALUES (?, ?, ?)",
+            [id, cleanName, rawPhone],
+            function (insErr) {
+                if (insErr) return res.status(500).json({ error: insErr.message });
+                res.json({
+                    success: true,
+                    customer: {
+                        id,
+                        name: cleanName,
+                        phone: rawPhone,
+                        source: 'offline',
+                    }
+                });
+            }
+        );
+    });
+});
+
+app.delete('/api/admin/promotions/customers/:id', requireAuth, (req, res) => {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ error: 'Customer ID is required' });
+
+    db.run("DELETE FROM promotion_customers WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, message: 'Offline customer removed' });
+    });
+});
 
 // --- WHATSAPP INTEGRATION API ENDPOINTS ---
 app.get('/api/whatsapp/status', (req, res) => {

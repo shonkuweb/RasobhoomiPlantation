@@ -52,7 +52,7 @@ const Terms = () => {
                 <h3>Contact Us</h3>
                 <p><strong>Email:</strong> rasobhoomiplantation@gmail.com</p>
                 <p><strong>Phone:</strong> +91 8972076182</p>
-                <p><strong>Address:</strong> <a href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>AH1, Baikara, Thakurnagar, West Bengal 743245</a></p>
+                <p><strong>Address:</strong> <a href="https://www.google.com/maps/search/?api=1&query=XQ23%2B89X%2C+NH+312%2C+near+kerosine+pump%2C+Baikara%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>XQ23+89X, NH 312, near kerosine pump, Baikara, West Bengal 743245</a></p>
             </section>
         </div>
     );

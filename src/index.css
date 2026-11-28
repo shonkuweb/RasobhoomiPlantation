@@ -1200,13 +1200,14 @@ footer {
   aspect-ratio: 1/1;
   background-color: #a3a3a3;
   border-radius: 20px;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
   border: 2px solid black;
   margin: 1rem auto;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 /* Modern Modal Styles */

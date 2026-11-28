@@ -26,30 +26,41 @@ if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
 }
 
 /**
- * Uploads a base64 image string to Cloudflare R2 and returns the public URL.
+ * Uploads a base64 image or video data URL to Cloudflare R2 and returns the public URL.
  * @param {string} base64String 
  * @param {string} productId 
  * @param {number|string} index 
- * @returns {Promise<string>} public URL of the uploaded image
+ * @returns {Promise<string>} public URL of the uploaded media
  */
 export async function uploadBase64ToR2(base64String, productId, index = 0) {
     if (!s3 || !R2_BUCKET_NAME || !R2_PUBLIC_URL) {
         throw new Error("R2 environment variables are not fully configured.");
     }
 
-    // A standard base64 from a browser looks like: data:image/png;base64,iVBORw0KGgo...
-    const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    // Supports standard and codec-qualified data URLs e.g.:
+    // data:image/png;base64,... or data:video/mp4;codecs=avc1;base64,...
+    const matches = base64String.match(/^data:([A-Za-z0-9.+\/-]+)(?:;[^,]*)?;base64,(.+)$/);
     if (!matches || matches.length !== 3) {
-        throw new Error("Invalid base64 image format");
+        throw new Error("Invalid base64 media format");
     }
 
-    const mimeType = matches[1];
-    const imageBuffer = Buffer.from(matches[2], 'base64');
-    
-    let extension = 'png';
-    if (mimeType === 'image/jpeg') extension = 'jpg';
-    else if (mimeType === 'image/webp') extension = 'webp';
-    else if (mimeType === 'image/gif') extension = 'gif';
+    const mimeType = matches[1].toLowerCase();
+    const mediaBuffer = Buffer.from(matches[2], 'base64');
+
+    const mimeExtensionMap = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+        'video/mp4': 'mp4',
+        'video/webm': 'webm',
+        'video/quicktime': 'mov',
+        'video/ogg': 'ogv',
+        'video/x-matroska': 'mkv',
+        'video/x-m4v': 'm4v',
+    };
+    const extension = mimeExtensionMap[mimeType] || (mimeType.startsWith('video/') ? 'mp4' : 'png');
 
     // User requested files to be under 'rasobhoomi/' folder
     const uniqueHash = Math.random().toString(36).substring(2, 8);
@@ -58,7 +69,7 @@ export async function uploadBase64ToR2(base64String, productId, index = 0) {
     const command = new PutObjectCommand({
         Bucket: R2_BUCKET_NAME,
         Key: fileName,
-        Body: imageBuffer,
+        Body: mediaBuffer,
         ContentType: mimeType,
     });
 
@@ -94,4 +105,27 @@ export async function processProductImagesForR2(productId, image, imagesArray) {
     }
 
     return { newImage, newImagesArray };
+}
+
+/**
+ * Uploads any base64 product videos to Cloudflare R2 and returns the resulting URL array.
+ * @param {string} productId
+ * @param {Array<string>} videosArray
+ * @returns {Promise<Array<string>>}
+ */
+export async function processProductVideosForR2(productId, videosArray) {
+    const newVideosArray = Array.isArray(videosArray) ? [...videosArray] : [];
+
+    for (let i = 0; i < newVideosArray.length; i++) {
+        const video = newVideosArray[i];
+        if (typeof video === 'string' && video.startsWith('data:video/')) {
+            try {
+                newVideosArray[i] = await uploadBase64ToR2(video, productId, `video_${i}`);
+            } catch (e) {
+                console.error(`Failed to upload product video ${i} for ${productId} to R2:`, e);
+            }
+        }
+    }
+
+    return newVideosArray.filter((v) => typeof v === 'string' && v.trim() !== '');
 }

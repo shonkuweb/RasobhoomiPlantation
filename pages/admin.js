@@ -301,6 +301,9 @@ const resetDbBtn = document.getElementById('reset-db-btn');
 const delCompletedBtn = document.getElementById('delete-completed-btn');
 const productImagesInput = document.getElementById('product-images');
 const imagePreviewContainer = document.getElementById('image-preview-container');
+const productVideosInput = document.getElementById('product-videos');
+const videoPreviewContainer = document.getElementById('video-preview-container');
+const videoProcessingStatus = document.getElementById('video-processing-status');
 // Search Elements
 const productSearchInput = document.getElementById('product-search');
 const orderSearchInput = document.getElementById('order-search');
@@ -389,8 +392,33 @@ const discountFormError = document.getElementById('discount-form-error');
 let discounts = [];
 let editingDiscountId = null;
 
-// State for image handling
+// Promotions Elements & State
+const promotionsBtn = document.getElementById('btn-promotions');
+const promotionsView = document.getElementById('promotions-view');
+const offlineCustomerForm = document.getElementById('offline-customer-form');
+const promoCustomerNameInput = document.getElementById('promo-customer-name');
+const promoCustomerPhoneInput = document.getElementById('promo-customer-phone');
+const promoFormStatus = document.getElementById('promo-form-status');
+const promoCustomerSearchInput = document.getElementById('promo-customer-search');
+const promotionsTable = document.getElementById('promotions-table');
+const promotionsTableBody = document.getElementById('promotions-table-body');
+const promotionsLoading = document.getElementById('promotions-loading');
+const promotionsEmpty = document.getElementById('promotions-empty');
+const promotionsCardsMobile = document.getElementById('promotions-cards-mobile');
+const promoCountTotal = document.getElementById('promo-count-total');
+const promoCountWebsite = document.getElementById('promo-count-website');
+const promoCountOffline = document.getElementById('promo-count-offline');
+const btnCopyPromoPhones = document.getElementById('btn-copy-promo-phones');
+const btnExportPromoCsv = document.getElementById('btn-export-promo-csv');
+
+let promotionCustomers = [];
+let currentPromoFilter = 'all';
+let currentPromoSearch = '';
+
+// State for image & video handling
 let currentImages = [];
+let currentVideos = [];
+let isProcessingVideo = false;
 
 // Initialize
 function init() {
@@ -1124,6 +1152,32 @@ function setupListeners() {
     ordersBtn.addEventListener('click', () => switchView('orders'));
     if (settingsBtn) settingsBtn.addEventListener('click', () => switchView('settings'));
     if (discountsBtn) discountsBtn.addEventListener('click', () => switchView('discounts'));
+    if (promotionsBtn) promotionsBtn.addEventListener('click', () => switchView('promotions'));
+
+    if (offlineCustomerForm) {
+        offlineCustomerForm.addEventListener('submit', handleAddOfflineCustomer);
+    }
+    if (promoCustomerSearchInput) {
+        promoCustomerSearchInput.addEventListener('input', (e) => {
+            currentPromoSearch = e.target.value.toLowerCase();
+            renderPromotionCustomers();
+        });
+    }
+    document.querySelectorAll('.promo-filter-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            currentPromoFilter = chip.dataset.promoFilter || 'all';
+            document.querySelectorAll('.promo-filter-chip').forEach((c) => {
+                c.classList.toggle('active', c === chip);
+            });
+            renderPromotionCustomers();
+        });
+    });
+    if (btnCopyPromoPhones) {
+        btnCopyPromoPhones.addEventListener('click', copyPromotionPhones);
+    }
+    if (btnExportPromoCsv) {
+        btnExportPromoCsv.addEventListener('click', exportPromotionCsv);
+    }
 
     // Mobile Bottom Navigation Buttons
     const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
@@ -1373,15 +1427,13 @@ function setupListeners() {
     // Form Submit
     const form = document.getElementById('product-form');
     if (form) {
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('Form submitted');
             try {
-                saveProduct();
-                window.showToast('Product Saved Successfully!');
+                await saveProduct();
             } catch (err) {
                 console.error(err);
-                window.showToast('Error capturing product', 'error');
+                window.showToast('Error saving product', 'error');
             }
         });
     } else {
@@ -1429,27 +1481,45 @@ function setupListeners() {
     }
 
     function handleFiles(files) {
-        if (files.length + currentImages.length > 3) {
-            window.showToast('You can only upload up to 3 images.', 'error');
-            return;
+        const allFiles = Array.from(files || []);
+        const imageFiles = allFiles.filter(f => f.type && f.type.startsWith('image/'));
+        const videoFiles = allFiles.filter(f => f.type && f.type.startsWith('video/'));
+
+        if (imageFiles.length > 0) {
+            if (imageFiles.length + currentImages.length > 3) {
+                window.showToast('You can only upload up to 3 images.', 'error');
+            } else {
+                imageFiles.forEach(file => {
+                    compressImage(file, 800, 0.7).then(compressedDataUrl => {
+                        currentImages.push(compressedDataUrl);
+                        renderPreviews();
+                    }).catch(err => {
+                        console.error('Compression failed', err);
+                        window.showToast('Failed to process image', 'error');
+                    });
+                });
+            }
         }
 
-        ([...files]).forEach(file => { // Convert FileList to Array
-            if (!file.type.startsWith('image/')) return;
-
-            compressImage(file, 800, 0.7).then(compressedDataUrl => {
-                currentImages.push(compressedDataUrl);
-                renderPreviews();
-            }).catch(err => {
-                console.error('Compression failed', err);
-                window.showToast('Failed to process image', 'error');
-            });
-        });
+        if (videoFiles.length > 0) {
+            handleVideoFiles(videoFiles);
+        }
     }
 
     // Image Upload
     if (productImagesInput) {
-        productImagesInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        productImagesInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+            e.target.value = '';
+        });
+    }
+
+    // Video Upload
+    if (productVideosInput) {
+        productVideosInput.addEventListener('change', (e) => {
+            handleVideoFiles(Array.from(e.target.files || []));
+            e.target.value = '';
+        });
     }
 
     // Camera Upload
@@ -1460,7 +1530,10 @@ function setupListeners() {
         cameraBtn.addEventListener('click', () => {
             cameraInput.click();
         });
-        cameraInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        cameraInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+            e.target.value = '';
+        });
     }
 
 
@@ -1700,12 +1773,13 @@ function renderPreviews() {
     imagePreviewContainer.innerHTML = '';
     currentImages.slice(0, 3).forEach((imgSrc, index) => {
         const div = document.createElement('div');
-        div.style.cssText = 'width: 60px; height: 60px; border: 1px solid #ccc; position: relative; background-size: cover; background-position: center;';
+        div.style.cssText = 'width: 60px; height: 60px; border: 1px solid #ccc; position: relative; background-size: cover; background-position: center; border-radius: 8px;';
         div.style.backgroundImage = `url(${imgSrc})`;
 
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.innerHTML = '&times;';
-        btn.style.cssText = 'position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+        btn.style.cssText = 'position: absolute; top: -5px; right: -5px; background: red; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;';
         btn.onclick = () => {
             currentImages.splice(index, 1);
             renderPreviews();
@@ -1714,6 +1788,271 @@ function renderPreviews() {
         div.appendChild(btn);
         imagePreviewContainer.appendChild(div);
     });
+}
+
+function setVideoStatus(message = '') {
+    if (!videoProcessingStatus) return;
+    if (message) {
+        videoProcessingStatus.style.display = 'block';
+        videoProcessingStatus.textContent = message;
+    } else {
+        videoProcessingStatus.style.display = 'none';
+        videoProcessingStatus.textContent = '';
+    }
+}
+
+function renderVideoPreviews() {
+    if (!videoPreviewContainer) return;
+    videoPreviewContainer.innerHTML = '';
+    currentVideos.slice(0, 3).forEach((videoSrc, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'width: 78px; height: 78px; aspect-ratio: 1 / 1; border: 2px solid #7c3aed; border-radius: 10px; position: relative; overflow: hidden; background: #0f172a;';
+
+        const vid = document.createElement('video');
+        vid.src = videoSrc;
+        vid.muted = true;
+        vid.loop = true;
+        vid.autoplay = true;
+        vid.playsInline = true;
+        vid.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+
+        const badge = document.createElement('span');
+        badge.textContent = '1:1';
+        badge.style.cssText = 'position: absolute; bottom: 3px; left: 3px; background: rgba(124, 58, 237, 0.88); color: white; font-size: 9px; font-weight: 800; padding: 1px 4px; border-radius: 4px; pointer-events: none;';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = '&times;';
+        btn.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2;';
+        btn.onclick = () => {
+            currentVideos.splice(index, 1);
+            renderVideoPreviews();
+        };
+
+        wrapper.appendChild(vid);
+        wrapper.appendChild(badge);
+        wrapper.appendChild(btn);
+        videoPreviewContainer.appendChild(wrapper);
+    });
+}
+
+function readBlobAsDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(blob);
+    });
+}
+
+function cropVideoToSquareDataUrl(videoEl, durationSeconds) {
+    return new Promise((resolve, reject) => {
+        if (typeof MediaRecorder === 'undefined') {
+            return reject(new Error('Your browser cannot auto-crop videos. Please upload a 1:1 square video.'));
+        }
+
+        const w = videoEl.videoWidth;
+        const h = videoEl.videoHeight;
+        const srcSize = Math.min(w, h);
+        const targetSide = Math.min(srcSize, 720);
+        const sx = Math.floor((w - srcSize) / 2);
+        const sy = Math.floor((h - srcSize) / 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetSide;
+        canvas.height = targetSide;
+        const ctx = canvas.getContext('2d');
+
+        if (typeof canvas.captureStream !== 'function') {
+            return reject(new Error('Your browser cannot auto-crop videos. Please upload a 1:1 square video.'));
+        }
+
+        const mimeCandidates = [
+            'video/mp4;codecs=avc1',
+            'video/mp4',
+            'video/webm;codecs=vp9',
+            'video/webm;codecs=vp8',
+            'video/webm',
+        ];
+        const mimeType = mimeCandidates.find((m) => {
+            try { return MediaRecorder.isTypeSupported(m); } catch { return false; }
+        });
+
+        const canvasStream = canvas.captureStream(30);
+        // Preserve audio tracks if captureStream is available on the video element
+        let combinedStream = canvasStream;
+        try {
+            const vidStream = typeof videoEl.captureStream === 'function'
+                ? videoEl.captureStream()
+                : (typeof videoEl.mozCaptureStream === 'function' ? videoEl.mozCaptureStream() : null);
+            if (vidStream) {
+                const audioTracks = vidStream.getAudioTracks();
+                if (audioTracks && audioTracks.length > 0) {
+                    combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+                }
+            }
+        } catch {
+            combinedStream = canvasStream;
+        }
+
+        const recorderOptions = mimeType ? { mimeType, videoBitsPerSecond: 1800000 } : { videoBitsPerSecond: 1800000 };
+        let recorder;
+        try {
+            recorder = new MediaRecorder(combinedStream, recorderOptions);
+        } catch (err) {
+            return reject(new Error('Failed to initialize 1:1 video cropper. Please upload a 1:1 square video.'));
+        }
+
+        const chunks = [];
+        let rafId = null;
+        let finished = false;
+        let safetyTimer = null;
+
+        const cleanup = () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            if (safetyTimer) clearTimeout(safetyTimer);
+            videoEl.pause();
+        };
+
+        recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onerror = () => {
+            if (finished) return;
+            finished = true;
+            cleanup();
+            reject(new Error('Failed while cropping video to 1:1.'));
+        };
+
+        recorder.onstop = async () => {
+            if (finished) return;
+            finished = true;
+            cleanup();
+            try {
+                const outType = (mimeType && mimeType.split(';')[0]) || 'video/webm';
+                const blob = new Blob(chunks, { type: outType });
+                if (blob.size === 0) {
+                    return reject(new Error('Cropped video was empty. Please upload a 1:1 square video.'));
+                }
+                const dataUrl = await readBlobAsDataUrl(blob);
+                resolve(dataUrl);
+            } catch (err) {
+                reject(err);
+            }
+        };
+
+        const drawFrame = () => {
+            if (finished) return;
+            ctx.drawImage(videoEl, sx, sy, srcSize, srcSize, 0, 0, targetSide, targetSide);
+            if (videoEl.ended || videoEl.paused) {
+                if (recorder.state === 'recording') {
+                    recorder.stop();
+                }
+                return;
+            }
+            rafId = requestAnimationFrame(drawFrame);
+        };
+
+        videoEl.onended = () => {
+            if (recorder.state === 'recording') {
+                recorder.stop();
+            }
+        };
+
+        videoEl.currentTime = 0;
+        videoEl.play().then(() => {
+            recorder.start(200);
+            drawFrame();
+            const maxWaitMs = Math.ceil((Math.min(durationSeconds, 5.2) + 2) * 1000);
+            safetyTimer = setTimeout(() => {
+                if (recorder.state === 'recording') {
+                    recorder.stop();
+                }
+            }, maxWaitMs);
+        }).catch(() => {
+            cleanup();
+            reject(new Error('Could not play video for 1:1 cropping. Please upload a 1:1 square video.'));
+        });
+    });
+}
+
+async function processProductVideoFile(file) {
+    if (file.size > 30 * 1024 * 1024) {
+        throw new Error('Video file is too large (max 30 MB).');
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const videoEl = document.createElement('video');
+    videoEl.preload = 'metadata';
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.src = objectUrl;
+
+    try {
+        await new Promise((resolve, reject) => {
+            videoEl.onloadedmetadata = () => resolve();
+            videoEl.onerror = () => reject(new Error('Unable to read video file.'));
+        });
+
+        const duration = videoEl.duration;
+        if (!Number.isFinite(duration) || duration <= 0) {
+            throw new Error('Could not determine video duration.');
+        }
+        if (duration > 5.2) {
+            throw new Error(`Video must be 5 seconds or less (yours is ${duration.toFixed(1)}s).`);
+        }
+
+        const w = videoEl.videoWidth;
+        const h = videoEl.videoHeight;
+        if (!w || !h) {
+            throw new Error('Invalid video dimensions.');
+        }
+
+        const isSquare = Math.abs(w - h) / Math.max(w, h) <= 0.02;
+        if (isSquare) {
+            setVideoStatus('Adding 1:1 video...');
+            return await readBlobAsDataUrl(file);
+        }
+
+        setVideoStatus(`Cropping ${w}x${h} video to 1:1 square (${duration.toFixed(1)}s)...`);
+        return await cropVideoToSquareDataUrl(videoEl, duration);
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+}
+
+async function handleVideoFiles(files) {
+    if (!files || files.length === 0) return;
+    const validVideos = files.filter((f) => f.type && f.type.startsWith('video/'));
+    if (validVideos.length === 0) return;
+
+    if (validVideos.length + currentVideos.length > 3) {
+        window.showToast('You can only upload up to 3 videos per product.', 'error');
+        return;
+    }
+
+    isProcessingVideo = true;
+    const saveBtn = document.querySelector('#product-form button[type="submit"]');
+    if (saveBtn) saveBtn.disabled = true;
+
+    try {
+        for (const file of validVideos) {
+            try {
+                const dataUrl = await processProductVideoFile(file);
+                currentVideos.push(dataUrl);
+                renderVideoPreviews();
+                window.showToast('1:1 video ready!', 'success');
+            } catch (err) {
+                console.error('Video processing error:', err);
+                window.showToast(err.message || 'Failed to process video', 'error');
+            }
+        }
+    } finally {
+        isProcessingVideo = false;
+        setVideoStatus('');
+        if (saveBtn) saveBtn.disabled = false;
+    }
 }
 
 function updateDashboardStats() {
@@ -1754,12 +2093,14 @@ function switchView(view) {
     if (orderFilterSection) orderFilterSection.style.display = 'none';
     if (settingsView) settingsView.style.display = 'none';
     if (discountsView) discountsView.style.display = 'none';
-    if (listContainer) listContainer.style.display = 'block'; // Block by default unless settings/discounts
+    if (promotionsView) promotionsView.style.display = 'none';
+    if (listContainer) listContainer.style.display = 'block'; // Block by default unless settings/discounts/promotions
 
     productsBtn.classList.remove('active');
     ordersBtn.classList.remove('active');
     if (settingsBtn) settingsBtn.classList.remove('active');
     if (discountsBtn) discountsBtn.classList.remove('active');
+    if (promotionsBtn) promotionsBtn.classList.remove('active');
 
     // Sync Mobile Bottom Navigation buttons
     const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
@@ -1815,11 +2156,19 @@ function switchView(view) {
         if (delCompletedBtn) delCompletedBtn.style.display = 'none';
 
         fetchDiscounts();
+    } else if (view === 'promotions') {
+        if (promotionsBtn) promotionsBtn.classList.add('active');
+        if (listContainer) listContainer.style.display = 'none';
+        if (promotionsView) promotionsView.style.display = 'block';
+        if (resetDbBtn) resetDbBtn.style.display = 'none';
+        if (delCompletedBtn) delCompletedBtn.style.display = 'none';
+
+        fetchPromotionCustomers();
     }
 
     checkAddButtonVisibility();
     updateDashboardStats();
-    if (view !== 'settings' && view !== 'discounts') {
+    if (view !== 'settings' && view !== 'discounts' && view !== 'promotions') {
         render();
     }
 }
@@ -1991,13 +2340,19 @@ function openModal(id = null) {
         }
 
         document.getElementById('product-qty').value = product.qty !== undefined ? product.qty : 0;
-        currentImages = product.images || (product.image ? [product.image] : []);
+        currentImages = Array.isArray(product.images) && product.images.length
+            ? [...product.images]
+            : (product.image ? [product.image] : []);
+        currentVideos = Array.isArray(product.videos) ? [...product.videos] : [];
     } else {
         modalTitle.textContent = 'ADD PRODUCT';
         productForm.reset();
         currentImages = [];
+        currentVideos = [];
     }
+    setVideoStatus('');
     renderPreviews();
+    renderVideoPreviews();
 }
 
 function closeModal() {
@@ -2005,9 +2360,18 @@ function closeModal() {
     productModal.classList.remove('active');
     editingId = null;
     currentImages = [];
+    currentVideos = [];
+    isProcessingVideo = false;
+    setVideoStatus('');
+    renderVideoPreviews();
 }
 
 async function saveProduct() {
+    if (isProcessingVideo) {
+        window.showToast('Please wait for 1:1 video processing to finish.', 'info');
+        return;
+    }
+
     const saveBtn = document.querySelector('#product-form button[type="submit"]');
     if (saveBtn) {
         saveBtn.disabled = true;
@@ -2033,9 +2397,10 @@ async function saveProduct() {
         const qty = parseInt(document.getElementById('product-qty').value) || 0;
         const image = currentImages.length > 0 ? currentImages[0] : '';
         const images = currentImages;
+        const videos = currentVideos;
 
-        const payload = { name, description, price, compare_price, category, qty, image, images };
-        console.log('Sending Payload:', payload);
+        const payload = { name, description, price, compare_price, category, qty, image, images, videos };
+        console.log('Sending Payload:', { ...payload, imagesCount: images.length, videosCount: videos.length });
 
         let res;
         if (editingId) {
@@ -2065,15 +2430,20 @@ async function saveProduct() {
 
         if (res.ok) {
             console.log('Save Success:', data);
+            const finalImages = Array.isArray(data.images) ? data.images : images;
+            const finalImage = data.image !== undefined ? data.image : image;
+            const finalVideos = Array.isArray(data.videos) ? data.videos : videos;
             const savedProduct = {
                 id: editingId || data.id,
                 name,
                 description,
                 price,
+                compare_price,
                 category,
                 qty,
-                image,
-                images
+                image: finalImage,
+                images: finalImages,
+                videos: finalVideos
             };
 
             if (editingId) {
@@ -2930,6 +3300,286 @@ async function deleteDiscount(id) {
         console.error('Delete discount failed:', err);
         if (window.showToast) window.showToast(err.message || 'Failed to delete discount rule', 'error');
     }
+}
+
+// --- PROMOTIONS & CUSTOMER DIRECTORY FUNCTIONS ---
+function escapeHtmlPromo(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function fetchPromotionCustomers() {
+    if (!promotionsLoading || !promotionsEmpty || !promotionsTable) return;
+    promotionsLoading.style.display = 'block';
+    promotionsEmpty.style.display = 'none';
+    promotionsTable.style.display = 'none';
+    if (promotionsCardsMobile) promotionsCardsMobile.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/admin/promotions/customers', {
+            headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to fetch customer list');
+        }
+        promotionCustomers = Array.isArray(data.customers) ? data.customers : [];
+        updatePromoCounts(data.counts);
+        renderPromotionCustomers();
+    } catch (err) {
+        console.error('Fetch promotion customers failed:', err);
+        if (window.showToast) window.showToast(err.message || 'Error loading customers', 'error');
+        promotionsLoading.style.display = 'none';
+        promotionsEmpty.style.display = 'block';
+    }
+}
+
+function updatePromoCounts(counts) {
+    const total = counts?.total ?? promotionCustomers.length;
+    const website = counts?.website ?? promotionCustomers.filter(c => c.source === 'website' || c.source === 'both').length;
+    const offline = counts?.offline ?? promotionCustomers.filter(c => c.source === 'offline' || c.source === 'both').length;
+
+    if (promoCountTotal) promoCountTotal.textContent = `Total: ${total}`;
+    if (promoCountWebsite) promoCountWebsite.textContent = `Website: ${website}`;
+    if (promoCountOffline) promoCountOffline.textContent = `Offline: ${offline}`;
+}
+
+function getFilteredPromotionCustomers() {
+    return promotionCustomers.filter((c) => {
+        const sourceMatch = currentPromoFilter === 'all'
+            ? true
+            : currentPromoFilter === 'website'
+                ? (c.source === 'website' || c.source === 'both')
+                : (c.source === 'offline' || c.source === 'both');
+
+        if (!sourceMatch) return false;
+        if (!currentPromoSearch) return true;
+        const nameMatch = String(c.name || '').toLowerCase().includes(currentPromoSearch);
+        const phoneMatch = String(c.phone || '').toLowerCase().includes(currentPromoSearch);
+        return nameMatch || phoneMatch;
+    });
+}
+
+function renderPromotionCustomers() {
+    if (!promotionsLoading || !promotionsEmpty || !promotionsTable || !promotionsTableBody) return;
+    promotionsLoading.style.display = 'none';
+
+    const filtered = getFilteredPromotionCustomers();
+
+    if (filtered.length === 0) {
+        promotionsEmpty.style.display = 'block';
+        promotionsTable.style.display = 'none';
+        if (promotionsCardsMobile) promotionsCardsMobile.style.display = 'none';
+        return;
+    }
+
+    promotionsEmpty.style.display = 'none';
+    if (window.innerWidth <= 640 && promotionsCardsMobile) {
+        promotionsTable.style.display = 'none';
+        promotionsCardsMobile.style.display = 'block';
+        promotionsCardsMobile.innerHTML = '';
+    } else {
+        promotionsTable.style.display = 'table';
+        if (promotionsCardsMobile) promotionsCardsMobile.style.display = 'none';
+    }
+
+    promotionsTableBody.innerHTML = '';
+
+    filtered.forEach((cust, idx) => {
+        const safeName = escapeHtmlPromo(cust.name || 'Customer');
+        const safePhone = escapeHtmlPromo(cust.phone || '');
+        const cleanDigits = String(cust.phone || '').replace(/\D/g, '');
+        const waDigits = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
+        let sourceBadge = `<span style="background: #dcfce7; color: #166534; padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">🛒 Website</span>`;
+        if (cust.source === 'offline') {
+            sourceBadge = `<span style="background: #dbeafe; color: #1e40af; padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">🏪 Offline</span>`;
+        } else if (cust.source === 'both') {
+            sourceBadge = `<span style="background: #f3e8ff; color: #6b21a8; padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">🛒 + 🏪 Both</span>`;
+        }
+
+        const detailParts = [];
+        if (cust.orderCount > 0) {
+            detailParts.push(`${cust.orderCount} order${cust.orderCount === 1 ? '' : 's'}`);
+        }
+        const dateVal = cust.lastOrderAt || cust.createdAt;
+        if (dateVal) {
+            const formatted = new Date(dateVal).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            detailParts.push(formatted);
+        }
+        const detailsText = escapeHtmlPromo(detailParts.join(' • ') || 'Added');
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f1f5f9';
+        tr.innerHTML = `
+            <td style="padding: 0.75rem; color: #64748b; font-size: 0.82rem; font-weight: 700;">${idx + 1}</td>
+            <td style="padding: 0.75rem; font-weight: 700; color: #0f172a;">${safeName}</td>
+            <td style="padding: 0.75rem; font-family: monospace; font-size: 0.9rem; font-weight: 700; color: #334155;">${safePhone}</td>
+            <td style="padding: 0.75rem;">${sourceBadge}</td>
+            <td style="padding: 0.75rem; color: #64748b; font-size: 0.82rem;">${detailsText}</td>
+            <td style="padding: 0.75rem; text-align: right;">
+                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                    ${waDigits ? `<a href="https://wa.me/91${waDigits}" target="_blank" rel="noopener noreferrer" class="quick-action-btn btn-whatsapp" title="WhatsApp">💬 WhatsApp</a>` : ''}
+                    ${cleanDigits ? `<a href="tel:${cleanDigits}" class="quick-action-btn btn-call" title="Call">📞 Call</a>` : ''}
+                    ${cust.offlineId ? `<button type="button" class="btn-del-promo-cust view-btn delete-btn" data-id="${escapeHtmlPromo(cust.offlineId)}" style="padding: 0.35rem 0.65rem; font-size: 0.72rem;">Remove</button>` : ''}
+                </div>
+            </td>
+        `;
+        promotionsTableBody.appendChild(tr);
+
+        if (promotionsCardsMobile) {
+            const card = document.createElement('div');
+            card.className = 'discount-card-mobile';
+            card.innerHTML = `
+                <div class="discount-card-header">
+                    <span class="discount-rule-title">${safeName}</span>
+                    ${sourceBadge}
+                </div>
+                <div style="font-size: 0.85rem; color: #334155; font-family: monospace; font-weight: 700; margin-bottom: 0.35rem;">📱 ${safePhone}</div>
+                <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.65rem;">${detailsText}</div>
+                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
+                    ${waDigits ? `<a href="https://wa.me/91${waDigits}" target="_blank" rel="noopener noreferrer" class="quick-action-btn btn-whatsapp">💬 WhatsApp</a>` : ''}
+                    ${cleanDigits ? `<a href="tel:${cleanDigits}" class="quick-action-btn btn-call">📞 Call</a>` : ''}
+                    ${cust.offlineId ? `<button type="button" class="btn-del-promo-cust view-btn delete-btn" data-id="${escapeHtmlPromo(cust.offlineId)}" style="padding: 0.38rem 0.7rem; font-size: 0.74rem; margin-left: auto;">Remove</button>` : ''}
+                </div>
+            `;
+            promotionsCardsMobile.appendChild(card);
+        }
+    });
+
+    [promotionsTableBody, promotionsCardsMobile].filter(Boolean).forEach((container) => {
+        container.querySelectorAll('.btn-del-promo-cust').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                if (id) deleteOfflineCustomer(id);
+            });
+        });
+    });
+}
+
+async function handleAddOfflineCustomer(e) {
+    e.preventDefault();
+    if (!promoCustomerNameInput || !promoCustomerPhoneInput) return;
+
+    const name = promoCustomerNameInput.value.trim();
+    const phone = promoCustomerPhoneInput.value.trim();
+    const digits = phone.replace(/\D/g, '');
+
+    if (promoFormStatus) {
+        promoFormStatus.textContent = '';
+        promoFormStatus.style.color = '#dc2626';
+    }
+
+    if (!name) {
+        if (promoFormStatus) promoFormStatus.textContent = 'Please enter customer name.';
+        promoCustomerNameInput.focus();
+        return;
+    }
+    if (digits.length < 10 || digits.length > 15) {
+        if (promoFormStatus) promoFormStatus.textContent = 'Please enter a valid 10-15 digit phone number.';
+        promoCustomerPhoneInput.focus();
+        return;
+    }
+
+    const submitBtn = document.getElementById('btn-add-offline-customer');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'ADDING...';
+    }
+
+    try {
+        const res = await fetch('/api/admin/promotions/customers', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ name, phone })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Failed to add offline customer');
+        }
+
+        offlineCustomerForm.reset();
+        if (promoFormStatus) {
+            promoFormStatus.style.color = '#166534';
+            promoFormStatus.textContent = `Added "${name}" (${phone}) to customer directory.`;
+        }
+        if (window.showToast) window.showToast('Offline customer added!', 'success');
+        await fetchPromotionCustomers();
+    } catch (err) {
+        console.error('Add offline customer error:', err);
+        if (promoFormStatus) {
+            promoFormStatus.style.color = '#dc2626';
+            promoFormStatus.textContent = err.message || 'Failed to add customer';
+        }
+        if (window.showToast) window.showToast(err.message || 'Failed to add customer', 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '+ ADD CUSTOMER';
+        }
+    }
+}
+
+async function deleteOfflineCustomer(id) {
+    showConfirm('Remove this offline customer from the promotions list?', async () => {
+        try {
+            const res = await fetch(`/api/admin/promotions/customers/${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to remove customer');
+            }
+            if (window.showToast) window.showToast('Offline customer removed', 'success');
+            await fetchPromotionCustomers();
+        } catch (err) {
+            console.error('Delete offline customer failed:', err);
+            if (window.showToast) window.showToast(err.message || 'Failed to remove customer', 'error');
+        }
+    });
+}
+
+async function copyPromotionPhones() {
+    const filtered = getFilteredPromotionCustomers();
+    const phones = filtered.map(c => c.phone).filter(Boolean);
+    if (phones.length === 0) {
+        if (window.showToast) window.showToast('No phone numbers to copy.', 'info');
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(phones.join('\n'));
+        if (window.showToast) window.showToast(`Copied ${phones.length} phone number(s)!`, 'success');
+    } catch {
+        if (window.showToast) window.showToast('Could not access clipboard.', 'error');
+    }
+}
+
+function exportPromotionCsv() {
+    const filtered = getFilteredPromotionCustomers();
+    if (filtered.length === 0) {
+        if (window.showToast) window.showToast('No customers to export.', 'info');
+        return;
+    }
+    const escapeCsv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+        ['Name', 'Phone', 'Source', 'Website Orders'],
+        ...filtered.map(c => [c.name, c.phone, c.source, c.orderCount || 0])
+    ];
+    const csv = rows.map(r => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rasobhoomi_customers_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 init();

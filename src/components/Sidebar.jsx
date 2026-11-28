@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <Link to="/" className="menu-item" onClick={onClose}>{t('nav_home')}</Link>
                 <Link to="/categories" className="menu-item" onClick={onClose}>{t('nav_categories')}</Link>
                 <a
-                    href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245"
+                    href="https://www.google.com/maps/search/?api=1&query=XQ23%2B89X%2C+NH+312%2C+near+kerosine+pump%2C+Baikara%2C+West+Bengal+743245"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="menu-item"

@@ -12,12 +12,12 @@ const ProductDetails = () => {
     const { t, translateProduct } = useLanguage();
     const [rawProduct, setRawProduct] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        setCurrentImageIndex(0);
+        setCurrentMediaIndex(0);
 
         const fromContext = products.find(p => p.id === id);
 
@@ -70,6 +70,13 @@ const ProductDetails = () => {
     const images = product.images && product.images.length > 0
         ? product.images
         : (product.image ? [product.image] : []);
+    const videos = Array.isArray(product.videos) ? product.videos.filter(Boolean) : [];
+    const mediaItems = [
+        ...images.map((src) => ({ type: 'image', src })),
+        ...videos.map((src) => ({ type: 'video', src })),
+    ];
+    const safeIndex = currentMediaIndex < mediaItems.length ? currentMediaIndex : 0;
+    const activeMedia = mediaItems[safeIndex] || null;
 
     const handleAddToCart = () => {
         addToCart(product.id);
@@ -117,34 +124,112 @@ const ProductDetails = () => {
                             {discountPercent}% {t('off')}
                         </div>
                     )}
-                    {images.length > 0 ? (
-                        <img
-                            src={images[currentImageIndex]}
-                            alt={product.name}
-                            loading="eager"
-                            decoding="async"
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
+                    {activeMedia ? (
+                        activeMedia.type === 'video' ? (
+                            <video
+                                key={activeMedia.src}
+                                src={activeMedia.src}
+                                poster={images[0] || undefined}
+                                controls
+                                playsInline
+                                loop
+                                preload="metadata"
+                                width={600}
+                                height={600}
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    aspectRatio: '1 / 1',
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                    backgroundColor: '#000',
+                                }}
+                            />
+                        ) : (
+                            <img
+                                src={activeMedia.src}
+                                alt={product.name}
+                                width={600}
+                                height={600}
+                                fetchPriority={safeIndex === 0 ? 'high' : undefined}
+                                loading="eager"
+                                decoding="async"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    aspectRatio: '1 / 1',
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                }}
+                            />
+                        )
                     ) : (
                         <div style={{ padding: '2rem' }}>NO IMAGE</div>
                     )}
                 </div>
 
-                {images.length > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                        {images.map((_, idx) => (
-                            <div
-                                key={idx}
-                                onClick={() => setCurrentImageIndex(idx)}
-                                style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    background: idx === currentImageIndex ? '#2C1B10' : '#ccc',
-                                    cursor: 'pointer'
-                                }}
-                            ></div>
-                        ))}
+                {mediaItems.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                        {mediaItems.map((item, idx) => {
+                            const isActive = idx === safeIndex;
+                            return (
+                                <button
+                                    key={`${item.type}-${idx}`}
+                                    type="button"
+                                    onClick={() => setCurrentMediaIndex(idx)}
+                                    aria-label={item.type === 'video' ? `View product video ${idx - images.length + 1}` : `View product photo ${idx + 1}`}
+                                    aria-current={isActive ? 'true' : undefined}
+                                    style={{
+                                        width: '54px',
+                                        height: '54px',
+                                        aspectRatio: '1 / 1',
+                                        padding: 0,
+                                        borderRadius: '10px',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        background: '#111827',
+                                        border: isActive ? '2.5px solid #2C1B10' : '1.5px solid #d1d5db',
+                                        boxShadow: isActive ? '0 0 0 2px rgba(44, 27, 16, 0.2)' : 'none',
+                                    }}
+                                >
+                                    {item.type === 'video' ? (
+                                        <>
+                                            <video
+                                                src={item.src}
+                                                muted
+                                                playsInline
+                                                preload="metadata"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
+                                            />
+                                            <span
+                                                aria-hidden="true"
+                                                style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    background: 'rgba(0, 0, 0, 0.35)',
+                                                    color: 'white',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 'bold',
+                                                }}
+                                            >
+                                                ▶
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <img
+                                            src={item.src}
+                                            alt=""
+                                            loading="lazy"
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 

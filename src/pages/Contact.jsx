@@ -111,13 +111,13 @@ const Contact = () => {
                             <div>
                                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.2rem' }}>Location</h3>
                                 <a
-                                    href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245"
+                                    href="https://www.google.com/maps/search/?api=1&query=XQ23%2B89X%2C+NH+312%2C+near+kerosine+pump%2C+Baikara%2C+West+Bengal+743245"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{ color: '#666', textDecoration: 'none' }}
                                     title="View on Google Maps"
                                 >
-                                    <p style={{ color: '#666' }}>AH1, Baikara, Thakurnagar,<br />West Bengal 743245</p>
+                                    <p style={{ color: '#666' }}>XQ23+89X, NH 312, near kerosine pump, Baikara, West Bengal 743245</p>
                                 </a>
                             </div>
                         </div>

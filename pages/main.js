@@ -286,7 +286,7 @@ if (!document.querySelector('footer') && !window.location.pathname.includes('adm
             <a href="shipping.html" class="footer-link">Shipping Policy</a>
             <a href="privacy.html" class="footer-link">Privacy Policy</a>
             <a href="https://wa.me/918972076182?text=Hi%20Rasobhoomi,%20I%20have%20a%20query%20regarding%20products" target="_blank" class="footer-link">Contact Us</a>
-            <a href="https://www.google.com/maps/search/?api=1&query=AH1%2C+Baikara%2C+Thakurnagar%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" class="footer-link">Location by Maps</a>
+            <a href="https://www.google.com/maps/search/?api=1&query=XQ23%2B89X%2C+NH+312%2C+near+kerosine+pump%2C+Baikara%2C+West+Bengal+743245" target="_blank" rel="noopener noreferrer" class="footer-link">Location by Maps</a>
             </div>
             <div class="copyright">Rasobhoomi. All rights reserved.</div>
            `;
@@ -654,7 +654,13 @@ function initProductDetails() {
       return;
     }
 
-    const images = (product.images && product.images.length) ? product.images : [product.image || null];
+    const images = (product.images && product.images.length) ? product.images : (product.image ? [product.image] : []);
+    const videos = Array.isArray(product.videos) ? product.videos.filter(Boolean) : [];
+    const mediaItems = [
+      ...images.map(src => ({ type: 'image', src })),
+      ...videos.map(src => ({ type: 'video', src }))
+    ];
+    if (mediaItems.length === 0) mediaItems.push({ type: 'image', src: null });
     const price = getPrice(product);
     const mrp = Math.round(price * 1.4);
 
@@ -727,15 +733,26 @@ function initProductDetails() {
 
     function renderSlide(idx) {
       curSlide = idx;
-      const existing = slider.querySelector('img.slide-img');
+      const existing = slider.querySelector('.slide-img');
       if (existing) existing.remove();
 
-      const src = images[idx];
-      if (src) {
+      const item = mediaItems[idx] || { type: 'image', src: null };
+      if (item.src && item.type === 'video') {
+        const vid = document.createElement('video');
+        vid.src = item.src;
+        if (images[0]) vid.poster = images[0];
+        vid.controls = true;
+        vid.playsInline = true;
+        vid.loop = true;
+        vid.preload = 'metadata';
+        vid.className = 'slide-img';
+        vid.style.cssText = 'width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;position:absolute;top:0;left:0;z-index:1;background:#000;';
+        slider.prepend(vid);
+      } else if (item.src) {
         const img = document.createElement('img');
-        img.src = src;
+        img.src = item.src;
         img.className = 'slide-img';
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:1;';
+        img.style.cssText = 'width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;position:absolute;top:0;left:0;z-index:1;';
         slider.prepend(img);
       } else {
         const d = document.createElement('div');
@@ -745,8 +762,8 @@ function initProductDetails() {
         slider.prepend(d);
       }
 
-      dotsCtx.innerHTML = images.map((_, i) => `
-                <div style="width:8px;height:8px;border-radius:50%;background:${i === curSlide ? '#2C1B10' : '#ccc'};cursor:pointer;"></div>
+      dotsCtx.innerHTML = mediaItems.map((m, i) => `
+                <div style="width:${m.type === 'video' ? '14px' : '8px'};height:8px;border-radius:999px;background:${i === curSlide ? '#2C1B10' : '#ccc'};cursor:pointer;" title="${m.type === 'video' ? 'Video' : 'Photo'}"></div>
             `).join('');
 
       Array.from(dotsCtx.children).forEach((d, i) => d.onclick = () => renderSlide(i));

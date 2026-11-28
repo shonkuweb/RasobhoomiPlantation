@@ -183,6 +183,7 @@
             padding: 4px;
             border-radius: 16px;
             display: flex;
+            flex-wrap: wrap;
             gap: 4px;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.04);
         }
@@ -265,7 +266,7 @@
             justify-content: center;
             gap: 3px;
             color: #64748B;
-            font-size: 0.68rem;
+            font-size: 0.62rem;
             font-weight: 700;
             cursor: pointer;
             flex: 1;
@@ -1076,6 +1077,7 @@
                 <button id="btn-products" class="toggle-btn active">📦 Products</button>
                 <button id="btn-orders" class="toggle-btn">📋 Orders</button>
                 <button id="btn-discounts" class="toggle-btn">🏷️ Discounts</button>
+                <button id="btn-promotions" class="toggle-btn">📣 Promotions</button>
                 <button id="btn-settings" class="toggle-btn">⚙️ Settings</button>
             </div>
         </div>
@@ -1480,6 +1482,81 @@
             </div>
         </div>
 
+        <!-- Promotions View -->
+        <div id="promotions-view" style="display: none; max-width: 950px; margin: 0 auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <h2 style="font-size: 1.35rem; color: var(--admin-text-main); margin: 0; font-weight: 800;">📣 Promotions & Customer Directory</h2>
+                    <p style="color: var(--admin-text-muted); font-size: 0.85rem; margin-top: 0.2rem;">All website purchasers plus offline customers added by admin.</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span id="promo-count-total" style="background: #f1f5f9; color: #0f172a; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800;">Total: 0</span>
+                    <span id="promo-count-website" style="background: #dcfce7; color: #166534; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800;">Website: 0</span>
+                    <span id="promo-count-offline" style="background: #dbeafe; color: #1e40af; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800;">Offline: 0</span>
+                </div>
+            </div>
+
+            <!-- Add Offline Customer Form -->
+            <div style="background: white; border-radius: var(--radius-lg); padding: 1.25rem; border: 1px solid var(--admin-border); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+                <h3 id="offline-customer-form-heading" style="font-size: 1rem; font-weight: 800; color: var(--admin-text-main); margin: 0 0 0.75rem 0;">➕ Add Offline Customer</h3>
+                <form id="offline-customer-form" aria-labelledby="offline-customer-form-heading" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;">
+                    <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="promo-customer-name" style="font-weight: 700; font-size: 0.8rem; color: #334155;">Customer Name *</label>
+                        <input type="text" id="promo-customer-name" name="name" autocomplete="name" placeholder="e.g. Ramesh Mondal" required class="modern-input" style="min-height: 48px; box-sizing: border-box;">
+                    </div>
+                    <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label for="promo-customer-phone" style="font-weight: 700; font-size: 0.8rem; color: #334155;">Phone Number *</label>
+                        <input type="tel" id="promo-customer-phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="e.g. 9876543210" required class="modern-input" style="min-height: 48px; box-sizing: border-box;">
+                    </div>
+                    <button type="submit" id="btn-add-offline-customer" class="btn-add-product-modern" style="min-height: 48px; padding: 0.75rem 1.35rem; white-space: nowrap;">
+                        + ADD CUSTOMER
+                    </button>
+                </form>
+                <div id="promo-form-status" aria-live="polite" style="margin-top: 0.5rem; font-size: 0.82rem; font-weight: 700;"></div>
+            </div>
+
+            <!-- Customer List Container -->
+            <div style="background: white; border-radius: var(--radius-lg); padding: 1.25rem; border: 1px solid var(--admin-border); box-shadow: var(--shadow-sm);">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <search style="flex: 1 1 220px;">
+                        <input type="search" id="promo-customer-search" placeholder="Search customers by name or phone..." aria-label="Search customers by name or phone" class="modern-input" style="width: 100%; box-sizing: border-box; min-height: 44px;">
+                    </search>
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+                        <button type="button" class="filter-chip promo-filter-chip active" data-promo-filter="all">ALL</button>
+                        <button type="button" class="filter-chip promo-filter-chip" data-promo-filter="website">WEBSITE</button>
+                        <button type="button" class="filter-chip promo-filter-chip" data-promo-filter="offline">OFFLINE</button>
+                        <button type="button" id="btn-copy-promo-phones" class="btn-upload-modern" style="padding: 0.45rem 0.75rem;">📋 Copy Numbers</button>
+                        <button type="button" id="btn-export-promo-csv" class="btn-upload-modern" style="padding: 0.45rem 0.75rem; border-color: #0284c7; color: #0284c7;">⬇ Export CSV</button>
+                    </div>
+                </div>
+
+                <div id="promotions-loading" style="text-align: center; color: var(--admin-text-muted); padding: 2rem;">Loading customer list...</div>
+                <div id="promotions-empty" style="display: none; text-align: center; color: var(--admin-text-muted); padding: 2rem;">No customers found matching your criteria.</div>
+
+                <div id="promotions-table-wrapper" style="overflow-x: auto;">
+                    <table id="promotions-table" style="width: 100%; border-collapse: collapse; display: none;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #f1f5f9; text-align: left; font-size: 0.78rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                                <th style="padding: 0.75rem;">#</th>
+                                <th style="padding: 0.75rem;">Customer Name</th>
+                                <th style="padding: 0.75rem;">Phone Number</th>
+                                <th style="padding: 0.75rem;">Source</th>
+                                <th style="padding: 0.75rem;">Details</th>
+                                <th style="padding: 0.75rem; text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="promotions-table-body">
+                            <!-- Populated by admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="promotions-cards-mobile" style="display: none;">
+                    <!-- Populated by admin.js -->
+                </div>
+            </div>
+        </div>
+
         <!-- Danger Zone Actions -->
         <div style="margin-top: 3rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1.5rem; display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:0.75rem; align-items:center;">
             <button id="delete-completed-btn" style="background: transparent; border: 1.5px solid #b45309; color: #b45309; padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer; font-size: 0.78rem; font-weight: 700;">
@@ -1508,6 +1585,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
             <span>Discounts</span>
         </button>
+        <button class="mobile-nav-btn" data-tab="promotions">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+            <span>Promotions</span>
+        </button>
         <button class="mobile-nav-btn" data-tab="settings">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             <span>Settings</span>
@@ -1530,10 +1611,20 @@
                         <label for="product-images" class="btn-upload-modern" style="flex:1;">+ UPLOAD IMAGES</label>
                         <button type="button" id="btn-camera" class="btn-upload-modern" style="flex:1; background: var(--admin-primary); color: white;">📷 TAKE PHOTO</button>
                     </div>
-                    <p class="drop-zone-text" style="font-size: 0.78rem; color: #64748b;">or Drag and Drop Images Here</p>
+                    <p class="drop-zone-text" style="font-size: 0.78rem; color: #64748b;">or Drag and Drop Images / 1:1 Videos Here</p>
                     <input type="file" id="product-images" accept="image/*" multiple style="display: none;">
                     <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
                     <div id="image-preview-container" style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap;"></div>
+
+                    <div style="border-top: 1px dashed #cbd5e1; margin-top: 0.75rem; padding-top: 0.75rem;">
+                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 0.35rem;">
+                            <label for="product-videos" class="btn-upload-modern" style="flex:1; border-color: #7c3aed; color: #7c3aed;">🎬 + UPLOAD 1:1 VIDEO (MAX 5s)</label>
+                        </div>
+                        <p style="font-size: 0.74rem; color: #64748b; margin: 0;">Up to 3 square (1:1) videos, max 5s each (auto-cropped to 1:1 if needed).</p>
+                        <input type="file" id="product-videos" accept="video/*" multiple style="display: none;">
+                        <div id="video-processing-status" aria-live="polite" style="display: none; margin-top: 0.5rem; font-size: 0.78rem; font-weight: 700; color: #7c3aed;"></div>
+                        <div id="video-preview-container" style="display: flex; gap: 0.6rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap;"></div>
+                    </div>
                 </div>
                 
                 <input type="text" id="product-name" placeholder="Product Name" required class="modern-input">

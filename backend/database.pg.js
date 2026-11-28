@@ -130,9 +130,11 @@ function initDb() {
             category TEXT,
             qty INTEGER DEFAULT 0,
             image TEXT,
-            images TEXT, 
+            images TEXT,
+            videos TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS videos TEXT`,
         `CREATE TABLE IF NOT EXISTS orders (
             id TEXT PRIMARY KEY,
             name TEXT,
@@ -200,6 +202,12 @@ function initDb() {
             video_url TEXT NOT NULL,
             description TEXT,
             sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS promotion_customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`,
         `CREATE INDEX IF NOT EXISTS idx_products_created_at_desc ON products (created_at DESC)`,
